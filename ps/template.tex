@@ -1,0 +1,21 @@
+\documentclass[tikz]{standalone}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.15}
+\begin{document}
+\def\func{sin(deg(x))}
+\begin{tikzpicture}
+\def\w{.5in}
+% \draw [thin, green] (0,0) rectangle (\w,\w);
+% \draw [thin, blue] (.5*\w,.5*\w) circle (.5*\w); 
+\draw (.5*\w,.5*\w) circle (.5*\w); 
+% \draw [green] (.5*\w, 0) -- ++(0, \w);
+% \draw [green] (0, .5*\w) -- ++(\w, 0);
+\clip (.5*\w,.5*\w) circle (.5*\w);
+\begin{axis}[axis lines=center, thin, enlargelimits,
+             width=\w, height=\w, scale only axis,
+             xmin=-2, xmax=2, xtick={1}, xticklabels={},
+             ymin=-1.1, ymax=1.1, ytick={1}, yticklabels={}]
+\plot [mark=none, red, samples=100] {\func};
+\end{axis}
+\end{tikzpicture}
+\end{document}
