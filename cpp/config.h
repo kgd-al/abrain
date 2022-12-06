@@ -11,10 +11,13 @@ namespace kgd::eshn {
 
 template <typename T>
 struct Bounds {
-  T min, rndMin, rndMax, max;
+  T min, rndMin, rndMax, max, stddev;
 };
 
 struct Config {
+  /// ================================================
+  /// CPPN genotype parameters
+
   using FID = genotype::CPPNData::Node::FuncID;
   using Functions = std::vector<FID>;
 
@@ -28,7 +31,17 @@ struct Config {
   static MutationRates mutationRates;
 
   using FBounds = Bounds<float>;
-  static FBounds weightBounds;
+  static FBounds cppnWeightBounds;
+
+  /// ================================================
+  /// ANN parameters (none?)
+  static float annWeightsRange;
+  static FID activationFunc;
+
+  /// ================================================
+  /// ES-HyperNEAT parameters
+  static uint initialDepth, maxDepth, iterations;
+  static float divThr, varThr, bndThr;
 };
 
 } // end of namespace kgd::eshn

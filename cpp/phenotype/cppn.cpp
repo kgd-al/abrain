@@ -4,12 +4,62 @@
 #include "cppn.h"
 #include "../config.h"
 
-namespace kgd::eshn::phenotype {
-using CPPNData = kgd::eshn::genotype::CPPNData;
+#include <iostream>
 
 #ifndef NDEBUG
 //#define DEBUG
 #endif
+
+#ifdef DEBUG
+#include <iomanip>
+
+namespace utils { // Contains debugging tools
+std::ostream& operator<< (std::ostream &os,
+                         const kgd::eshn::phenotype::CPPN::Outputs &outputs) {
+  os << "[ " << outputs[0];
+  for (uint i=1; i<outputs.size(); i++) os << " " << outputs[i];
+  return os << "]";
+}
+
+
+/// Manages indentation for provided ostream
+/// \author James Kanze @ https://stackoverflow.com/a/9600752
+class IndentingOStreambuf : public std::streambuf {
+  static constexpr uint DEFAULT_INDENT = 2;   ///< Default indenting value
+
+  std::ostream*       _owner;   ///< Associated ostream
+  std::streambuf*     _buffer;  ///< Associated buffer
+  bool                _isAtStartOfLine; ///< Whether to insert indentation
+
+  const std::string   _indent;  ///< Indentation value
+
+protected:
+  /// Overrides std::basic_streambuf::overflow to insert indentation at line start
+  int overflow (int ch) override {
+    if (_isAtStartOfLine && ch != '\n')
+      _buffer->sputn(_indent.data(), _indent.size());
+    _isAtStartOfLine = (ch == '\n');
+    return _buffer->sputc(ch);
+  }
+
+public:
+  /// Creates a proxy buffer managing indentation level
+  explicit IndentingOStreambuf(std::ostream& dest,
+                               uint spaces = DEFAULT_INDENT)
+    : _owner(&dest), _buffer(dest.rdbuf()),
+      _isAtStartOfLine(true),
+      _indent(spaces, ' ' ) { _owner->rdbuf( this );  }
+
+  /// Returns control of the buffer to its owner
+  virtual ~IndentingOStreambuf(void) { _owner->rdbuf(_buffer); }
+};
+
+
+} // end of namespace utils
+#endif
+
+namespace kgd::eshn::phenotype {
+using CPPNData = kgd::eshn::genotype::CPPNData;
 
 // =============================================================================
 // -- Ugly solution to numerical non-determinism
@@ -76,13 +126,6 @@ const std::map<CPPN::Function, CPPNData::Node::FuncID>
 const std::map<CPPNData::Node::FuncID,
                CPPN::Range> CPPN::functionRanges {
 
-  // Risi function set bounds
-//  F("line",  0, 1),
-//  F("gaus", -1, 1),
-//  F("ssgm",  0, 1),
-//  F("bsgm", -1, 1),
-//  F( "sin", -1, 1),
-
   F( "abs",  0, 1),
   F("gaus",  0, 1),
   F(  "id", -1, 1),
@@ -91,13 +134,14 @@ const std::map<CPPNData::Node::FuncID,
   F( "sin", -1, 1),
   F("step",  0, 1),
 
+  F("ssgn", -1, 1),
+
 //  F("kact", -1, 1), // Not really (min value ~ .278)
 };
 #undef F
 
-CPPN::CPPN (void){}
 
-CPPN CPPN::fromGenotype(const CPPNData &genotype) {
+CPPN::CPPN (const CPPNData &genotype) {
   using NID = uint;//CPPNData::Node::ID;
   static constexpr auto NI = INPUTS;
   static constexpr auto NO = OUTPUTS;
@@ -106,8 +150,6 @@ CPPN CPPN::fromGenotype(const CPPNData &genotype) {
     return Config::outputFunctions[index];
   };
 
-  CPPN cppn;
-
   auto fnode = [] (const CPPNData::Node::FuncID &fid) {
     return std::make_shared<FNode>(functions.at(fid));
   };
@@ -115,31 +157,30 @@ CPPN CPPN::fromGenotype(const CPPNData &genotype) {
   std::map<NID, Node_ptr> nodes;
 
   uint off = 0; // Inputs are first
-  cppn._inputs.resize(NI);
+  _inputs.resize(NI);
   for (NID i=0; i<NI; i++) {
 #ifdef DEBUG
     std::cerr << "(I) " << NID(i) << " " << i << std::endl;
 #endif
-    nodes[i] = cppn._inputs[i] = std::make_shared<INode>();
+    nodes[i] = _inputs[i] = std::make_shared<INode>();
   }
 
   off = NI; // Outputs are after inputs
-  cppn._outputs.resize(NO);
+  _outputs.resize(NO);
   for (NID i=0; i<NO; i++) {
 #ifdef DEBUG
-    std::cerr << "(O) " << i+off) << " " << i << " " << ofuncs(i) << std::endl;
+    std::cerr << "(O) " << i+off << " " << i << " " << ofuncs(i) << std::endl;
 #endif
-    nodes[i+off] = cppn._outputs[i] = fnode(ofuncs(i));
+    nodes[i+off] = _outputs[i] = fnode(ofuncs(i));
   }
 
   uint i=0;
-  off = NI + NO; // Hidden are at the end
-  cppn._hidden.resize(genotype.nodes.size());
+  _hidden.resize(genotype.nodes.size());
   for (const CPPNData::Node &n_g: genotype.nodes) {
 #ifdef DEBUG
     std::cerr << "(H) " << n_g.id << " " << i << " " << n_g.func << std::endl;
 #endif
-    nodes[i+off] = cppn._hidden[i] = fnode(n_g.func);
+    nodes[n_g.id] = _hidden[i] = fnode(n_g.func);
     i++;
   }
 
@@ -152,11 +193,11 @@ CPPN CPPN::fromGenotype(const CPPNData &genotype) {
   i=0;
   std::map<Node_ptr, uint> map;
   printf("Built CPPN:\n");
-  for (const auto &v: {cppn._inputs, cppn._outputs, cppn._hidden})
+  for (const auto &v: {_inputs, _outputs, _hidden})
     for (const Node_ptr &n: v)
       map[n] = i++;
 
-  for (const auto &v: {cppn._hidden, cppn._outputs}) {
+  for (const auto &v: {_hidden, _outputs}) {
     for (const Node_ptr &n: v) {
       FNode &fn = *static_cast<FNode*>(n.get());
       printf("\t[%d]\n", map.at(n));
@@ -167,8 +208,6 @@ CPPN CPPN::fromGenotype(const CPPNData &genotype) {
     }
   }
 #endif
-
-  return cppn;
 }
 
 float CPPN::INode::value (void) {
@@ -245,6 +284,7 @@ void CPPN::operator() (const Point &src, const Point &dst,
   for (uint i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
 
 #ifdef DEBUG
+  using utils::operator<<;
   std::cout << outputs << "\n" << std::endl;
 #endif
 }

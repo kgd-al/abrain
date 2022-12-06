@@ -6,7 +6,11 @@ ps/*.eps
 ps/*.png
 
 *.user
+.coverage
+tests.xml
+
 package.dot
 package.pdf
 
 cpp/misc/constants.h
+python/_cpp*

@@ -58,21 +58,21 @@ private:
   std::vector<Node_ptr> _inputs, _hidden, _outputs;
 
 public:
-  CPPN(void);
+  CPPN(const Genotype &genotype);
 
-  static CPPN fromGenotype (const Genotype &genotype);
+// TODO What for?
+//  auto inputSize (void) const { return _inputs.size();  }
+//  auto outputSize (void) const {  return _outputs.size();  }
 
-  auto inputSize (void) const { return _inputs.size();  }
-  auto outputSize (void) const {  return _outputs.size();  }
-
-  using Outputs = std::array<float, Genotype::OUTPUTS>;
+  static constexpr auto &OUTPUTS_LIST = cppn::CPPN_OUTPUT_LIST;
+  using Outputs = std::array<float, OUTPUTS>;
 
   void operator() (const Point &src, const Point &dst, Outputs &outputs) const;
 
-  float operator() (const Point &src, const Point &dst,
-                    Genotype::Output o) const;
+  using Output = Genotype::Output;
+  float operator() (const Point &src, const Point &dst, Output o) const;
 
-  using OutputSubset = std::set<Genotype::Output>;
+  using OutputSubset = std::set<Output>;
   void operator() (const Point &src, const Point &dst, Outputs &outputs,
                    const OutputSubset &oset) const;
 

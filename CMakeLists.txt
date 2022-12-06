@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.4)
 ################################################################################
 
 project("Pypp-NeuroEvolution")
+set(PROJECT_SHORT "pyne")
 message("\n####################################################################"
     "############\n## CMakeFile for ${PROJECT_NAME}")
 
@@ -13,27 +14,6 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic")
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
-
-################################################################################
-## Dependencies
-################################################################################
-
-if (${NO_GVC})
-    message("Not searching for gvc")
-else()
-    find_package(PkgConfig)
-    pkg_search_module(gvc libgvc libcgraph libcdt)
-    if (${gvc_FOUND})
-        add_definitions(-DWITH_GVC)
-        include_directories(${gvc_INCLUDE_DIRS})
-        list(APPEND CORE_LIBS ${gvc_LIBRARIES})
-        message("-- gvc found at ${gvc_INCLUDEDIR}")
-    else()
-        message("Failed to find gvc")
-    endif()
-endif()
-
-#set(PYBIND11_INCLUDE ${PROJECT_SOURCE_DIR}/extern/pybind11/include)
 
 ################################################################################
 ## Source files
@@ -56,8 +36,8 @@ set(CPP_SRC
     "genotype.h"
 
     "phenotype/cppn.cpp"
-#    "phenotype/ann.cpp"
-#    "phenotype/eshn.cpp"
+    "phenotype/ann.cpp"
+    "phenotype/eshn.cpp"
 )
 PREPEND(CPP_SRC "cpp")
 
@@ -65,18 +45,16 @@ set(PYBIND_SRC
     "module.cpp"
     "config.cpp"
 
-#    "misc/constants.cpp"
     "genotype.cpp"
 
     "phenotype/cppn.cpp"
-#    "phenotype/ann.cpp"
-#    "phenotype/eshn.cpp"
+    "phenotype/ann.cpp"
 )
 PREPEND(PYBIND_SRC "pybind")
 
-set(LIB pyne_cpp)
+set(LIB_CPP _cpp)
 add_subdirectory(extern/pybind11)
-pybind11_add_module(${LIB} ${CPP_SRC} ${PYBIND_SRC})
+pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 
 ################################################################################
 ## Target (cppn test)
@@ -92,6 +70,8 @@ pybind11_add_module(${LIB} ${CPP_SRC} ${PYBIND_SRC})
 ### Additional flags
 #################################################################################
 
+option(DEV_BUILD "If true make the library locally available to python" OFF)
+message("> Development build: " ${DEV_BUILD})
 
 option(WITH_DEBUG_INFO "Sets whether to maximize debug data collection" OFF)
 message("> With debug info " ${WITH_DEBUG_INFO})
@@ -106,9 +86,6 @@ if(WITH_DEBUG_INFO)
         string(APPEND CMAKE_CXX_FLAGS " -fuse-ld=gold")
     endif()
 endif()
-
-option(NO_GVC "Whether to prevent looking for the gvc library" OFF)
-message("> Disable gvc: " ${NO_GVC})
 
 option(WITH_TESTS "Whether or not to build all test targets" OFF)
 message("> Building tests: " ${WITH_TESTS})
@@ -164,7 +141,13 @@ string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_OUTPUT_NAMES ${CPPN_OUTPUT_NAMES}
 list(LENGTH tokens CPPN_OUTPUTS_COUNT)
 
 string(REPLACE " " ", " CPPN_INPUTS_LIST ${CPPN_INPUTS_LIST})
+string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
+    CPPN_INPUT_ENUM_NAMES ${CPPN_INPUTS_LIST})
 string(REPLACE " " ", " CPPN_OUTPUTS_LIST ${CPPN_OUTPUTS_LIST})
+string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
+    CPPN_OUTPUT_ENUM_NAMES ${CPPN_OUTPUTS_LIST})
+string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"
+    CPPN_QUALIFIED_OUTPUTS ${CPPN_OUTPUTS_LIST})
 configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
 #message("Generated cppn constants config '${CPPN_CONSTANTS}.h'")
 
@@ -172,11 +155,44 @@ configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
 ### Install cpp library
 #################################################################################
 
-execute_process(
-    COMMAND ${PYTHON_EXECUTABLE} -c "if True:
-        from distutils.sysconfig import get_python_lib
-        print(get_python_lib())"
-    OUTPUT_VARIABLE PYTHON_LIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-message("-- Installation folder is: '${PYTHON_LIB_PATH}' for ${PYTHON_EXECUTABLE}")
+add_custom_command(
+    TARGET ${LIB_CPP} POST_BUILD
+    COMMAND PYTHONPATH=. pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
+        --skip-signature-downgrade --no-setup-py --log-level DEBUG
+        ${LIB_CPP}
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+)
 
-INSTALL(TARGETS ${LIB} DESTINATION ${PYTHON_LIB_PATH})
+if (DEV_BUILD)
+    cmake_policy(SET CMP0087 NEW)   # Allow evaluation of generator expressions
+    message("-+ Dev mod: Not installing, instead sym-linking to python")
+    INSTALL(CODE
+        "execute_process( \
+            COMMAND ln -svf \
+            $<TARGET_FILE:${LIB_CPP}> ${PROJECT_SOURCE_DIR}/python \
+        )"
+    )
+    INSTALL(CODE
+        "execute_process( \
+            COMMAND ln -svf ${PROJECT_BINARY_DIR}/_cpp-stubs/ \
+                            ${PROJECT_SOURCE_DIR}/python/${LIB_CPP} \
+        )"
+    )
+
+else()
+    execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} -c "if True:
+            from distutils.sysconfig import get_python_lib
+            print(get_python_lib())"
+        OUTPUT_VARIABLE PYTHON_LIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(APPEND PYTHON_LIB_PATH "/${PROJECT_SHORT}/")
+    message("-+ Installation folder is: '${PYTHON_LIB_PATH}' for
+        ${PYTHON_EXECUTABLE}")
+
+    INSTALL(TARGETS ${LIB_CPP} DESTINATION ${PYTHON_LIB_PATH})
+    INSTALL(
+        DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
+        DESTINATION ${PYTHON_LIB_PATH}/${LIB_CPP}/
+        PATTERN "*.pyi"
+            PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+endif()

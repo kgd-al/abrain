@@ -2,6 +2,9 @@
 
 namespace kgd::eshn {
 
+/// ================================================
+/// CPPN genotype parameters
+
 Config::FunctionSet Config::functionSet {
   "abs", "gaus", "id", "bsgm", "sin", "step"
 };
@@ -22,13 +25,30 @@ std::map<K,V> normalize (std::initializer_list<std::pair<K, V>> l) {
 Config::MutationRates Config::mutationRates =
     normalize<std::string, float>({
                 { "add_n",  .5f   },
-                { "add_l",  .5f   },
-                { "del_n",  .25f  },
-                { "del_l",  .25f  },
+                { "add_l",  .75f  },
+                { "del_n",  .75f  },
+                { "del_l", 1.0f   },
                 { "mut_w", 5.5f   },
                 { "mut_f", 2.5f   },
 });
 
-Config::FBounds Config::weightBounds {-.3f, -1.f, 1.f, 3.f};
+Config::FBounds Config::cppnWeightBounds {-3.f, -1.f, 1.f, 3.f, 0.01};
+
+/// ================================================
+/// ANN parameters
+
+float Config::annWeightsRange = 3;
+Config::FID Config::activationFunc = "ssgn";
+
+/// ================================================
+/// ES-HyperNEAT parameters
+
+uint Config::initialDepth = 2;
+uint Config::maxDepth = 3;
+uint Config::iterations = 10;
+
+float Config::divThr = .3;
+float Config::varThr = .3;
+float Config::bndThr = .15;
 
 } // end of namespace kgd::eshn
