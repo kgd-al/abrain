@@ -3,9 +3,6 @@ build/
 __pycache__/
 tests-results/
 
-ps/*.eps
-ps/*.png
-
 *.user
 *.log
 .coverage
@@ -15,4 +12,5 @@ package.dot
 package.pdf
 
 cpp/misc/constants.h
-python/_cpp*
+**/functions/*.eps
+**/functions/*.png
