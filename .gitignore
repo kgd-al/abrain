@@ -1,11 +1,13 @@
 .*/
 build/
 __pycache__/
+tests-results/
 
 ps/*.eps
 ps/*.png
 
 *.user
+*.log
 .coverage
 tests.xml
 

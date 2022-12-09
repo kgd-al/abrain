@@ -39,7 +39,7 @@ set(CPP_SRC
     "phenotype/ann.cpp"
     "phenotype/eshn.cpp"
 )
-PREPEND(CPP_SRC "cpp")
+PREPEND(CPP_SRC "src/pyne/_cpp")
 
 set(PYBIND_SRC
     "module.cpp"
@@ -50,11 +50,33 @@ set(PYBIND_SRC
     "phenotype/cppn.cpp"
     "phenotype/ann.cpp"
 )
-PREPEND(PYBIND_SRC "pybind")
+PREPEND(PYBIND_SRC "src/pyne/_bindings")
 
 set(LIB_CPP _cpp)
 add_subdirectory(extern/pybind11)
+#find_package(pybind11 CONFIG REQUIRED)
 pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
+target_compile_definitions(${LIB_CPP}
+                           PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
+
+################################################################################
+## C++ Coverage
+################################################################################
+if(WITH_COVERAGE)
+    message("#### Searching for packages")
+    find_program(LCOV lcov REQUIRED)
+    find_program(GENHTML genhtml REQUIRED)
+    if(NOT LCOV OR NOT GENHTML)
+        message(SEND_ERROR "Could not find lcov/genhtml program(s). "
+            "Either install missing components or run without coverage tests ("
+            "${LCOV} & ${GENHTML})")
+    endif()
+
+    add_custom_target(coverage
+        COMMAND ${LCOV} --directory . --capture --output-file coverage.info
+        COMMAND ${GENHTML} --demangle-cpp -o coverage/cpp coverage.info
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
 
 ################################################################################
 ## Target (cppn test)
@@ -70,8 +92,7 @@ pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 ### Additional flags
 #################################################################################
 
-option(DEV_BUILD "If true make the library locally available to python" OFF)
-message("> Development build: " ${DEV_BUILD})
+message("> Build type: ${CMAKE_BUILD_TYPE}")
 
 option(WITH_DEBUG_INFO "Sets whether to maximize debug data collection" OFF)
 message("> With debug info " ${WITH_DEBUG_INFO})
@@ -87,29 +108,45 @@ if(WITH_DEBUG_INFO)
     endif()
 endif()
 
-option(WITH_TESTS "Whether or not to build all test targets" OFF)
-message("> Building tests: " ${WITH_TESTS})
+option(WITH_COVERAGE "Whether to generate coverage information" OFF)
+message("> With coverage ${WITH_COVERAGE}")
+if(WITH_COVERAGE)
+    message("  > lcov at: " ${LCOV})
+    message("  > genhtml at: " ${GENHTML})
+    string(APPEND CMAKE_CXX_FLAGS " -O0 -coverage")
+endif()
 
-option(ESHN_WITH_DISTANCE "Whether CPPN inputs include connection length" OFF)
+if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
+    if(WITH_DEBUG_INFO)
+        message(SEND_ERROR
+            "Generating debug information is only available in debug mode "
+            "(currently using ${CMAKE_BUILD_TYPE})")
+    endif()
+    if(WITH_COVERAGE)
+        message(SEND_ERROR
+            "Generating coverage information is only available in debug mode "
+            "(currently using ${CMAKE_BUILD_TYPE})")
+    endif()
+endif()
+
+option(ESHN_WITH_DISTANCE "Whether CPPN inputs include connection length" ON)
 message("> CPPN distance: ${ESHN_WITH_DISTANCE}")
 if (ESHN_WITH_DISTANCE)
     add_definitions(-DESHN_WITH_DISTANCE)
-    list(APPEND KGD_DEFINITIONS -DESHN_WITH_DISTANCE)
 endif()
 
-set(ESHN_SUBSTRATE_DIMENSION "2" CACHE STRING
+set(ESHN_SUBSTRATE_DIMENSION "3" CACHE STRING
     "Dimension of the ANN substrate (2 or 3)")
 set_property(CACHE ESHN_SUBSTRATE_DIMENSION PROPERTY STRINGS 2 3)
 message("> Substrate dimension: ${ESHN_SUBSTRATE_DIMENSION}")
 add_definitions(-DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
-list(APPEND KGD_DEFINITIONS -DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
 
 
 #################################################################################
 ### Generate configuration files
 #################################################################################
 
-set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/cpp/misc/constants)
+set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/src/pyne/_cpp/misc/constants)
 
 ## CPPN Inputs (depends on arguments)
 set(CPPN_INPUTS_LIST "")
@@ -146,10 +183,11 @@ string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
 string(REPLACE " " ", " CPPN_OUTPUTS_LIST ${CPPN_OUTPUTS_LIST})
 string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
     CPPN_OUTPUT_ENUM_NAMES ${CPPN_OUTPUTS_LIST})
-string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"
+string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"    
     CPPN_QUALIFIED_OUTPUTS ${CPPN_OUTPUTS_LIST})
+
 configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
-#message("Generated cppn constants config '${CPPN_CONSTANTS}.h'")
+message("-+ Generated cppn constants config '${CPPN_CONSTANTS}.h'")
 
 #################################################################################
 ### Install cpp library
@@ -157,42 +195,66 @@ configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
 
 add_custom_command(
     TARGET ${LIB_CPP} POST_BUILD
+    COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
+    COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
     COMMAND PYTHONPATH=. pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
         --skip-signature-downgrade --no-setup-py --log-level DEBUG
         ${LIB_CPP}
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
+    COMMENT "-+ Generating python stubs from c++ bindings"
 )
 
-if (DEV_BUILD)
-    cmake_policy(SET CMP0087 NEW)   # Allow evaluation of generator expressions
-    message("-+ Dev mod: Not installing, instead sym-linking to python")
-    INSTALL(CODE
-        "execute_process( \
-            COMMAND ln -svf \
-            $<TARGET_FILE:${LIB_CPP}> ${PROJECT_SOURCE_DIR}/python \
-        )"
-    )
-    INSTALL(CODE
-        "execute_process( \
-            COMMAND ln -svf ${PROJECT_BINARY_DIR}/_cpp-stubs/ \
-                            ${PROJECT_SOURCE_DIR}/python/${LIB_CPP} \
-        )"
-    )
+#install(TARGETS ${LIB_CPP} DESTINATION ${LIB_CPP})
+#install(
+#    DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
+#    DESTINATION ${LIB_CPP}/
+#    PATTERN "*.pyi"
+#        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
 
-else()
-    execute_process(
-        COMMAND ${PYTHON_EXECUTABLE} -c "if True:
-            from distutils.sysconfig import get_python_lib
-            print(get_python_lib())"
-        OUTPUT_VARIABLE PYTHON_LIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-    string(APPEND PYTHON_LIB_PATH "/${PROJECT_SHORT}/")
-    message("-+ Installation folder is: '${PYTHON_LIB_PATH}' for
-        ${PYTHON_EXECUTABLE}")
+#if (DEV_BUILD)
+#    cmake_policy(SET CMP0087 NEW)   # Allow evaluation of generator expressions
+#    message("-+ Dev mod: Not installing, instead sym-linking to python")
+#    INSTALL(CODE
+#        "execute_process( \
+#            COMMAND ln -svf \
+#            $<TARGET_FILE:${LIB_CPP}> ${PROJECT_SOURCE_DIR}/python \
+#        )"
+#    )
+#    INSTALL(CODE
+#        "execute_process( \
+#            COMMAND ln -svf ${PROJECT_BINARY_DIR}/_cpp-stubs/ \
+#                            ${PROJECT_SOURCE_DIR}/python/${LIB_CPP} \
+#        )"
+#    )
 
-    INSTALL(TARGETS ${LIB_CPP} DESTINATION ${PYTHON_LIB_PATH})
-    INSTALL(
-        DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
-        DESTINATION ${PYTHON_LIB_PATH}/${LIB_CPP}/
-        PATTERN "*.pyi"
-            PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
-endif()
+#else()
+#    execute_process(
+#        COMMAND ${PYTHON_EXECUTABLE} -c "if True:
+#            from distutils.sysconfig import get_python_lib
+#            print(get_python_lib())"
+#        OUTPUT_VARIABLE PYTHON_LIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+#    string(APPEND PYTHON_LIB_PATH "/${PROJECT_SHORT}/")
+#    message("-+ Installation folder is: '${PYTHON_LIB_PATH}' for
+#        ${PYTHON_EXECUTABLE}")
+
+#    INSTALL(TARGETS ${LIB_CPP} DESTINATION ${PYTHON_LIB_PATH})
+#    INSTALL(
+#        DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
+#        DESTINATION ${PYTHON_LIB_PATH}/${LIB_CPP}/
+#        PATTERN "*.pyi"
+#            PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
+#endif()
+
+
+#################################################################################
+### Ugly hack to get additional files
+#################################################################################
+
+file(GLOB FUNCS
+    ${CMAKE_SOURCE_DIR}/ps/*.ps
+    ${CMAKE_SOURCE_DIR}/ps/*.png)
+add_custom_command(
+    OUTPUT ${CMAKE_SOURCE_DIR}/ps/id.png
+    COMMAND ${CMAKE_SOURCE_DIR}/ps/plotter.sh
+    COMMENT "-+ Generating ps/png file for cppn rendering"
+    BYPRODUCTS ${FUNCS})

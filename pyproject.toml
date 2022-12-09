@@ -1,0 +1,64 @@
+[project]
+name = "pyne"
+version = "0.0.1"
+authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
+description = "NeuroEvolution in Python backed by C++ computations"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  
+  "License :: OSI Approved :: MIT License",
+  
+  "Intended Audience :: Science/Research", 
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Artificial Life",
+]
+dependencies = [
+  "plotly",
+  "configobj",
+]
+
+[projects.urls]
+"Homepage" = "https://github.com/kgd-al/Py-NeuroEvo"
+"Documentation" = "Work in progess"
+"Bug Tracker" = "https://github.com/kgd-al/Py-NeuroEvo/issues"
+
+[build-system]
+requires = [
+  "setuptools>=65.0",
+#  "scikit-build",
+  "cmake>=3.12",
+#  "pybind11"
+]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "coverage",
+  "numpy",
+]
+#doc = [
+#  "sphinx",
+#]
+
+[tool.scikit-build]
+wheel.expand-macos-universal-tags = true
+
+[tool.cibuildwheel]
+test-command = "pytest {project}/tests"
+test-extras = ["test"]
+test-skip = ["*universal2:arm64"]
+build-verbosity = 1
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]
+testpaths = ["tests"]
