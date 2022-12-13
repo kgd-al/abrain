@@ -5,7 +5,9 @@ import numpy as np
 from PIL import Image
 from pytest_steps import test_steps
 
-from pyne._cpp.phenotype import CPPN, Point, Output
+from pyne._cpp.phenotype import ( # noqa
+    CPPN, Point,
+)
 from pyne.core.genome import Genome
 
 
@@ -26,10 +28,15 @@ def test_exists():
     cppn = _make_cppn(16)
     print(cppn)
     print(pydoc.render_doc(cppn))
-    print(pydoc.render_doc(Output))
-    print(Output.Weight)
+    print(pydoc.render_doc(CPPN.Output))
+    print(CPPN.Output.Weight)
     print(CPPN.OUTPUTS_LIST)
-    assert Output.Weight in CPPN.OUTPUTS_LIST
+    assert CPPN.Output.Weight in CPPN.OUTPUTS_LIST
+
+
+def test_functions():
+    for k, v in CPPN.functions().items():
+        print(f"{k}(0) = {v(0)}")
 
 
 def test_create(seed):
@@ -65,7 +72,7 @@ def test_outputs_subset(seed):
     cppn, _ = _make_cppn(seed)
     p0, p1 = Point(0., 0., 0.), Point(0., 0., 0.)
     values = {k: set() for k in CPPN.OUTPUTS_LIST}
-    subset = {Output.Weight, Output.LEO}
+    subset = {CPPN.Output.Weight, CPPN.Output.LEO}
     outputs = CPPN.outputs()
     for i in range(100):
         cppn(p0, p1, outputs, subset)

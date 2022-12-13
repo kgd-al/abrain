@@ -87,8 +87,8 @@ public:
 
 //  void reset (void);
 
-  /// TODO Modify with buffer-based eval
-  void operator() (const Inputs &inputs, Outputs &outputs, uint substeps);
+  /// TODO Modify with buffer-based eval. Maybe
+  void operator() (const Inputs &inputs, Outputs &outputs, uint substeps = 1);
 
   bool empty (void) const;
 
@@ -97,7 +97,9 @@ public:
     return _stats;
   }
 
-  void copyInto (ANN &that) const;
+  // Deepcopy for develop once / use many
+  // Not useful yet.
+//  void copyInto (ANN &that) const;
 
   using Coordinates = es::Coordinates;
   static ANN build (const Coordinates &inputs,

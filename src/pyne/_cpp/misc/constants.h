@@ -3,9 +3,9 @@
 
 namespace kgd::pyne {
 
-static constexpr const char* BUILD_TYPE = "Release";
+static constexpr const char* BUILD_TYPE = "Debug";
 
-static constexpr const char* CXX_FLAGS = "-Wall -Wextra -pedantic";
+static constexpr const char* CXX_FLAGS = "-Wall -Wextra -pedantic -O0 -coverage";
 
 static constexpr const char* CXX_STANDARD = "17";
 

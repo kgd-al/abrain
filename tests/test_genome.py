@@ -33,8 +33,18 @@ def test_random_genome():
 
     size_before = len(g.links)
     g._add_link(0, 0, 0)
-    assert len(g.links) == size_before + 1, \
-        f"Failed to append a link"
+    assert len(g.links) == size_before + 1, f"Failed to append a link"
+
+    g._add_node("id")
+    assert len(g.nodes) == 1
+
+    print(f"Full details of {g}")
+    print(f"\tNodes:")
+    for node in g.nodes:
+        print(f"\t\t{node}")
+    print(f"\tLinks:")
+    for link in g.links:
+        print(f"\t\t{link}")
 
 
 class RatesGuard:

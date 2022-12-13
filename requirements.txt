@@ -1,0 +1,9 @@
+plotly~=5.11.0
+configobj~=5.0.6
+graphviz~=0.20.1
+pyrecord~=1.0.1
+pyne~=0.0.1
+pytest~=7.2.0
+numpy~=1.23.4
+Pillow~=9.3.0
+setuptools~=65.5.0

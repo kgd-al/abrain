@@ -2,9 +2,12 @@
 build/
 __pycache__/
 tests-results/
+*.egg-info
 
 *.user
 *.log
+*.pyi
+*.so
 .coverage
 tests.xml
 

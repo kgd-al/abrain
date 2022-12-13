@@ -4,14 +4,12 @@ Test documentation for genome file (module?)
 import json
 import logging
 import pathlib
-import sys
 from collections import namedtuple
-from importlib_resources import files
-
 from random import Random
 from typing import Dict, List
 
 from graphviz import Digraph
+from importlib_resources import files
 from pyrecord import Record
 
 from .._cpp.config import Config
@@ -34,11 +32,12 @@ class Genome(CPPNData):
     def __init__(self, key=None):
         CPPNData.__init__(self)
         assert (key == Genome.__private_key), \
-            "Genome objects must be created via random, deepcopy or reproduction methods"
+            "Genome objects must be created via random, deepcopy or" \
+            " reproduction methods"
 
     def __repr__(self):
-        return f"CPPN:{Genome.INPUTS}:{Genome.OUTPUTS}([{len(self.nodes)}, {self.nextNodeID}]," \
-               f" [{len(self.links)},{self.nextLinkID}])"
+        return f"CPPN:{Genome.INPUTS}:{Genome.OUTPUTS}([{len(self.nodes)}," \
+               f" {self.nextNodeID}], [{len(self.links)},{self.nextLinkID}])"
 
     @staticmethod
     def is_input(nid: int):
@@ -52,9 +51,9 @@ class Genome(CPPNData):
     def is_hidden(nid: int):
         return Genome.INPUTS + Genome.OUTPUTS <= nid
 
-    ####################################################################################################################
+    ###########################################################################
     # Private mutation interface
-    ####################################################################################################################
+    ###########################################################################
 
     @staticmethod
     def __random_node_function(rng: Random):
@@ -68,13 +67,16 @@ class Genome(CPPNData):
 
     @staticmethod
     def __random_link_weight(rng: Random):
-        return rng.uniform(Config.cppnWeightBounds.rndMin, Config.cppnWeightBounds.rndMax)
+        return rng.uniform(Config.cppnWeightBounds.rndMin,
+                           Config.cppnWeightBounds.rndMax)
 
     def _add_link(self, src: int, dst: int, weight: float) -> int:
         """Add a link to the genome
 
-        :param src: index of the source node in [0, :py:attr:`core.genome.Genome.inputs`]
-        :param dst: index of the destination node in [Genome.inputs,Genome.outputs]
+        :param src: index of the source node in [0,
+         :py:attr:`core.genome.Genome.inputs`]
+        :param dst: index of the destination node in
+         [Genome.inputs,Genome.outputs]
         :param weight: connection weight in [-1,1]
         """
         lid = self.nextLinkID
@@ -96,15 +98,21 @@ class Genome(CPPNData):
 
     def __random_del_node(self, rng: Random, candidates) -> None:
         nid = rng.choice(candidates)
-        n_ix, n = next((n_ix, n) for n_ix, n in enumerate(self.nodes) if n.id == nid)  # pragma: no branch
-        i_links = [(j, link) for j, link in enumerate(self.links) if link.dst == n.id]
-        o_links = [(j, link) for j, link in enumerate(self.links) if link.src == n.id]
+        n_ix, n = next((n_ix, n) for n_ix, n in enumerate(self.nodes)
+                       if n.id == nid)  # pragma: no branch
+        i_links = [(j, link) for j, link in enumerate(self.links)
+                   if link.dst == n.id]
+        o_links = [(j, link) for j, link in enumerate(self.links)
+                   if link.src == n.id]
         assert len(i_links) == 1 and len(o_links) == 1
 
-        j_i, i_l, j_o, o_l = i_links[0][0], i_links[0][1], o_links[0][0], o_links[0][1]
-        logger.info(f"[del_n] {i_l.src} -> {n.id} -> {o_l.dst} >> {i_l.src} -> {o_l.dst}")
+        j_i, i_l = i_links[0][0], i_links[0][1]
+        j_o, o_l = o_links[0][0], o_links[0][1]
+        logger.info(f"[del_n] {i_l.src} -> {n.id} -> {o_l.dst} >>"
+                    f" {i_l.src} -> {o_l.dst}")
 
-        if sum(li.src == i_l.src and li.dst == o_l.dst for li in self.links) == 0\
+        if sum(li.src == i_l.src and li.dst == o_l.dst for li in
+               self.links) == 0 \
                 and i_l.src != o_l.dst:
             # Link does not exist already and is not auto-recurrent -> add it
             self._add_link(i_l.src, o_l.dst, o_l.weight)
@@ -163,25 +171,21 @@ class Genome(CPPNData):
                     (head if l_.dst == nid else tail).append(l_)
                 links = tail
 
-                # print(f"{'    ' * depth}> procs({nid}) D:{depth} {head}|{links}")
-
                 current_depth = 0
                 for l_ in head:
-                    current_depth = max(current_depth, recurse(l_.src, depth+1)+1)
+                    current_depth = max(current_depth,
+                                        recurse(l_.src, depth + 1) + 1)
 
                 depths[nid] = current_depth
 
-            # print(f"{'    ' * depth}< depth({nid}): {current_depth}")
             return current_depth
 
-        # print('---')
         for i in range(Genome.OUTPUTS):
-            recurse(i+Genome.INPUTS, 0)
+            recurse(i + Genome.INPUTS, 0)
 
         for i in range(Genome.INPUTS):
             depths.setdefault(i, 0)
 
-        # print("depths:", depths)
         return depths
 
     @staticmethod
@@ -216,7 +220,8 @@ class Genome(CPPNData):
 
         depths = Genome._compute_node_depths(self.links)
 
-        # For now assume that all valid links can be created. Existing ones are pruned afterwards
+        # For now assume that all valid links can be created.
+        # Existing ones are pruned afterwards
         L = namedtuple('Link', 'src dst')
         potential_links = set()
         for l_id, l_type in all_nodes:
@@ -232,19 +237,25 @@ class Genome(CPPNData):
                     potential_links.add(L(l_id, r_id))
 
         for link in self.links:
-            potential_links.discard(L(link.src, link.dst))  # not a candidate: already exists
+            potential_links.discard(
+                L(link.src, link.dst))  # not a candidate: already exists
 
-        # Get inputs/outputs for each node. Refine strict definition to detect loops
+        # Get inputs/outputs for each node.
+        # Refine strict definition to detect loops
         node_degrees = Genome._compute_node_degrees(self.links)
 
-        # Ensure that link removal does not produce in-/output less nodes (except for I/O nodes, obviously)
+        # Ensure that link removal does not produce in-/output less nodes
+        # (except for I/O nodes, obviously)
         non_essential_links: List[int] = []
         for i, link in enumerate(self.links):
-            if (Genome.is_input(link.src) and Genome.is_output(link.dst)) \
-                    or (node_degrees[link.src].o > 1 and node_degrees[link.dst].i > 1):
+            if (Genome.is_input(link.src)
+                and Genome.is_output(link.dst)) \
+                    or (node_degrees[link.src].o > 1
+                        and node_degrees[link.dst].i > 1):
                 non_essential_links.append(i)
 
-        # Simple nodes are (hidden) nodes of the form: A -> X -> B which can be replaced by A -> B
+        # Simple nodes are (hidden) nodes of the form:
+        # A -> X -> B which can be replaced by A -> B
         simples_nodes: List[int] = []
         for nid, d in node_degrees.items():
             if d.i == 1 and d.o == 1:
@@ -313,9 +324,9 @@ class Genome(CPPNData):
 
         return g
 
-    ####################################################################################################################
+    ###########################################################################
     # Public json/binary interface
-    ####################################################################################################################
+    ###########################################################################
 
     def to_json(self):
         return json.dumps(dict(
@@ -333,16 +344,16 @@ class Genome(CPPNData):
             CPPNData.Node(n[0], n[1]) for n in data["nodes"]
         ])
         g.links = CPPNData.Links([
-            CPPNData.Link(*[l_[0], l_[1], l_[2], l_[3]]) for l_ in data["links"]
+            CPPNData.Link(*[d[0], d[1], d[2], d[3]]) for d in data["links"]
         ])
         g.nextNodeID = data["NID"]
         g.nextLinkID = data["LID"]
 
         return g
 
-    ####################################################################################################################
+    ###########################################################################
     # Public graphviz/dot interface
-    ####################################################################################################################
+    ###########################################################################
 
     @staticmethod
     def from_dot(path: str, rng: Random):
@@ -354,7 +365,8 @@ class Genome(CPPNData):
         """
         raise NotImplementedError  # pragma: no cover
 
-    def to_dot(self, path: str, ext: str = "pdf", title: str = None, debug=None) -> str:
+    def to_dot(self, path: str, ext: str = "pdf", title: str = None,
+               debug=None) -> str:
         path = pathlib.Path(path)
         if path.suffix != "":
             ext = path.suffix.replace('.', '')
@@ -365,7 +377,8 @@ class Genome(CPPNData):
             dot.attr(labelloc="t")
             dot.attr(label=title)
 
-        g_i, g_h, g_o, g_ol = [Digraph(n) for n in ['inputs', 'hidden', 'outputs', 'o_labels']]
+        g_i, g_h, g_o, g_ol = [Digraph(n) for n in
+                               ['inputs', 'hidden', 'outputs', 'o_labels']]
 
         dot.attr(rankdir='BT')
         g_i.attr(rank="source")
@@ -373,7 +386,9 @@ class Genome(CPPNData):
         g_ol.attr(rank="sink")
         ix_to_name = {}
 
-        depths = None if debug is None or "depth" not in debug else self._compute_node_depths(self.links)
+        depths = None
+        if debug is not None and "depth" in debug:
+            depths = self._compute_node_depths(self.links)
 
         def x_label(data):
             return f"<<font color='grey'>{data}</font>>" if data is not None \
@@ -405,9 +420,10 @@ class Genome(CPPNData):
             ix_to_name[i + self.INPUTS] = name
             f = Config.outputFunctions[i]
             g_o.node(name, "",
-                     width="0.5in", height="0.5in", margin="0", fixedsize="shape",
+                     width="0.5in", height="0.5in", margin="0",
+                     fixedsize="shape",
                      image=png_file(f),
-                     xlabel=node_x_label(i+self.INPUTS))
+                     xlabel=node_x_label(i + self.INPUTS))
             g_ol.node(name + "_l", shape="plain", label=o_labels[i])
             dot.edge(name, name + "_l")
 
@@ -416,20 +432,22 @@ class Genome(CPPNData):
             ix_to_name[n.id] = name
             label = name if debug is not None else ""
             g_h.node(name, label,
-                     width="0.5in", height="0.5in", margin="0", fixedsize="shape",
+                     width="0.5in", height="0.5in", margin="0",
+                     fixedsize="shape",
                      image=png_file(n.func),
                      xlabel=node_x_label(n.id))
 
         for i, l in enumerate(self.links):
             if l.weight == 0:  # pragma: no cover
-                continue    # Highly unlikely
+                continue  # Highly unlikely
 
             w = abs(l.weight) / Config.cppnWeightBounds.max
             dot.edge(ix_to_name[l.src], ix_to_name[l.dst],
                      color="red" if l.weight < 0 else "black",
                      penwidth=str(3.75 * w + .25),
-                     xlabel=x_label(l.id if debug is not None and "links" in debug
-                                    else None))
+                     xlabel=x_label(
+                         l.id if debug is not None and "links" in debug
+                         else None))
 
         # enforce i/o order
         for i in range(self.INPUTS - 1):

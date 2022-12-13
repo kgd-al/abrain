@@ -21,6 +21,10 @@ classifiers = [
 dependencies = [
   "plotly",
   "configobj",
+  "importlib_resources",
+  "graphviz",
+  "pyrecord",
+  "kaleido"
 ]
 
 [projects.urls]
@@ -31,9 +35,9 @@ dependencies = [
 [build-system]
 requires = [
   "setuptools>=65.0",
-#  "scikit-build",
   "cmake>=3.12",
-#  "pybind11"
+  "pybind11",
+  "pybind11-stubgen",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -42,6 +46,10 @@ test = [
   "pytest",
   "coverage",
   "numpy",
+]
+dev = [
+  "pybind11",
+  "pybind11-stubgen",
 ]
 #doc = [
 #  "sphinx",

@@ -156,7 +156,11 @@ def test_correct_read_type(key, value, tmp_path):
         pytest.param("annWeightsRange", "error", id="str->float"),
         pytest.param("iterations", "4.2", id="float->int"),
         pytest.param("cppnWeightBounds", "foo", id="str->Bounds"),
-        pytest.param("functionSet", "42", id="str->Strings")
+        pytest.param("cppnWeightBounds", "Bounds(3, 1, -1, -3, .1)", id="inv_bounds"),
+        pytest.param("cppnWeightBounds", "Bounds(-3, -1, 1, 3, -.1)", id="neg_bounds"),
+        pytest.param("functionSet", "42", id="str->Strings"),
+        pytest.param("mutationRates", "{}", id="empty_mr"),
+        pytest.param("mutationRates", "[foo,bar]", id="bad_mr"),
     ])
 def test_failed_read_type(key, value, tmp_path):
     with pytest.raises(TypeError):
@@ -183,11 +187,8 @@ def test_correct_read_depends(key, value, tmp_path):
         pytest.param("functionSet", "[circle_quadrature]", id="funcs"),
         pytest.param("outputFunctions", "[id,id]", id="outputs"),
         pytest.param("outputFunctions", "[sa,la,mi]", id="outputs"),
-        pytest.param("mutationRates", "{}", id="empty_mr"),
         pytest.param("mutationRates", "{add_n: 0}", id="null_mr"),
         pytest.param("mutationRates", "{add_n: -1}", id="neg_mr"),
-        pytest.param("cppnWeightBounds", "Bounds(3, 1, -1, -3, .1)", id="inv_bounds"),
-        pytest.param("cppnWeightBounds", "Bounds(-3, -1, 1, 3, -.1)", id="neg_bounds"),
     ])
 def test_failed_read_depends(key, value, tmp_path):
     with pytest.raises(ValueError):

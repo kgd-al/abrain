@@ -58,36 +58,38 @@ ANN ANN::build (const Coordinates &inputs,
   return ann;
 }
 
-void ANN::copyInto(ANN &that) const {
-  // Copy neurons
-  for (const Neuron::ptr &n: _neurons) {
-    Neuron::ptr n_ = that.addNeuron(n->pos, n->type, n->bias);
-    that._neurons.insert(n_);
-    n_->value = n->value;
-    n_->depth = n->depth;
-    n_->flags = n->flags;
-  }
+// Deepcopy implementation
+// Not used for now
+//void ANN::copyInto(ANN &that) const {
+//  // Copy neurons
+//  for (const Neuron::ptr &n: _neurons) {
+//    Neuron::ptr n_ = that.addNeuron(n->pos, n->type, n->bias);
+//    that._neurons.insert(n_);
+//    n_->value = n->value;
+//    n_->depth = n->depth;
+//    n_->flags = n->flags;
+//  }
 
-  // Generates links
-  for (const Neuron::ptr &n: _neurons) {
-    const Neuron::ptr n_ = that.neuronAt(n->pos);
-    for (const Neuron::Link &l: n->links()) {
-      n_->addLink(l.weight, that.neuronAt(l.in.lock()->pos));
-    }
-  }
+//  // Generates links
+//  for (const Neuron::ptr &n: _neurons) {
+//    const Neuron::ptr n_ = that.neuronAt(n->pos);
+//    for (const Neuron::Link &l: n->links()) {
+//      n_->addLink(l.weight, that.neuronAt(l.in.lock()->pos));
+//    }
+//  }
 
-  // Update I/O buffers
-  that._inputs.reserve(_inputs.size());
-  for (const Neuron::ptr &n: _inputs)
-    that._inputs.push_back(that.neuronAt(n->pos));
+//  // Update I/O buffers
+//  that._inputs.reserve(_inputs.size());
+//  for (const Neuron::ptr &n: _inputs)
+//    that._inputs.push_back(that.neuronAt(n->pos));
 
-  that._outputs.reserve(_outputs.size());
-  for (const Neuron::ptr &n: _outputs)
-    that._outputs.push_back(that.neuronAt(n->pos));
+//  that._outputs.reserve(_outputs.size());
+//  for (const Neuron::ptr &n: _outputs)
+//    that._outputs.push_back(that.neuronAt(n->pos));
 
-  // Copy stats
-  that._stats = _stats;
-}
+//  // Copy stats
+//  that._stats = _stats;
+//}
 
 uint computeDepth (ANN &ann) {
   struct ReverseNeuron {

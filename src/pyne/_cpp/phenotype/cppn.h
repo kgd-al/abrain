@@ -21,8 +21,10 @@ public:
 
   using FuncID = Genotype::Node::FuncID;
   using Function = float (*) (float);
-  static const std::map<FuncID, CPPN::Function> functions;
-  static const std::map<CPPN::Function, FuncID> functionToName;
+  using Functions = std::map<FuncID, Function>;
+  static const Functions functions;
+  using FunctionNames = std::map<CPPN::Function, FuncID>;
+  static const FunctionNames functionToName;
 
   struct Range { float min, max; };
   static const std::map<FuncID, Range> functionRanges;

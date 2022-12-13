@@ -6,7 +6,10 @@
 namespace kgd::eshn::evolvable_substrate {
 
 #ifndef NDEBUG
-//#define DEBUG_ES 1
+//#define DEBUG_ES 0  // Mute (or leave commented)
+//#define DEBUG_ES 1  // Slightly verbose
+//#define DEBUG_ES 2
+//#define DEBUG_ES 3  // Extremely verbose
 #endif
 
 #if DEBUG_ES

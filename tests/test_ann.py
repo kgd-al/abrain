@@ -1,6 +1,7 @@
 import math
 from random import Random
 from time import perf_counter
+from typing import Tuple, List
 
 import pytest
 
@@ -19,8 +20,13 @@ def test_default_is_empty():
     assert stats.edges == 0
     assert stats.axons == 0
 
+    with pytest.raises(ValueError):
+        p0 = Point(0, 0, 0)
+        print("Testing no point at", p0)
+        ann.neuronAt(p0)
 
-def _make_ann(mutations, rng):
+
+def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> Tuple[ANN, List[Point], List[Point]]:
     genome = Genome.random(rng)
     for _ in range(mutations):
         genome.mutate(rng)
@@ -28,10 +34,37 @@ def _make_ann(mutations, rng):
     def d(): return rng.randint(10, 20)
     def c(): return rng.uniform(-1, 1)
     def p(y): return Point(c(), y, c())
+
+    def append(lhs, rhs):
+        if rhs is not None:
+            lhs += [Point(x, y, z) for x, y, z in rhs]
+
     inputs = [p(-1) for _ in range(d())]
+    append(inputs, other_inputs)
+
     outputs = [p(1) for _ in range(d())]
+    append(outputs, other_outputs)
 
     return ANN.build(inputs, outputs, genome), inputs, outputs
+
+
+@pytest.mark.parametrize(
+    'inputs, outputs',
+    [
+        pytest.param([(0, 0, 0), (0, 0, 0)], [(1, 1, 1)], id="in"),
+        pytest.param([(1, 1, 1)], [(0, 0, 0), (0, 0, 0)], id="out"),
+        pytest.param([(0, 0, 0)], [(0, 0, 0)], id="io"),
+    ])
+def test_invalid_duplicates(inputs, outputs):
+    with pytest.raises(ValueError):
+        print(f"ANN.build({inputs}, {outputs}, genome)")
+        _make_ann(0, Random(0), inputs, outputs)
+
+
+# TODO implement (code exists in ann.cpp)
+# def test_deepcopy():
+#     original = _make_ann(1000, 0)
+#     original.cop
 
 
 def test_random_eval(mutations, seed):
@@ -43,7 +76,7 @@ def test_random_eval(mutations, seed):
     assert ann.empty() or ann.stats().edges > 0
 
     avg_output = 0
-    for i in range(1000):
+    for _ in range(1000):
         inputs, outputs = ann.inputs(), ann.outputs()
         for j in range(len(inputs)):
             inputs[j] = rng.uniform(-1, 1)

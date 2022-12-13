@@ -1,10 +1,13 @@
 #include "../../_cpp/phenotype/cppn.h"
 
+#include <functional>
+
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
 #include "pybind11/stl.h"
 #include "pybind11/stl_bind.h"
+#include "pybind11/functional.h"
 
 using namespace kgd::eshn::phenotype;
 PYBIND11_MAKE_OPAQUE(CPPN::Outputs)
@@ -17,7 +20,15 @@ void init_cppn_phenotype (py::module_ &m) {
   using Outputs = CPPN::Outputs;
   using OutputSubset = CPPN::OutputSubset;
 
-  py::class_<Point>(m, "Point")
+  auto cppn = py::class_<CPPN>(m, "CPPN");
+  auto pont = py::class_<Point>(m, "Point");
+  auto o_enum = py::enum_<Output>(cppn, "Output");
+  auto outp = py::class_<Outputs>(cppn, "Outputs");
+
+  using OutputsList = std::vector<Output>;
+//  py::bind_vector<OutputsList>(cppn, "OutputsList");
+
+  pont
 #if ESHN_SUBSTRATE_DIMENSION == 3
       .def(py::init([] (float x, float y, float z) { return Point({x,y,z}); }))
 #endif
@@ -35,12 +46,10 @@ void init_cppn_phenotype (py::module_ &m) {
       })
       ;
 
-  auto o_enum = py::enum_<Output>(m, "Output");
   for (uint i=0; i<CPPN::OUTPUTS; i++)
     o_enum.value(cppn::CPPN_OUTPUT_ENUM_NAMES[i], CPPN::OUTPUTS_LIST[i]);
 
-  py::class_<Outputs>(m, "Outputs")
-      .def(py::init<>())
+  outp.def(py::init<>())
       .def("__len__", [] (const Outputs &o) { return o.size(); })
       .def("__iter__", [] (Outputs &o) {
         return py::make_iterator(o.begin(), o.end());
@@ -50,8 +59,7 @@ void init_cppn_phenotype (py::module_ &m) {
 //  py::class_<OutputSubset>(m, "OutputSubset");
 
 #define ID(X) (#X, &CPPN::X)
-  auto cppn = py::class_<CPPN>(m, "CPPN")
-      .def(py::init<const CPPN::Genotype&>())
+  cppn.def(py::init<const CPPN::Genotype&>())
       .def("__call__", py::overload_cast<const Point&,
                                          const Point&,
                                          Outputs&>(
@@ -73,15 +81,20 @@ void init_cppn_phenotype (py::module_ &m) {
       .def_readonly_static ID(INPUTS)
       .def_readonly_static ID(OUTPUTS)
       .def_property_readonly_static("OUTPUTS_LIST", [] (py::object) {
-        std::vector<Output> values;
+        OutputsList values;
         for (uint i=0; i<CPPN::OUTPUTS; i++)
           values.push_back(CPPN::OUTPUTS_LIST[i]);
         return values;
       })
       .def_static("outputs", [] { return Outputs(); })
+      .def_static("functions", [] {
+        using FFunction = std::function<float(float)>;
+        std::map<CPPN::FuncID, FFunction> map;
+        for (const auto &p: CPPN::functions)
+          map[p.first] = FFunction(p.second);
+        return map;
+      }, "Return a copy of the C++ built-in function set")
     ;
-
-  py::bind_vector<std::vector<Output>>(m, "OutputList");
 }
 
 } // end of namespace kgd::eshn::pybind

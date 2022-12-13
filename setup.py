@@ -1,5 +1,6 @@
 import os
 import re
+import site
 import subprocess
 import sys
 from pathlib import Path
@@ -14,7 +15,6 @@ PLAT_TO_CMAKE = {
     "win-arm32": "ARM",
     "win-arm64": "ARM64",
 }
-
 
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
@@ -34,8 +34,21 @@ class CMakeBuild(build_ext):
         # Using this requires trailing slash for auto-detection & inclusion of
         # auxiliary "native" libs
 
-        debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
+        # == kgd - Additions == #
+        with_tests = bool(os.environ.get("TEST", 0))
+        if with_tests:
+            debug = True
+        else:
+            debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
+
+        dev_build = bool(os.environ.get("DEV", 0))
+
+        # ===================== #
+        # debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
+        # cfg = "Debug" if debug else "Release"
+        # ===================== #
+
 
         # CMake lets you override the generator - we need to check this.
         # Can be set with Conda-Build, for example.
@@ -66,7 +79,7 @@ class CMakeBuild(build_ext):
             # 3.15+.
             if not cmake_generator or cmake_generator == "Ninja":
                 try:
-                    import ninja  # noqa: F401
+                    import ninja  # noqa
 
                     ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
                     cmake_args += [
@@ -116,6 +129,19 @@ class CMakeBuild(build_ext):
         if not build_temp.exists():
             build_temp.mkdir(parents=True)
 
+        # == kgd - Additions == #
+        # Allow discovering packages in build site-packages (overlay?)
+        cmake_args += [f"-DCMAKE_PREFIX_PATH={';'.join(sys.path)}"]
+        if with_tests:
+            cmake_args += ["-DWITH_COVERAGE=ON"]
+        # Ensure discovery of executables (pybind11-stubgen for instance)
+        cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
+        # Forward if we develop-level info (notably the stubs)
+        if dev_build:
+            cmake_args += ["-DDEV_BUILD=ON"]
+
+        # ===================== #
+
         subprocess.run(
             ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
         )
@@ -123,10 +149,30 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
         )
 
+    #     # == kgd - Additions == #
+    #     # Symlink the stubs if in dev mode
+    #     print("e")
+    #     print("Copying stubs")
+    #     self.copy_stubs(build_temp, ext.sourcedir)
+    #
+    # def copy_stubs(self, src: Path, dst: Path, depth=0):
+    #     for root, subdirs, files in os.walk(src):
+    #         print(f"{'  '*depth}> {root}")
+    #
+    #         for subdir in subdirs:
+    #             self.copy_stubs(os.path.join(src, subdir),
+    #                             os.path.join(dst, subdir),
+    #                             depth+1)
+    #
+    #         for file in files:
+    #             print(f"{'  '*(depth+1)}> {file}")
+
+
 
 # The information here can also be placed in setup.cfg - better separation of
 # logic and declaration, and simpler if you include description/version in a file.
 # kgd: Hopefully the toml will provide what is needed
+# Spoiler: Not really...
 setup(
     #     name="cmake_example",
     #     version="0.0.1",
@@ -136,6 +182,7 @@ setup(
     #     long_description="",
     ext_modules=[CMakeExtension("pyne._cpp")],
     cmdclass={"build_ext": CMakeBuild},
+    # setup_requires=["setuptools>=65.0", "cmake>=3.12", "pybind11~=2.6.1"],
     # zip_safe=False,
     #     extras_require={"test": ["pytest>=6.0"]},
     #     python_requires=">=3.7",
@@ -144,8 +191,3 @@ setup(
         '': ['*.eps', '*.png']
     }
 )
-
-# Scikit-build version: too brittle might be used as replacement in the future
-# from skbuild import setup
-#
-# setup()

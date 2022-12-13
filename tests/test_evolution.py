@@ -1,12 +1,12 @@
 import json
 import math
-import pathlib
 import random
 from pathlib import Path
 from random import Random
 
 from pyne.core.ann import ANN, Point
 from pyne.core.genome import Genome
+
 from _utils import assert_equal
 
 

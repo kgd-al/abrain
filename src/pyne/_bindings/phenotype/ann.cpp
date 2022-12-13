@@ -30,17 +30,34 @@ void init_ann_phenotype (py::module_ &m) {
   auto type = py::enum_<Type>(nern, "Type");
   py::bind_vector<ANN::Inputs>(cann, "IOValues");
 
-#define ID(X) (#X, &ANN::X)
+#define ID(X, DOC) (#X, &ANN::X, DOC)
   cann.def(py::init<>())
 
-      .def ID(inputs)
-      .def ID(outputs)
+      .def ID(inputs, "Return a ready-to-fill container for neural inputs")
+      .def ID(outputs, "Return a ready-to-read container for neural outputs")
 //      .def ID(reset)
-      .def("__call__", &ANN::operator ())
+      .def("__call__", &ANN::operator (),
+           R"(Execute a computational step
 
-      .def ID(empty)
-      .def ID(stats)
-      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_))
+Assigns provided input values to corresponding input neurons in the same order
+as when created (see build). Returns output values as computed.
+If not otherwise specified, a single computational substep is executed. If need
+be (e.g. large network, fast response required) you can requested for multiple
+sequential execution in one call
+
+:param inputs: provided analog values for the input neurons
+:param outputs: computed analog values for the output neurons
+:param substeps: number of sequential executions
+
+           )", // LCOV_EXCL_LINE
+           "inputs"_a, "outputs"_a, "substeps"_a = 1)
+
+      .def ID(empty,
+              "Return whether or not the ANN contains neurons/connections")
+      .def ID(stats, "Return associated stats (connections, depth...)")
+      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
+           "Provide read-only access to the underlying neurons")
+      .def ID(neuronAt, "Query an individual neuron")
 
       .def_static("build", &ANN::build,
                   R"(Create an ANN via ES-HyperNEAT

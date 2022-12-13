@@ -61,7 +61,9 @@ public:
 namespace kgd::eshn::phenotype {
 using CPPNData = kgd::eshn::genotype::CPPNData;
 
+
 // =============================================================================
+
 // -- Ugly solution to numerical non-determinism
 // Divergences observed on local/remote machines can be solved by requesting
 //  value in double precision (accurate within 1ULP?) and truncating back to
@@ -85,13 +87,6 @@ float ssgn(float x) {
   return x < -a ? KGD_EXP(-(x+a)*(x+a))-1
                 : x > a ? 1 - KGD_EXP(-(x-a)*(x-a))
                         : 0;
-}
-
-float act2(float x) {
-  return x <= 0 ? 0
-                : 1 - KGD_EXP(
-                        -x*x /* / (2*b*b) */
-                      );
 }
 
 #define F(NAME, BODY) \
@@ -139,6 +134,8 @@ const std::map<CPPNData::Node::FuncID,
 //  F("kact", -1, 1), // Not really (min value ~ .278)
 };
 #undef F
+
+// =============================================================================
 
 
 CPPN::CPPN (const CPPNData &genotype) {
@@ -246,11 +243,13 @@ float CPPN::FNode::value (void) {
   return data;
 }
 
+#ifdef DEBUG
 std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
   os << "[";
   for (float f: v)  os << " " << f;
   return os << " ]";
 }
+#endif
 
 void CPPN::pre_evaluation(const Point &src, const Point &dst) const {
   static constexpr auto N = DIMENSIONS;

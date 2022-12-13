@@ -53,8 +53,8 @@ set(PYBIND_SRC
 PREPEND(PYBIND_SRC "src/pyne/_bindings")
 
 set(LIB_CPP _cpp)
-add_subdirectory(extern/pybind11)
-#find_package(pybind11 CONFIG REQUIRED)
+#add_subdirectory(extern/pybind11)
+find_package(pybind11 REQUIRED)
 pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 target_compile_definitions(${LIB_CPP}
                            PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
@@ -92,7 +92,12 @@ endif()
 ### Additional flags
 #################################################################################
 
-message("> Build type: ${CMAKE_BUILD_TYPE}")
+if (DEV_BUILD)
+    set(DEV_SUFFIX "-dev")
+endif()
+
+message("> Build type: ${CMAKE_BUILD_TYPE}${DEV_SUFFIX}")
+message("> On n cores: ${CMAKE_BUILD_PARALLEL_LEVEL}")
 
 option(WITH_DEBUG_INFO "Sets whether to maximize debug data collection" OFF)
 message("> With debug info " ${WITH_DEBUG_INFO})
@@ -141,7 +146,6 @@ set_property(CACHE ESHN_SUBSTRATE_DIMENSION PROPERTY STRINGS 2 3)
 message("> Substrate dimension: ${ESHN_SUBSTRATE_DIMENSION}")
 add_definitions(-DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
 
-
 #################################################################################
 ### Generate configuration files
 #################################################################################
@@ -189,62 +193,35 @@ string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"
 configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
 message("-+ Generated cppn constants config '${CPPN_CONSTANTS}.h'")
 
+message("> Compile with: ${CMAKE_CXX_FLAGS}")
+
 #################################################################################
 ### Install cpp library
 #################################################################################
 
-add_custom_command(
-    TARGET ${LIB_CPP} POST_BUILD
-    COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
-    COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-    COMMAND PYTHONPATH=. pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
-        --skip-signature-downgrade --no-setup-py --log-level DEBUG
-        ${LIB_CPP}
-    WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
-    COMMENT "-+ Generating python stubs from c++ bindings"
-)
-
-#install(TARGETS ${LIB_CPP} DESTINATION ${LIB_CPP})
-#install(
-#    DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
-#    DESTINATION ${LIB_CPP}/
-#    PATTERN "*.pyi"
-#        PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
-
-#if (DEV_BUILD)
-#    cmake_policy(SET CMP0087 NEW)   # Allow evaluation of generator expressions
-#    message("-+ Dev mod: Not installing, instead sym-linking to python")
-#    INSTALL(CODE
-#        "execute_process( \
-#            COMMAND ln -svf \
-#            $<TARGET_FILE:${LIB_CPP}> ${PROJECT_SOURCE_DIR}/python \
-#        )"
-#    )
-#    INSTALL(CODE
-#        "execute_process( \
-#            COMMAND ln -svf ${PROJECT_BINARY_DIR}/_cpp-stubs/ \
-#                            ${PROJECT_SOURCE_DIR}/python/${LIB_CPP} \
-#        )"
-#    )
-
-#else()
-#    execute_process(
-#        COMMAND ${PYTHON_EXECUTABLE} -c "if True:
-#            from distutils.sysconfig import get_python_lib
-#            print(get_python_lib())"
-#        OUTPUT_VARIABLE PYTHON_LIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
-#    string(APPEND PYTHON_LIB_PATH "/${PROJECT_SHORT}/")
-#    message("-+ Installation folder is: '${PYTHON_LIB_PATH}' for
-#        ${PYTHON_EXECUTABLE}")
-
-#    INSTALL(TARGETS ${LIB_CPP} DESTINATION ${PYTHON_LIB_PATH})
-#    INSTALL(
-#        DIRECTORY ${PROJECT_BINARY_DIR}/_cpp-stubs/
-#        DESTINATION ${PYTHON_LIB_PATH}/${LIB_CPP}/
-#        PATTERN "*.pyi"
-#            PERMISSIONS OWNER_READ GROUP_READ WORLD_READ)
-#endif()
-
+if (DEV_BUILD)
+    set(STUBS_DIR ${PROJECT_SOURCE_DIR}/src/${PROJECT_SHORT}/${LIB_CPP})
+    add_custom_command(
+        TARGET ${LIB_CPP} POST_BUILD
+        COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
+        COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
+    #    COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+    #    COMMAND echo "             PATH: '$ENV{PATH}'"
+    #    COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+        COMMAND tree .
+        COMMAND ls -l $<TARGET_FILE:${LIB_CPP}>
+        COMMAND ${CMAKE_COMMAND} -E
+            env "PATH=${BUILD_TIME_PATH}"
+            env "PYTHONPATH=."
+            pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
+                --skip-signature-downgrade --no-setup-py --log-level DEBUG
+                ${LIB_CPP}
+        COMMAND cp -rusvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
+                       -t ${STUBS_DIR}
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
+        COMMENT "-+ Generating python stubs from c++ bindings"
+    )
+endif()
 
 #################################################################################
 ### Ugly hack to get additional files

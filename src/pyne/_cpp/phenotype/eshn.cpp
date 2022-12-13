@@ -58,12 +58,35 @@ struct QOTreeNode {
 };
 using QOTree = QOTreeNode::ptr;
 
+// =============================================================================
+// Debug streamers
+
+#if DEBUG_ES >= 3  // Only in deep debug
+std::ostream& operator<< (std::ostream &os, const Coordinates_s &c) {
+  os << "[";
+  if (c.size() >= 1) {
+    os << " " << *c.begin() << " ";
+    for (auto it = std::next(c.begin()); it != c.end(); ++it) os << *it << " ";
+  }
+  return os << "]";
+}
+
+void showConnections(std::ostream &os, const Connections &c, size_t start = 0) {
+  auto it = c.begin();
+  std::advance(it, start);
+  for (; it != c.end(); ++it) os << "\t" << *it << "\n";
+}
+#endif
+
+// Triggered by duplicate coordinates
 std::ostream& operator<< (std::ostream &os, const Coordinates &c) {
   os << "[";
-  if (c.size() > 1) os << " " << c[0] << " ";
+  if (c.size() >= 1) os << " " << c[0] << " ";
   for (uint i=1; i<c.size(); i++) os << c[i] << " ";
   return os << "]";
 }
+
+// =============================================================================
 
 template <typename... ARGS>
 QOTreeNode::ptr node (ARGS... args) {
@@ -390,7 +413,9 @@ bool connect (const CPPN &cppn,
 #endif
   oss << " and " << connections.size() - n_connections << " connections";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << tmpConnections;
+  oss << "\n";
+  showConnections(oss, connections, n_connections);
+  oss << "\n";
 #endif
   n_hidden = shidden.size();
   n_connections = connections.size();
@@ -427,7 +452,9 @@ bool connect (const CPPN &cppn,
 #endif
   oss << " and " << connections.size() - n_connections << " connections";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << tmpConnections;
+  oss << "\n";
+  showConnections(oss, connections, n_connections);
+  oss << "\n";
 #endif
   n_hidden = shidden.size();
   n_connections = connections.size();
@@ -452,7 +479,9 @@ bool connect (const CPPN &cppn,
   oss << "[H -> O] found " << connections.size() - n_connections
       << " connections";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << tmpConnections << "\n";
+  oss << "\n";
+  showConnections(oss, connections, n_connections);
+  oss << "\n";
 #endif
   oss << "\n";
 #endif
@@ -467,7 +496,9 @@ bool connect (const CPPN &cppn,
 #endif
   oss << " and " << connections.size() << " connections";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << connections << "\n";
+  oss << "\n";
+  showConnections(oss, connections);
+  oss << "\n";
 #endif
 #endif
 
