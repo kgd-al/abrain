@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from configobj import ConfigObj
 
-from pyne.core.config import Config
+from abrain.core.config import Config
 
 default_config = None
 
@@ -36,9 +36,10 @@ def restore_config_after():
 
 def test_config_exists():
     assert Config.functionSet
-    assert len(Config.dict) > 0
+    assert Config.mutationRates
+    assert len(Config._dict) > 0
 
-    for k, v in Config.dict.items():
+    for k, v in Config._dict.items():
         print(f"\t{k}: {v}")
 
 

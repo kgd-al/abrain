@@ -1,7 +1,7 @@
 #!/bin/bash
 
 out=package.dot
-echo "digraph PyNE {" > $out
+echo "digraph ABrain {" > $out
 echo -e "\trankdir=\"BT\";" >> $out
 echo -e "\tfontname=\"Courier\";" >> $out
 echo -e "\tfontsize=\"18\";" >> $out
@@ -30,7 +30,7 @@ do
 done || exit 2
 
 # Collect folders to get potential modules
-modules=(pyne_cpp \
+modules=(abrain_cpp \
   $(cd python && find . -name "*.py" | xargs -I{} dirname {} | sed 's|^./||' | sort | uniq))  
 echo >> $tmp.links
 find python -name "*.py" \
@@ -47,17 +47,17 @@ do
     refs=()
     
     # c++ main module
-    if [ $module == "pyne_cpp" ]
+    if [ $module == "abrain_cpp" ]
     then
       refs=(pybind/module.cpp)
       
     # c++ binding -> reference c++ file
-    elif [[ $firstmodule =~ "pyne_cpp" ]]
+    elif [[ $firstmodule =~ "abrain_cpp" ]]
     then
       for obj in $(sed -e 's/.* import //' -e 's/ as .*//' <<< "$line" | tr ',' ' ')
       do
 #         echo "Looking for $obj"
-        ref=$(grep -r "struct $obj\b" $(sed 's/pyne_//' <<< "$module" | tr . /)* \
+        ref=$(grep -r "struct $obj\b" $(sed 's/abrain_//' <<< "$module" | tr . /)* \
           | cut -d ':' -f 1)
         refs+=($ref)
       done

@@ -1,0 +1,18 @@
+:root {
+  --padding-top: .75ex;
+  --padding-bottom: .75ex;
+}
+
+.method {
+    padding-top: var(--padding-top);
+    padding-bottom: var(--padding-bottom);
+}
+.class {
+    padding-top: var(--padding-top);
+    padding-bottom: var(--padding-bottom);
+    border-bottom: 1px solid #d0d0d0;
+}
+.attribute {
+    padding-top: var(--padding-top);
+    padding-bottom: var(--padding-bottom);
+}

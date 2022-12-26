@@ -1,12 +1,13 @@
 import os
 import re
-import site
 import subprocess
 import sys
 from pathlib import Path
 
-from setuptools import Extension, setup, find_packages
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
@@ -15,6 +16,7 @@ PLAT_TO_CMAKE = {
     "win-arm32": "ARM",
     "win-arm64": "ARM64",
 }
+
 
 # A CMakeExtension needs a sourcedir instead of a file list.
 # The name must be the _single_ output extension from the CMake build.
@@ -27,8 +29,10 @@ class CMakeExtension(Extension):
 
 class CMakeBuild(build_ext):
     def build_extension(self, ext: CMakeExtension) -> None:
-        # Must be in this form due to bug in .resolve() only fixed in Python 3.10+
-        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name)  # type: ignore[no-untyped-call]
+        # Must be in this form due to bug in .resolve() only fixed in
+        #  Python 3.10+
+        ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name) \
+            # type: ignore[no-untyped-call]
         extdir = ext_fullpath.parent.resolve()
 
         # Using this requires trailing slash for auto-detection & inclusion of
@@ -39,16 +43,13 @@ class CMakeBuild(build_ext):
         if with_tests:
             debug = True
         else:
-            debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
+            debug = int(os.environ.get("DEBUG", 0)) \
+                if self.debug is None else self.debug
         cfg = "Debug" if debug else "Release"
 
         dev_build = bool(os.environ.get("DEV", 0))
 
         # ===================== #
-        # debug = int(os.environ.get("DEBUG", 0)) if self.debug is None else self.debug
-        # cfg = "Debug" if debug else "Release"
-        # ===================== #
-
 
         # CMake lets you override the generator - we need to check this.
         # Can be set with Conda-Build, for example.
@@ -66,10 +67,13 @@ class CMakeBuild(build_ext):
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)
         if "CMAKE_ARGS" in os.environ:
-            cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ") if item]
+            cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ")
+                           if item]
 
         # In this example, we pass in the version to C++. You might not need to.
-        cmake_args += [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"]  # type: ignore[attr-defined]
+        cmake_args +=\
+            [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"] \
+            # type: ignore[attr-defined]
 
         if self.compiler.compiler_type != "msvc":
             # Using Ninja-build since it a) is available as a wheel and b)
@@ -84,7 +88,7 @@ class CMakeBuild(build_ext):
                     ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
                     cmake_args += [
                         "-GNinja",
-                        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja_executable_path}",
+                        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja_executable_path}"
                     ]
                 except ImportError:
                     pass
@@ -114,13 +118,14 @@ class CMakeBuild(build_ext):
             # Cross-compile support for macOS - respect ARCHFLAGS if set
             archs = re.findall(r"-arch (\S+)", os.environ.get("ARCHFLAGS", ""))
             if archs:
-                cmake_args += ["-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))]
+                cmake_args += \
+                    ["-DCMAKE_OSX_ARCHITECTURES={}".format(";".join(archs))]
 
         # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
         # across all generators.
         if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
             # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build.
+            # using -j in the build_ext call, not supported by pip or PyPA-build
             if hasattr(self, "parallel") and self.parallel:
                 # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
@@ -149,45 +154,32 @@ class CMakeBuild(build_ext):
             ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
         )
 
-    #     # == kgd - Additions == #
-    #     # Symlink the stubs if in dev mode
-    #     print("e")
-    #     print("Copying stubs")
-    #     self.copy_stubs(build_temp, ext.sourcedir)
-    #
-    # def copy_stubs(self, src: Path, dst: Path, depth=0):
-    #     for root, subdirs, files in os.walk(src):
-    #         print(f"{'  '*depth}> {root}")
-    #
-    #         for subdir in subdirs:
-    #             self.copy_stubs(os.path.join(src, subdir),
-    #                             os.path.join(dst, subdir),
-    #                             depth+1)
-    #
-    #         for file in files:
-    #             print(f"{'  '*(depth+1)}> {file}")
+
+def generate_cppn_functions():
+    print("calling script")
+    if not os.path.exists("src/abrain/core/functions/id.png"):
+        subprocess.check_call("src/abrain/core/functions/plotter.sh")
 
 
+class PreDevelopCommands(develop):
+    def run(self):
+        generate_cppn_functions()
+        develop.run(self)
 
-# The information here can also be placed in setup.cfg - better separation of
-# logic and declaration, and simpler if you include description/version in a file.
-# kgd: Hopefully the toml will provide what is needed
-# Spoiler: Not really...
+
+class PreInstallCommands(install):
+    def run(self):
+        generate_cppn_functions()
+        install.run(self)
+
+
+# Most metadata is in pyproject.toml
 setup(
-    #     name="cmake_example",
-    #     version="0.0.1",
-    #     author="Dean Moldovan",
-    #     author_email="dean0x7d@gmail.com",
-    #     description="A test project using pybind11 and CMake",
-    #     long_description="",
-    ext_modules=[CMakeExtension("pyne._cpp")],
-    cmdclass={"build_ext": CMakeBuild},
-    # setup_requires=["setuptools>=65.0", "cmake>=3.12", "pybind11~=2.6.1"],
-    # zip_safe=False,
-    #     extras_require={"test": ["pytest>=6.0"]},
-    #     python_requires=">=3.7",
-    # packages=find_packages(where=".")
-    package_data={
-        '': ['*.eps', '*.png']
-    }
+    ext_modules=[CMakeExtension("abrain._cpp")],
+    cmdclass={
+        'build_ext': CMakeBuild,
+        'develop': PreDevelopCommands,
+        'install': PreInstallCommands,
+    },
+    package_data={'': ['*.eps', '*.png']}
 )

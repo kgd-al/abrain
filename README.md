@@ -1,10 +1,10 @@
-# Python NeuroEvolution (PyNE)
+# Artificial Brains (ABrain) for Python
 
 C++/Python implementation of the genotype/phenotype components of Evolvable Substrate HyperNEAT (read without evolution and speciation).
 
 ## Todo list:
  - Functionalities:
-   - Order-independant ANN evaluation (with back buffer)?
+   - Order-independent ANN evaluation (with back buffer)?
    - Crossover / historical markings
      - Actually needed?
    - MANN Integration
@@ -15,9 +15,8 @@ C++/Python implementation of the genotype/phenotype components of Evolvable Subs
      
   - Misc:
     - Documentation
-      - Write it
-      - Generate something nice
-  
+      - Usage
+      
     - Continuous integration
       - build / tests
       - Badges
@@ -25,4 +24,3 @@ C++/Python implementation of the genotype/phenotype components of Evolvable Subs
     - Packaging:
       - include c++ stubs?
       - move to scikit/poetry/... ?
-      - Automated generation of ps/*

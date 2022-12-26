@@ -4,8 +4,7 @@ cmake_minimum_required(VERSION 3.4)
 ## General settings
 ################################################################################
 
-project("Pypp-NeuroEvolution")
-set(PROJECT_SHORT "pyne")
+project("abrain")
 message("\n####################################################################"
     "############\n## CMakeFile for ${PROJECT_NAME}")
 
@@ -39,7 +38,7 @@ set(CPP_SRC
     "phenotype/ann.cpp"
     "phenotype/eshn.cpp"
 )
-PREPEND(CPP_SRC "src/pyne/_cpp")
+PREPEND(CPP_SRC "src/abrain/_cpp")
 
 set(PYBIND_SRC
     "module.cpp"
@@ -50,7 +49,7 @@ set(PYBIND_SRC
     "phenotype/cppn.cpp"
     "phenotype/ann.cpp"
 )
-PREPEND(PYBIND_SRC "src/pyne/_bindings")
+PREPEND(PYBIND_SRC "src/abrain/_bindings")
 
 set(LIB_CPP _cpp)
 #add_subdirectory(extern/pybind11)
@@ -93,11 +92,14 @@ endif()
 #################################################################################
 
 if (DEV_BUILD)
-    set(DEV_SUFFIX "-dev")
+    set(DEV_SUFFIX " (dev)")
 endif()
 
 message("> Build type: ${CMAKE_BUILD_TYPE}${DEV_SUFFIX}")
 message("> On n cores: ${CMAKE_BUILD_PARALLEL_LEVEL}")
+
+option(MAKE_STUBS "Sets whether to generate pyi files from module" ON)
+message("> Generate stubs " ${MAKE_STUBS})
 
 option(WITH_DEBUG_INFO "Sets whether to maximize debug data collection" OFF)
 message("> With debug info " ${WITH_DEBUG_INFO})
@@ -150,7 +152,7 @@ add_definitions(-DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
 ### Generate configuration files
 #################################################################################
 
-set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/src/pyne/_cpp/misc/constants)
+set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/src/abrain/_cpp/misc/constants)
 
 ## CPPN Inputs (depends on arguments)
 set(CPPN_INPUTS_LIST "")
@@ -199,8 +201,8 @@ message("> Compile with: ${CMAKE_CXX_FLAGS}")
 ### Install cpp library
 #################################################################################
 
-if (DEV_BUILD)
-    set(STUBS_DIR ${PROJECT_SOURCE_DIR}/src/${PROJECT_SHORT}/${LIB_CPP})
+if (DEV_BUILD AND MAKE_STUBS)
+    set(STUBS_DIR ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}/${LIB_CPP})
     add_custom_command(
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"

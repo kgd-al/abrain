@@ -1,4 +1,4 @@
-from pyne.core.genome import Genome
+from abrain.core.genome import Genome
 
 
 def assert_equal(lhs: Genome, rhs: Genome):

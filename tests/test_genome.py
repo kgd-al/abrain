@@ -1,12 +1,13 @@
 import logging
 import pydoc
+import warnings
 from pathlib import Path
 from random import Random
 
 import pytest
 
-from pyne.core.config import Config
-from pyne.core.genome import Genome, logger as genome_logger
+from abrain.core.config import Config
+from abrain.core.genome import Genome, logger as genome_logger
 from _utils import assert_equal
 
 logging.root.setLevel(logging.NOTSET)
@@ -71,20 +72,25 @@ def test_mutate_genome_create(tmp_path):
     assert g.nextNodeID == 0
 
 
-def save_function(g: Genome, path: Path):
+def save_function(g: Genome, path: Path, capfd):
     def helper(gen: int = None, title: str = None):
         if gen is not None:
             helper.gen = gen
+
         g.to_dot(path=f"{path}/gen{helper.gen:02}", ext="png",
                  debug="depths", title=title)
+
+        captured = capfd.readouterr()
+        assert len(captured.err) == 0
+
         helper.gen += 1
     return helper
 
 
-def test_mutate_genome_add(tmp_path):
+def test_mutate_genome_add(tmp_path, capfd):
     rng = Random(16)
     g = Genome.random(rng)
-    save = save_function(g, tmp_path)
+    save = save_function(g, tmp_path, capfd)
     with RatesGuard({"add_n": 1}):
         save(0)
         steps = 10
@@ -104,11 +110,11 @@ def test_mutate_genome_add(tmp_path):
         assert len(g.links) == nl + steps
 
 
-def test_mutate_genome_del_n(tmp_path):
+def test_mutate_genome_del_n(tmp_path, capfd):
     steps = 10
     rng = Random(16)
     g = Genome.random(rng)
-    save = save_function(g, tmp_path)
+    save = save_function(g, tmp_path, capfd)
     with RatesGuard({"add_n": 1}):
         save(0)
         for i in range(steps):
@@ -123,11 +129,11 @@ def test_mutate_genome_del_n(tmp_path):
         assert g.nextNodeID == steps
 
 
-def test_mutate_genome_del_l(tmp_path):
+def test_mutate_genome_del_l(tmp_path, capfd):
     steps = 10
     rng = Random(16)
     g = Genome.random(rng)
-    save = save_function(g, tmp_path)
+    save = save_function(g, tmp_path, capfd)
     save(0)
 
     with RatesGuard({"add_n": 1}):
@@ -152,10 +158,10 @@ def test_mutate_genome_del_l(tmp_path):
     assert g.nextLinkID == init_lid+steps
 
 
-def test_mutate_genome_mut(tmp_path):
+def test_mutate_genome_mut(tmp_path, capfd):
     rng = Random(16)
     g = Genome.random(rng)
-    save = save_function(g, tmp_path)
+    save = save_function(g, tmp_path, capfd)
 
     save(0)
     with RatesGuard({"add_n": 1}):
@@ -182,7 +188,8 @@ def test_mutate_genome_mut(tmp_path):
                        zip(weights, [l_.weight for l_ in g.links]))
 
 
-def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens) -> Genome:
+def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens, capfd) \
+        -> Genome:
     rates = {k: 0 if k.startswith("mut") else 1 for k in Config.mutationRates}
     rates["add_l"] = ad_rate
     rates["add_n"] = ad_rate
@@ -196,7 +203,7 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens) -> Genome:
         g = Genome.random(rng)
 
         if output:
-            save = save_function(g, tmp_path)
+            save = save_function(g, tmp_path, capfd)
             save(0, title)
 
         for j in range(gens):
@@ -210,7 +217,7 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens) -> Genome:
                 degrees = Genome._compute_node_degrees(g.links)
                 for node in g.nodes:
                     d = degrees[node.id]
-                    assert not Genome.is_hidden(node.id) or (d.i > 0 and d.o > 0)
+                    assert not Genome._is_hidden(node.id) or (d.i > 0 and d.o > 0)
                     assert valid_nid(node.id)
                 for link in g.links:
                     assert link.id < g.nextLinkID
@@ -245,16 +252,18 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens) -> Genome:
         return g
 
 
-def test_mutate_genome_topology_with_gvc_output(ad_rate, seed, tmp_path):
-    mutate_genome_topology(ad_rate, seed, tmp_path, output=True, gens=100)
+def test_mutate_genome_topology_with_gvc_output(ad_rate, seed, tmp_path, capfd):
+    mutate_genome_topology(ad_rate, seed, tmp_path, output=True, gens=100,
+                           capfd=capfd)
 
 
-def test_mutate_genome_topology(ad_rate, seed, tmp_path):
+def test_mutate_genome_topology(ad_rate, seed, tmp_path, capfd):
     gens = 1000
-    g = mutate_genome_topology(ad_rate, seed, tmp_path, output=False, gens=gens)
-    save_function(g, tmp_path)(gens-1,
-                               title=f"gen{gens-1}, add/del: {ad_rate},"
-                                     f" seed: {seed}")
+    g = mutate_genome_topology(ad_rate, seed, tmp_path, output=False, gens=gens,
+                               capfd=None)
+    save_function(g, tmp_path, capfd)(gens-1,
+                                      title=f"gen{gens-1}, add/del: {ad_rate},"
+                                            f" seed: {seed}")
 
 
 def test_mutate_genome_deepcopy(seed):

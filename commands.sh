@@ -8,7 +8,7 @@ do_set-env(){
   if [[ "$1" =~ "test" ]]
   then
     export DEBUG=1
-    export CMAKE_ARGS="-DWITH_COVERAGE=ON"
+    export CMAKE_ARGS="-DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF -DMAKE_STUBS=ON"
   fi
   [[ "$1" =~ "dev" ]] && export DEV=1
   export CMAKE_BUILD_PARALLEL_LEVEL=1
@@ -21,7 +21,7 @@ do_set-env(){
 #   pip install $1 -v
 # }
 
-do_manual-install(){
+do_manual-install(){  
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
   do_set-env $1  
   # Manually ensuring build/test dependencies
@@ -39,23 +39,28 @@ cmd_pretty-tree(){  # Just a regular tree but without .git folder
   tree -a -I '.git*' $where
 }
 
-cmd_clean(){
-  find . -type d -a \( -name build -o -name '__pycache__' -o -name "*egg-info" \) \
-	| xargs rm -rf
+cmd_clean(){  # Remove most build artifacts
   rm -rf .pytest_cache .tox .idea
-#   find python -type l | xargs rm -vf
+  find . -type d -a \
+    \( -name build -o -name '__pycache__' -o -name "*egg-info" \) \
+    | xargs rm -rf
 
+  echo "Cleaned tree:"
   cmd_pretty-tree
 }
 
-cmd_very-clean(){
+cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   echo "very clean"
-#   rm -rvf package.{dot,pdf} ps/*{eps,png}
+  rm -rf src/abrain/_cpp/misc/constants.h
+  rm -rf package.{dot,pdf} src/abrain/core/functions/*{eps,png,svg}
   rm -rf tests-results/
   rm -rf _venv*
-  find . -name 'pyne.egg-info' | xargs rm -rf 
-  rm -f src/pyne/_cpp.*.so
+  rm -f src/abrain/_cpp.*.so
+  rm -rf doc/_build doc/src/_autogen
+  find . -name 'abrain.egg-info' | xargs rm -rf
   find src -name "__init__.pyi" | xargs rm -rf
+  find src -empty -type d -delete
+  rm sample_*
   
   cmd_clean
 }
@@ -76,7 +81,7 @@ cmd_install-dev-tests(){ # Editable install with tests
   do_manual-install 'dev-test'
 }
 
-cmd_pytest(){
+cmd_pytest(){  # Perform the test suite (small scale with evolution)
   out=tests-results
   cout=$out/coverage
   rm -rf $out
@@ -95,13 +100,14 @@ cmd_pytest(){
   
   cppcoverage=$cout/cpp.coverage.info
   lcov --capture --no-external --directory . --output-file $cppcoverage
+  lcov --remove $cppcoverage '*_bindings*' -o $cppcoverage
   lcov --list $cppcoverage
   genhtml -q --demangle-cpp -o $cout/html/cpp/ $cppcoverage
 }
 
 cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP (RIP)
   home=$(pwd)
-  tmp=/tmp/pyne_test_install
+  tmp=/tmp/abrain_test_install
   mkdir -p $tmp
   cd $tmp
   echo "Moved to $tmp"
@@ -141,8 +147,8 @@ cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP (RIP)
     
     cat <<EOF > tester.py
 from random import Random
-from pyne._cpp.phenotype import CPPN
-from pyne.core.genome import Genome
+from abrain._cpp.phenotype import CPPN
+from abrain.core.genome import Genome
 
 def test_valid_install():
   rng = Random(0)
@@ -160,6 +166,15 @@ EOF
   done 2>&1 | tee install.log
   
   printf "\n\033[32mAll good!\033[m\n"
+}
+
+cmd_doc(){  # Generate the documentation
+# also requires sphinx and ??
+  out=doc/_build
+  mkdir -p $out
+#   nitpick=-n
+  sphinx-build doc/src/ $out/html -b html $nitpick -W $@ 2>&1 \
+  | tee $out/log
 }
 
 help(){

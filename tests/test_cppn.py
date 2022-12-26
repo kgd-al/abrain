@@ -5,10 +5,10 @@ import numpy as np
 from PIL import Image
 from pytest_steps import test_steps
 
-from pyne._cpp.phenotype import ( # noqa
+from abrain._cpp.phenotype import ( # noqa
     CPPN, Point,
 )
-from pyne.core.genome import Genome
+from abrain.core.genome import Genome
 
 
 def _make_cppn(seed, mutations=0):
@@ -103,10 +103,10 @@ def test_outputs_equals(seed):
 
         outputs = CPPN.outputs()
         cppn(p0, p1, outputs, {o for o in CPPN.OUTPUTS_LIST})
-        subset_outputs = [v for v in outputs]
+        subset_outputs = [outputs[i] for i in range(len(outputs))]
 
         cppn(p0, p1, outputs)
-        all_outputs = [v for v in outputs]
+        all_outputs = [outputs[i] for i in range(len(outputs))]
 
         assert manual_outputs == subset_outputs
         assert manual_outputs == all_outputs
@@ -141,8 +141,12 @@ def test_multiscale_sampling(mutations, seed, tmp_path_factory):  # pragma: no c
                 y = to_substrate_coord(j)
                 p = Point(x, y, 0)
                 for k, p0, p1 in [(0, p, dp), (1, dp, p)]:
-                    data[k, i, j] = .5 * (np.array([v for v in outputs]) + 1) * 255
                     cppn(p, dp, outputs)
+                    data[k, i, j] = \
+                        .5 * (
+                            np.array([outputs[i] for i in range(len(outputs))])
+                            + 1
+                        ) * 255
 
         for name, i in [('input', 0), ('output', 1)]:
             file = f"{folder}/xy_{name}_plane_{size:03}x{size:03}.png"

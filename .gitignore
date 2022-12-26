@@ -1,6 +1,7 @@
 .*/
-build/
+*build/
 __pycache__/
+_autogen/
 tests-results/
 *.egg-info
 
@@ -14,6 +15,10 @@ tests.xml
 package.dot
 package.pdf
 
-cpp/misc/constants.h
+logo.pdf
+logo.svg
+
+src/abrain/_cpp/misc/constants.h
 **/functions/*.eps
 **/functions/*.png
+**/functions/*.svg

@@ -5,15 +5,15 @@ from typing import Tuple, List
 
 import pytest
 
-from pyne.core.ann import ANN, Point, plotly_render
-from pyne.core.genome import Genome
+from abrain.core.ann import ANN, Point, plotly_render
+from abrain.core.genome import Genome
 
 
 def test_default_is_empty():
     ann = ANN()
     assert ann.empty()
-    assert len(ann.inputs()) == 0
-    assert len(ann.outputs()) == 0
+    assert len(ann.ibuffer()) == 0
+    assert len(ann.obuffer()) == 0
 
     stats = ann.stats()
     assert stats.depth == 0
@@ -61,7 +61,7 @@ def test_invalid_duplicates(inputs, outputs):
         _make_ann(0, Random(0), inputs, outputs)
 
 
-# TODO implement (code exists in ann.cpp)
+# .. todo:: implement (code exists in ann.cpp)
 # def test_deepcopy():
 #     original = _make_ann(1000, 0)
 #     original.cop
@@ -71,24 +71,30 @@ def test_random_eval(mutations, seed):
     rng = Random(seed)
     ann, inputs, outputs = _make_ann(mutations, rng)
 
-    assert len(ann.inputs()) == len(inputs)
-    assert len(ann.outputs()) == len(outputs)
+    assert len(ann.ibuffer()) == len(inputs)
+    assert len(ann.obuffer()) == len(outputs)
     assert ann.empty() or ann.stats().edges > 0
+
+    assert ann.ibuffer() == ann.ibuffer()  # same objects
+    assert ann.obuffer() == ann.obuffer()  #
 
     avg_output = 0
     for _ in range(1000):
-        inputs, outputs = ann.inputs(), ann.outputs()
+        # inputs, outputs = ann.buffers()
+        inputs, outputs = ann.ibuffer(), ann.obuffer()
         for j in range(len(inputs)):
             inputs[j] = rng.uniform(-1, 1)
-        for j in range(len(outputs)):
-            outputs[j] = float('nan')
+        if hasattr(outputs, "set_to_nan"):  # pragma: no cover
+            outputs.set_to_nan()
 
         ann(inputs, outputs, 1)
 
-        avg_output += sum(outputs)
+        for i in range(len(outputs)):
+            avg_output += outputs[i]
 
-        assert ann.inputs() != inputs
-        assert ann.empty() or not any([math.isnan(o) for o in outputs])
+        if hasattr(outputs, "set_to_nan"):  # pragma: no cover
+            assert ann.empty() or not \
+                any([math.isnan(outputs[i]) for i in range(len(outputs))])
 
     assert ann.empty() or sum != 0
 
