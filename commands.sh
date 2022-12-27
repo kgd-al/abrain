@@ -56,7 +56,7 @@ cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   rm -rf tests-results/
   rm -rf _venv*
   rm -f src/abrain/_cpp.*.so
-  rm -rf doc/_build doc/src/_autogen
+  rm -rf doc/_build doc/src/_autogen doc/src/logo/logo.{pdf,svg}
   find . -name 'abrain.egg-info' | xargs rm -rf
   find src -name "__init__.pyi" | xargs rm -rf
   find src -empty -type d -delete
