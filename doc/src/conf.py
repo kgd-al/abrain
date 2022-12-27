@@ -97,7 +97,7 @@ html_theme_options = {
 
     'github_banner': True,
     'github_button': True,
-    'github_repo': 'Py-NeuroEvo',
+    'github_repo': 'abrain',
     'github_user': 'kgd-al',
 }
 
