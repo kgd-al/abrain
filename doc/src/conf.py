@@ -14,16 +14,20 @@ from typing import List, Any, Optional
 from sphinx.ext.autodoc import AttributeDocumenter
 from sphinx.util import logging
 
-import abrain
+from sphinx_pyproject import SphinxConfig
 
 # -- Project information -----------------------------------------------------
 
-project = 'ABrain'
-copyright = '2022, Kevin Godin-Dubois'
-author = 'Kevin Godin-Dubois'
+config = SphinxConfig("../../pyproject.toml", globalns=globals())
+
+# -- Project information -----------------------------------------------------
+
+project = 'a-brain'
+copyright = '2022, ' + config.author
+author = config.author
 
 # The full version, including alpha/beta/rc tags
-release = abrain.__version__
+release = config.version
 
 # -- General configuration ---------------------------------------------------
 

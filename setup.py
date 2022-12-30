@@ -1,10 +1,12 @@
+import itertools
 import os
 import re
 import subprocess
 import sys
+from distutils.command.build import build
 from pathlib import Path
 
-from setuptools import Extension, setup
+from setuptools import Extension, setup, find_packages, Command
 from setuptools.command.build_ext import build_ext
 from setuptools.command.develop import develop
 from setuptools.command.install import install
@@ -34,6 +36,9 @@ class CMakeBuild(build_ext):
         ext_fullpath = Path.cwd() / self.get_ext_fullpath(ext.name) \
             # type: ignore[no-untyped-call]
         extdir = ext_fullpath.parent.resolve()
+
+        print(f"{ext_fullpath=}")
+        print(f"{extdir=}")
 
         # Using this requires trailing slash for auto-detection & inclusion of
         # auxiliary "native" libs
@@ -141,7 +146,7 @@ class CMakeBuild(build_ext):
             cmake_args += ["-DWITH_COVERAGE=ON"]
         # Ensure discovery of executables (pybind11-stubgen for instance)
         cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
-        # Forward if we develop-level info (notably the stubs)
+        # Forward if we need develop-level info (notably the stubs)
         if dev_build:
             cmake_args += ["-DDEV_BUILD=ON"]
 
@@ -160,26 +165,61 @@ def generate_cppn_functions():
     if not os.path.exists("src/abrain/core/functions/id.png"):
         subprocess.check_call("src/abrain/core/functions/plotter.sh")
 
+#
+# class PreDevelopCommands(develop):
+#     def run(self):
+#         generate_cppn_functions()
+#         develop.run(self)
+#
+#
+# class PreInstallCommands(install):
+#     def run(self):
+#         generate_cppn_functions()
+#         install.run(self)
+#
 
-class PreDevelopCommands(develop):
+class BuildData(Command):
+    description = "Build data"
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
     def run(self):
         generate_cppn_functions()
-        develop.run(self)
 
 
-class PreInstallCommands(install):
-    def run(self):
-        generate_cppn_functions()
-        install.run(self)
+class CustomBuildOrder(build):
+    # def run(self):
+    #     self.run_command('build_data')
+    #     build.run(self)
+
+    def finalize_options(self) -> None:
+        super().finalize_options()
+        print(self.sub_commands)
+        t1, t2 = itertools.tee(self.sub_commands)
+        pred = lambda item: item[0] == 'build_ext'
+        build_ext, tail = filter(pred, t1), itertools.filterfalse(pred, t2)
+        build_data = ('build_data', build.has_pure_modules)
+        self.sub_commands[:] = [build_data] + list(build_ext) + list(tail)
+        print(self.sub_commands)
 
 
 # Most metadata is in pyproject.toml
 setup(
+    package_data={'': ['*.eps', '*.png', '*.svg', '*.pyi']},
+    include_package_data=True,
+
     ext_modules=[CMakeExtension("abrain._cpp")],
     cmdclass={
         'build_ext': CMakeBuild,
-        'develop': PreDevelopCommands,
-        'install': PreInstallCommands,
+        # 'develop': PreDevelopCommands,
+        # 'install': PreInstallCommands,
+        'build_data': BuildData,
+        'build': CustomBuildOrder
     },
-    package_data={'': ['*.eps', '*.png']}
 )

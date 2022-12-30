@@ -28,9 +28,9 @@ dependencies = [
 ]
 
 [projects.urls]
-"Homepage" = "https://github.com/kgd-al/Py-NeuroEvo"
+"Homepage" = "https://github.com/kgd-al/abrain"
 "Documentation" = "Work in progess"
-"Bug Tracker" = "https://github.com/kgd-al/Py-NeuroEvo/issues"
+"Bug Tracker" = "https://github.com/kgd-al/abrain/issues"
 
 [build-system]
 requires = [
@@ -42,18 +42,21 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-test = [
+tests = [
   "pytest",
+  "pytest-steps", "pytest-sugar",
   "coverage",
+  "flake8",
+  "Pillow",
   "numpy",
 ]
-dev = [
-  "pybind11",
-  "pybind11-stubgen",
+
+docs = [
+  "sphinx",
+  "sphinx-pyproject",  # Auto-extract project version
+  "sphinx_design",  # for the nice flowing cards
+  "matplotlib"  # for the plot extension
 ]
-#doc = [
-#  "sphinx",
-#]
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true

@@ -5,25 +5,31 @@ do_line(){
 }
 
 do_set-env(){
+  CMAKE_ARGS="-DMAKE_STUBS=ON "
   if [[ "$1" =~ "test" ]]
   then
     export DEBUG=1
-    export CMAKE_ARGS="-DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF -DMAKE_STUBS=ON"
+    CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF"
   fi
+  export CMAKE_ARGS
   [[ "$1" =~ "dev" ]] && export DEV=1
   export CMAKE_BUILD_PARALLEL_LEVEL=1
 }
 
-# do_pip-install(){
-#   echo "Executing:" pip install $1
-#   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
-#   do_set-env
-#   pip install $1 -v
-# }
+do_pip-install(){
+  echo "Executing:" pip install $1
+  printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
+  do_set-env "$1"
+  
+#   export VERBOSE=1
+  verbose="-v" #vv"
+  
+  pip install $1 $verbose
+}
 
 do_manual-install(){  
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
-  do_set-env $1  
+  do_set-env "$1"
   # Manually ensuring build/test dependencies
   pip install pybind11 pybind11-stubgen || exit 2
   [[ "$1" =~ "test" ]] && \
@@ -64,21 +70,22 @@ cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   
   cmd_clean
 }
-# 
-# cmd_install(){ # Regular install (to current virtual env)
-#   do_pip-install .
-# }
-# 
-# cmd_install-tests(){  # Install with test in standard location
-#   do_pip-install '.[test]'
-# }
 
-cmd_install-dev(){  # Editable install (without pip)
-  do_manual-install 'dev'
+cmd_install-user(){ # Regular install (to current virtual env)
+  do_pip-install .
 }
 
-cmd_install-dev-tests(){ # Editable install with tests
-  do_manual-install 'dev-test'
+cmd_install-docs(){ # Documentation install (for read the docs)
+  do_pip-install '.[docs]'
+}
+
+cmd_install-tests(){  # Install with test in standard location
+  do_pip-install '.[tests]'
+}
+
+cmd_install-dev(){  # Editable install (without pip)
+  do_pip-install '-e .[docs,tests]'
+#   do_manual-install 'dev-test-doc'
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)
@@ -105,30 +112,31 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
   genhtml -q --demangle-cpp -o $cout/html/cpp/ $cppcoverage
 }
 
-cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP (RIP)
+cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP
   home=$(pwd)
   tmp=/tmp/abrain_test_install
   mkdir -p $tmp
   cd $tmp
   echo "Moved to $tmp"
-  
-  rm -rf Py-NeuroEvo*
+
+  rm -rf abrain* _venv*
   echo "Cleaned $tmp"
   
-  for t in '-dev' '' '-tests' '-dev-tests'
+  # OK: '-user' '-docs' '-tests' '-dev'
+  for t in '-user' '-docs' '-tests' '-dev'
   do
     do_line
     echo "Testing '$t' in $tmp"
     do_line
     echo
     
-  #   git clone --recurse-submodules git@github.com:kgd-al/Py-NeuroEvo.git
-    rsync -r --exclude={build*/,.*,*results,__pycache__} $home . 
-    echo "$home -> ."
+    dir=abrain$t
+  #   git clone --recurse-submodules git@github.com:kgd-al/abrain.git
+    mkdir -pv $dir
+    rsync -r --exclude={build*/,.*,*results,__pycache__} $home/* $dir/ 
+    echo "$home -> $dir"
 
-    mv Py-NeuroEvo Py-NeuroEvo$t
-    cd Py-NeuroEvo$t
-    rm -rf _venv
+    cd $dir
     $home/$0 very-clean
     
     printf "[0] Virtual environment: $VIRTUAL_ENV\n"
@@ -145,34 +153,35 @@ cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP (RIP)
     time eval "cmd_install$t" || exit 2
     printf "[5] Virtual environment: $VIRTUAL_ENV\n"
     
-    cat <<EOF > tester.py
-from random import Random
-from abrain._cpp.phenotype import CPPN
-from abrain.core.genome import Genome
-
-def test_valid_install():
-  rng = Random(0)
-  g = Genome.random(rng)
-  while len(g.nodes) == 0:
-    g.mutate(rng)
-  g.to_dot("test", "png")
-EOF
-    pip install pytest
-    pytest -x -s tester.py || exit 3
+    python examples/basics.py || exit 3
+    
+    [[ "$t" =~ "docs" ]] && { cmd_doc || exit 3; }
+    [[ "$t" =~ "test" ]] && { cmd_pytest --small-scale --test-evolution || exit 3; }
+    
+    pip list
     
     cd ..
     deactivate
     echo
+    
   done 2>&1 | tee install.log
   
-  printf "\n\033[32mAll good!\033[m\n"
+  r=${PIPESTATUS[0]}
+  if [ "$r" -eq 0 ]
+  then
+    printf "\n\033[32mAll good!\033[0m\n"
+  else
+    printf "\n\033[31;5m/!\\ Install failed /!\\ \033[0m\n"
+    printf "> With exit code \033[31m$r\033[0m\n"
+    exit $r
+  fi
 }
 
 cmd_doc(){  # Generate the documentation
-# also requires sphinx and ??
+# also requires sphinx and sphinx-pyproject
   out=doc/_build
   mkdir -p $out
-#   nitpick=-n
+  nitpick=-n
   sphinx-build doc/src/ $out/html -b html $nitpick -W $@ 2>&1 \
   | tee $out/log
 }

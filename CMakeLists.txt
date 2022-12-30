@@ -201,25 +201,25 @@ message("> Compile with: ${CMAKE_CXX_FLAGS}")
 ### Install cpp library
 #################################################################################
 
-if (DEV_BUILD AND MAKE_STUBS)
+if (MAKE_STUBS)
     set(STUBS_DIR ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}/${LIB_CPP})
     add_custom_command(
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
         COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-    #    COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
-    #    COMMAND echo "             PATH: '$ENV{PATH}'"
-    #    COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+#         COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+#         COMMAND echo "             PATH: '$ENV{PATH}'"
+#         COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+#         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
         COMMAND tree .
-        COMMAND ls -l $<TARGET_FILE:${LIB_CPP}>
         COMMAND ${CMAKE_COMMAND} -E
             env "PATH=${BUILD_TIME_PATH}"
-            env "PYTHONPATH=."
+            env "PYTHONPATH=.:$ENV{PYTHONPATH}"
             pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
                 --skip-signature-downgrade --no-setup-py --log-level DEBUG
                 ${LIB_CPP}
-        COMMAND cp -rusvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
-                       -t ${STUBS_DIR}
+        COMMAND cp -ruvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
+                      -t ${STUBS_DIR}
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMENT "-+ Generating python stubs from c++ bindings"
     )
