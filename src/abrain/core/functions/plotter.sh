@@ -19,6 +19,8 @@ cd tmp
 
 listing=functions
 
+awk --version
+
 awk '
     /CPPN::functions {/{ inmap=1 }
     inmap && /^}/{ inmap = 0 }
@@ -105,5 +107,5 @@ done < $listing
 
 cd ..
 rm -r tmp
-ls -lh *ps *.png
+ls -lh *ps *.png *.svg
           
