@@ -204,8 +204,9 @@ class CustomBuildOrder(build):
         t1, t2 = itertools.tee(self.sub_commands)
         pred = lambda item: item[0] == 'build_ext'
         build_ext, tail = filter(pred, t1), itertools.filterfalse(pred, t2)
-        build_data = ('build_data', build.has_pure_modules)
-        self.sub_commands[:] = [build_data] + list(build_ext) + list(tail)
+        # build_data = ('build_data', build.has_pure_modules)
+        # self.sub_commands[:] = [build_data] + list(build_ext) + list(tail)
+        self.sub_commands[:] = list(build_ext) + list(tail)
         print(self.sub_commands)
 
 

@@ -19,6 +19,3 @@ logo.pdf
 logo.svg
 
 src/abrain/_cpp/misc/constants.h
-**/functions/*.eps
-**/functions/*.png
-**/functions/*.svg

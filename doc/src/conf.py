@@ -70,6 +70,8 @@ plot_html_show_source_link = False
 plot_pre_code = """
 import numpy as np
 from matplotlib import pyplot as plt
+import abrain
+functions = abrain.CPPN.functions()
 x = np.linspace(-5,5,100)
 """
 plot_html_show_formats = False

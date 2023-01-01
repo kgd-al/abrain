@@ -250,6 +250,8 @@ class Genome(_CPPNData):
             ext = path.suffix.replace('.', '')
             path = path.with_suffix('')
 
+        vectorial = ext in ["pdf", "svg", "eps"]
+
         dot = Digraph('cppn')
         if title is not None:
             dot.attr(labelloc="t")
@@ -287,9 +289,11 @@ class Genome(_CPPNData):
             g_i.node(name, f"<{label}>", shape='plain',
                      xlabel=node_x_label(i))
 
-        def png_file(func):
-            p = str((files('abrain') / f"core/functions/{func}.png").resolve())
-            return p
+        img_format = "svg" if vectorial else "png"
+
+        def img_file(func):
+            p = (files('abrain') / f"core/functions/{func}.{img_format}")
+            return str(p.resolve())
 
         o_labels = Config.cppnOutputNames
         for i in range(self.OUTPUTS):
@@ -299,7 +303,7 @@ class Genome(_CPPNData):
             g_o.node(name, "",
                      width="0.5in", height="0.5in", margin="0",
                      fixedsize="shape",
-                     image=png_file(f),
+                     image=img_file(f),
                      xlabel=node_x_label(i + self.INPUTS))
             g_ol.node(name + "_l", shape="plain", label=o_labels[i])
             dot.edge(name, name + "_l")
@@ -311,7 +315,7 @@ class Genome(_CPPNData):
             g_h.node(name, label,
                      width="0.5in", height="0.5in", margin="0",
                      fixedsize="shape",
-                     image=png_file(n.func),
+                     image=img_file(n.func),
                      xlabel=node_x_label(n.id))
 
         for i, l in enumerate(self.links):
@@ -336,7 +340,9 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        return dot.render(path, format=ext, cleanup=True)
+        cleanup = False if debug is not None and "keepdot" in debug else True
+
+        return dot.render(path, format=ext, cleanup=False)
 
     ###########################################################################
     # Private mutation interface

@@ -94,13 +94,13 @@ float ssgn(float x) {
 const std::map<CPPNData::Node::FuncID,
                CPPN::Function> CPPN::functions {
 
-  F( "abs", std::fabs(x)),  // Absolute value
-  F("gaus", KGD_EXP(-6.25f*x*x)), // Gaussian function
   F(  "id", x), // Identity
-  F("ssgm", 1.f / (1.f + KGD_EXP(-4.9f*x))), // Soft sigmoid
-  F("bsgm", 2.f / (1.f + KGD_EXP(-4.9f*x)) - 1.f),  // Bimodal sigmoid
+  F( "abs", std::fabs(x)),  // Absolute value
   F( "sin", fd_sin(2.f*x)), // Sinusoidal
   F("step", x <= 0.f ? 0.f : 1.f),  // Step function
+  F("gaus", KGD_EXP(-6.25f*x*x)), // Gaussian function
+  F("ssgm", 1.f / (1.f + KGD_EXP(-4.9f*x))), // Soft sigmoid
+  F("bsgm", 2.f / (1.f + KGD_EXP(-4.9f*x)) - 1.f),  // Bimodal sigmoid
 
   // Custom-made activation function (with quiescent state)
   F("ssgn", ssgn(x)), // Activation function
