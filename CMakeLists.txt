@@ -211,7 +211,6 @@ if (MAKE_STUBS)
 #         COMMAND echo "             PATH: '$ENV{PATH}'"
 #         COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
 #         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
-        COMMAND tree .
         COMMAND ${CMAKE_COMMAND} -E
             env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.:$ENV{PYTHONPATH}"
