@@ -19,3 +19,5 @@ logo.pdf
 logo.svg
 
 src/abrain/_cpp/misc/constants.h
+
+!doc/src/_autogen/functions.rst

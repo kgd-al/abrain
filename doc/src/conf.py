@@ -138,6 +138,7 @@ def kgd_init_log():
         wd += "/_autogen"
         os.makedirs(wd, exist_ok=True)
         kgd_logger = f"{wd}/errors.rst"
+        print("Logging custom errors to", kgd_logger)
         kgd_log(header=True)
 
 
