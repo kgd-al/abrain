@@ -1,5 +1,7 @@
 # Artificial Brains (ABrain) for Python
 
+[![Documentation Status](https://readthedocs.org/projects/abrain/badge/?version=latest)](https://abrain.readthedocs.io/en/latest/?badge=latest)
+
 C++/Python implementation of the genotype/phenotype components of Evolvable Substrate HyperNEAT (read without evolution and speciation).
 
 ## Todo list:
