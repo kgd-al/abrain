@@ -58,7 +58,7 @@ cmd_clean(){  # Remove most build artifacts
 cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   echo "very clean"
   rm -rf src/abrain/_cpp/misc/constants.h
-  rm -rf package.{dot,pdf} src/abrain/core/functions/*{eps,png,svg}
+  rm -rf package.{dot,pdf}
   rm -rf tests-results/
   rm -rf _venv*
   rm -f src/abrain/_cpp.*.so

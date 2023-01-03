@@ -54,8 +54,6 @@ while read line
 do
     IFS=';' read name func desc <<< "$line"
     
-#     [ "$name" != "id" ] && continue
-    
     if [ ${data["B","$name"]+_} ]
     then
       printf "%4s: %s\n" "$name" "$func"
@@ -69,8 +67,7 @@ do
     latex_func=${data["L","$name"]}
 
     sed 's|\\def\\func{.*}|\\def\\func{'"$badge_func"'}|' ../template.tex > $name.tex
-    [ ! -f "../$name.svg" ] \
-    && pdflatex -shell-escape $name.tex > log \
+    pdflatex -shell-escape $name.tex > log \
     && convert -density 300 $name.svg ../$name.png
     mv $name.svg ../
     
