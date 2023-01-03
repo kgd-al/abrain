@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.x"]
+        python-version: ["3.8"]
 
     env:
       TEST_OUT: "tests-results"
@@ -25,6 +25,13 @@ jobs:
       CPPCOVERAGE: $COV_OUT/cpp.coverage.info
     steps:
     - uses: actions/checkout@v3
+    - name: Build-A-Badge-test
+      uses: peterrhodesdev/build-a-badge@v1.3.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        filename: badge-test
+        label: badge
+        message: test
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
@@ -37,10 +44,20 @@ jobs:
         sudo apt install -y lcov graphviz
         python -m pip install .[tests]
     - name: Lint with flake8
+      id: flake
       continue-on-error: true
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --statistics
+        flake8 . --count --statistics --show-source
+        echo "count=$(flake8 . --count)" >> $GITHUB_OUTPUT
+    - name: Build-A-Badge-flake
+      uses: peterrhodesdev/build-a-badge@v1.3.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        filename: badge-flake
+        label: flake
+        message: "${{ steps.flake.count }}"
+        color: "hsl($(( ${{ steps.flake.count }} > 0 ? 120 : 0)), 100%, 50%)"
     - name: Test with pytest/coverage
       run: |
         lcov --zerocounters --directory .
