@@ -1,0 +1,63 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Build and test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.x"]
+
+    env:
+      TEST_OUT: "tests-results"
+      COV_OUT: $TEST_OUT/coverage/
+      PYCOVERAGE: $COV_OUT/py.coverage.info
+      CPPCOVERAGE: $COV_OUT/cpp.coverage.info
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install pip
+      run: |
+        python -m pip install --upgrade pip
+    - name: Install with test dependencies
+      run: |
+        sudo apt install -y lcov
+        python -m pip install .[tests]
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --statistics
+    - name: Test with pytest/coverage
+      run: |
+        lcov --zerocounters --directory .
+        
+        coverage run --branch --data-file=$(basename $PYCOVERAGE) \
+          --source=. --omit="tests/conftest.py,setup.py" \
+          -m \
+          pytest --durations=10 --basetemp=$TEST_OUT -ra \
+            --small-scale
+    - name: Compute python coverage
+      run: |
+        mkdir -p $COV_OUT
+        mv $(basename $PYCOVERAGE) $PYCOVERAGE
+        coverage report --data-file=$PYCOVERAGE --fail-under=100
+        coverage html --data-file=$PYCOVERAGE -d $COV_OUT/html/python
+    - name: Compute c++ coverage
+      run: |
+        lcov --capture --no-external --directory . --output-file=$CPPCOVERAGE
+        lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE
+        lcov --list $CPPCOVERAGE
+        genhtml -q --demangle-cpp -o $COV_OUT/html/cpp $CPPCOVERAGE
