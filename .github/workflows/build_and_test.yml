@@ -47,17 +47,17 @@ jobs:
       id: flake
       continue-on-error: true
       run: |
-        # stop the build if there are Python syntax errors or undefined names
+        # Ensure PEP8 compliance
         flake8 . --count --statistics --show-source
-        echo "count=$(flake8 . --count)" >> $GITHUB_OUTPUT
+        echo "OUTPUT_FLAKE=$(flake8 . --count)" >> $GITHUB_ENV
     - name: Build-A-Badge-flake
       uses: peterrhodesdev/build-a-badge@v1.3.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         filename: badge-flake
         label: flake
-        message: "${{ steps.flake.count }}"
-        color: "hsl($(( ${{ steps.flake.count }} > 0 ? 120 : 0)), 100%, 50%)"
+        message: "${{ env.OUTPUT_FLAKE }}"
+        color: "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
     - name: Test with pytest/coverage
       run: |
         lcov --zerocounters --directory .
