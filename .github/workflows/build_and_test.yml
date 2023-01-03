@@ -73,6 +73,12 @@ jobs:
         lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE
         lcov --list $CPPCOVERAGE
         genhtml -q --demangle-cpp -o $COV_OUT/html/cpp $CPPCOVERAGE
+    - name: Archive test artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-artifact
+        path: tests-results
+        retention-days: 2
     - name: Build Badges
       if: always() && !cancelled()
       uses: peterrhodesdev/build-a-badge@v1.3.1

@@ -1,7 +1,6 @@
 .*/
 *build/
 __pycache__/
-_autogen/
 tests-results/
 *.egg-info
 
@@ -11,6 +10,8 @@ tests-results/
 *.so
 .coverage
 tests.xml
+
+_autogen/errors.rst
 
 package.dot
 package.pdf
