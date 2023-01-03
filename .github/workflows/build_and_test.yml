@@ -20,18 +20,11 @@ jobs:
 
     env:
       TEST_OUT: "tests-results"
-      COV_OUT: $TEST_OUT/coverage/
-      PYCOVERAGE: $COV_OUT/py.coverage.info
+      COV_OUT: ${{ env.TEST_OUT }}/coverage/
+      PYCOVERAGE: ${{ env.COV_OUT }}/py.coverage.info
       CPPCOVERAGE: $COV_OUT/cpp.coverage.info
     steps:
     - uses: actions/checkout@v3
-    - name: Build-A-Badge-test
-      uses: peterrhodesdev/build-a-badge@v1.3.1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        filename: badge-test
-        label: badge
-        message: test
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
@@ -48,25 +41,19 @@ jobs:
       continue-on-error: true
       run: |
         # Ensure PEP8 compliance
-        echo "OUTPUT_FLAKE=$(flake8 . --count)" >> $GITHUB_ENV
+        echo "OUTPUT_FLAKE=$(flake8 . --count -qq)" >> $GITHUB_ENV
         flake8 . --count --statistics --show-source
-    - name: Build-A-Badge-flake
-      uses: peterrhodesdev/build-a-badge@v1.3.1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        filename: badge-flake
-        label: flake
-        message: "${{ env.OUTPUT_FLAKE }}"
-        color: "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
     - name: Test with pytest/coverage
       run: |
         lcov --zerocounters --directory .
         
+        echo "OUTPUT_TESTS=1" >> $GITHUB_ENV
         coverage run --branch --data-file=$(basename $PYCOVERAGE) \
           --source=. --omit="tests/conftest.py,setup.py" \
           -m \
           pytest --durations=10 --basetemp=$TEST_OUT -ra \
             --small-scale
+        echo "OUTPUT_TESTS=0" >> $GITHUB_ENV
     - name: Compute python coverage
       continue-on-error: true
       run: |
@@ -81,3 +68,24 @@ jobs:
         lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE
         lcov --list $CPPCOVERAGE
         genhtml -q --demangle-cpp -o $COV_OUT/html/cpp $CPPCOVERAGE
+    - name: Build Badges
+      if: always() && !cancelled()
+      uses: peterrhodesdev/build-a-badge@v1.3.1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        filename: ("badge-flake" "badge-tests" "badge-pcov" "badge-ccov")
+        label: ("flake" "tests" "py-cov" "cpp-cov")
+        message: |
+          (
+            "${{ env.OUTPUT_FLAKE }}"
+            "tests label"
+            "python coverage label"
+            "cpp coverage label"
+          )
+        color: |
+          (
+            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
+            "hsl($(( ${{ env.OUTPUT_TESTS }} > 0 ? 120 : 0)), 100%, 50%)"
+            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
+            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
+          )
