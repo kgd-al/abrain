@@ -18,11 +18,6 @@ jobs:
       matrix:
         python-version: ["3.8"]
 
-    env:
-      TEST_OUT: "tests-results"
-      COV_OUT: ${{ env.TEST_OUT }}/coverage/
-      PYCOVERAGE: ${{ env.COV_OUT }}/py.coverage.info
-      CPPCOVERAGE: $COV_OUT/cpp.coverage.info
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -36,6 +31,16 @@ jobs:
       run: |
         sudo apt install -y lcov graphviz
         python -m pip install .[tests]
+    - name: Set variables
+      run: |
+        test_out=tests-results
+        echo "TEST_OUT=$test_out" >> $GITHUB_ENV
+        cov_out=$test_out/coverage/
+        echo "COV_OUT=$cov_out" >> $GITHUB_ENV
+        pycoverage=$cov_out/py.coverage.info
+        echo "PYCOVERAGE=$pycoverage" >> $GITHUB_ENV
+        cppcoverage=$cov_out/cpp.coverage.info
+        echo "CPPCOVERAGE=$cppcoverage" >> $GITHUB_ENV
     - name: Lint with flake8
       id: flake
       continue-on-error: true
