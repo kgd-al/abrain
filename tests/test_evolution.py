@@ -14,7 +14,6 @@ class Robot:
     """A bare-bones individual
 
     :param genome: the collection of inheritable characteristics
-     
     """
 
     r_id = 1
@@ -73,9 +72,11 @@ def test_evolution(evo_config, capsys, tmp_path):
 
     def random_coordinates(n_min, n_max, y):
         def rc(): return random.uniform(-1, 1)
-        return [Point(rc(), y, rc()) for _ in range(random.randint(n_min, n_max))]
+        return [Point(rc(), y, rc()) for _ in
+                range(random.randint(n_min, n_max))]
 
-    # By personal convention inputs and outputs are on the y=-1 and y=1 planes, respectively
+    # By personal convention inputs and outputs are on the y=-1 and y=1 planes,
+    # respectively
     Robot.ann_inputs = random_coordinates(10, 20, -1)
     Robot.ann_outputs = random_coordinates(5, 10, 1)
 

@@ -26,7 +26,8 @@ def test_default_is_empty():
         ann.neuronAt(p0)
 
 
-def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> Tuple[ANN, List[Point], List[Point]]:
+def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> \
+        Tuple[ANN, List[Point], List[Point]]:
     genome = Genome.random(rng)
     for _ in range(mutations):
         genome.mutate(rng)

@@ -4,6 +4,10 @@
 
 C++/Python implementation of the genotype/phenotype components of Evolvable Substrate HyperNEAT (read without evolution and speciation).
 
+## Optional dependencies:
+
+    - Graphviz (dot) to generate directed graphs for the genomes
+
 ## Todo list:
  - Functionalities:
    - Order-independent ANN evaluation (with back buffer)?

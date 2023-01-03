@@ -141,9 +141,11 @@ def change_config_value(key, value, path):
         pytest.param("iterations", "15", id="int->int"),
         pytest.param("annWeightsRange", "1.5", id="float->float"),
         pytest.param("activationFunc", "id", id="str->str"),
-        pytest.param("cppnWeightBounds", "Bounds(1,1,1,1,1)", id="Bounds->Bounds"),
+        pytest.param("cppnWeightBounds", "Bounds(1,1,1,1,1)",
+                     id="Bounds->Bounds"),
         pytest.param("functionSet", "[id,abs,ssgn]", id="Strings->Strings"),
-        pytest.param("mutationRates", str(get_default_config()["mutationRates"]),
+        pytest.param("mutationRates",
+                     str(get_default_config()["mutationRates"]),
                      id="MutationRates->MutationRates")
     ])
 def test_correct_read_type(key, value, tmp_path):
@@ -157,8 +159,10 @@ def test_correct_read_type(key, value, tmp_path):
         pytest.param("annWeightsRange", "error", id="str->float"),
         pytest.param("iterations", "4.2", id="float->int"),
         pytest.param("cppnWeightBounds", "foo", id="str->Bounds"),
-        pytest.param("cppnWeightBounds", "Bounds(3, 1, -1, -3, .1)", id="inv_bounds"),
-        pytest.param("cppnWeightBounds", "Bounds(-3, -1, 1, 3, -.1)", id="neg_bounds"),
+        pytest.param("cppnWeightBounds", "Bounds(3, 1, -1, -3, .1)",
+                     id="inv_bounds"),
+        pytest.param("cppnWeightBounds", "Bounds(-3, -1, 1, 3, -.1)",
+                     id="neg_bounds"),
         pytest.param("functionSet", "42", id="str->Strings"),
         pytest.param("mutationRates", "{}", id="empty_mr"),
         pytest.param("mutationRates", "[foo,bar]", id="bad_mr"),

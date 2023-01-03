@@ -17,20 +17,22 @@ flags = {
 
 
 def pytest_addoption(parser):
-    parser.addoption(flags[TestSize.SMALL], "--small-scale", action='store_const',
+    parser.addoption(flags[TestSize.SMALL], "--small-scale",
+                     action='store_const',
                      const=TestSize.SMALL, dest='size',
                      help='Run very small test suite '
                           '(single mutation case, 4 repeats...)')
     parser.addoption(flags[TestSize.NORMAL], action='store_const',
-                     const=TestSize.NORMAL, default=TestSize.NORMAL, dest='size',
+                     const=TestSize.NORMAL, default=TestSize.NORMAL,
+                     dest='size',
                      help='Run moderate test suite '
                           '(two mutation cases, 8 repeats...)')
     parser.addoption(flags[TestSize.LARGE], action='store_const',
                      const=TestSize.LARGE, dest='size',
                      help='Run large test suite '
                           '(4 mutation cases, 16 repeats...). '
-                          'Warning: While it ensures good coverage, it should take '
-                          'long')
+                          'Warning: While it ensures good coverage, it will'
+                          ' take (too) long')
 
     default_dict = dict(
         seed=None,
@@ -51,8 +53,9 @@ def pytest_addoption(parser):
 
     parser.addoption("--test-evolution", dest='evolution',
                      const=str(default_dict), nargs='?',
-                     help=f"Run a mock evolution. Default arguments are: {default_dict}. "
-                          f"Provide a dictionary to alter defaults arguments",
+                     help=f"Run a mock evolution. Default arguments are:"
+                          f" {default_dict}. Provide a dictionary to alter"
+                          f" defaults arguments",
                      type=parse_evo_config)
 
 
@@ -132,14 +135,16 @@ def pytest_generate_tests(metafunc):
                 dct = dict()
 
                 def maybe_assign(key, if_true, if_false):
-                    dct[key] = (if_true(evo_config[key]) if evo_config[key] is not None else if_false)
+                    dct[key] = (if_true(evo_config[key]) if
+                                evo_config[key] is not None else if_false)
                 maybe_assign("seed", lambda s: s+1, i)
                 maybe_assign("population", lambda s: s, 8*size)
                 maybe_assign("generations", lambda s: s, 8*size)
                 dct["fitness"] = evo_config["fitness"]
                 evo_config_values[i] = dct
 
-        maybe_parametrize("evo_config", short_name=None, values=evo_config_values)
+        maybe_parametrize("evo_config", short_name=None,
+                          values=evo_config_values)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -150,8 +155,9 @@ def pytest_collection_modifyitems(config, items):
             continue
         flag = flags[s_]
         slow_marks[s_] = \
-            pytest.mark.skip(reason=f"Test scale ({s_.name}) is larger than "
-                                    f"current target ({scale.name}). Use {flag} to run")
+            pytest.mark.skip(reason=f"Test scale ({s_.name}) is larger than"
+                                    f" current target ({scale.name}). Use"
+                                    f" {flag} to run")
 
     for item in items:
         if not hasattr(item, 'callspec'):
@@ -160,8 +166,10 @@ def pytest_collection_modifyitems(config, items):
         if item.originalname == "test_evolution":
             if config.getoption('evolution') is None:
                 item.add_marker(
-                    pytest.mark.skip(reason=f"Only running evolution test on explicit request. "
-                                            f"Use --test-evolution=[dict] to do so.")
+                    pytest.mark.skip(reason="Only running evolution test on"
+                                            " explicit request. Use"
+                                            " --test-evolution=[dict] to do"
+                                            " so.")
                 )
             continue
 

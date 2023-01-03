@@ -34,7 +34,7 @@ jobs:
         python -m pip install --upgrade pip
     - name: Install with test dependencies
       run: |
-        sudo apt install -y lcov
+        sudo apt install -y lcov graphviz
         python -m pip install .[tests]
     - name: Lint with flake8
       continue-on-error: true
@@ -42,7 +42,6 @@ jobs:
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --statistics
     - name: Test with pytest/coverage
-      continue-on-error: true
       run: |
         lcov --zerocounters --directory .
         

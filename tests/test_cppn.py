@@ -116,9 +116,11 @@ sample_sizes = [10, 50, 100]
 
 
 @test_steps('generate_cppn', *[f"sample_at_{s}" for s in sample_sizes])
-def test_multiscale_sampling(mutations, seed, tmp_path_factory):  # pragma: no cover
+def test_multiscale_sampling(mutations, seed, tmp_path_factory):  # pragma:
+    # no cover
     folder = tmp_path_factory.mktemp(numbered=False,
-                                     basename=f"test_multiscale_sampling_s{seed}_m{mutations}")
+                                     basename=f"test_multiscale_sampling_"
+                                              f"s{seed}_m{mutations}")
 
     cppn, genome = _make_cppn(seed, mutations)
 

@@ -8,12 +8,10 @@ import os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import sys
-from typing import List, Any, Optional
+from typing import List, Optional
 
 from sphinx.ext.autodoc import AttributeDocumenter
 from sphinx.util import logging
-
 from sphinx_pyproject import SphinxConfig
 
 # -- Project information -----------------------------------------------------
@@ -186,7 +184,8 @@ def process(what, name, obj, lines, multiline):
         del lines[1]
 
     if contains("arg0", lines):
-        kgd_log(f"Warning: Unnamed argument {what} {name} = {obj}({type(obj)})")
+        kgd_log(f"Warning: Unnamed argument {what} {name} ="
+                f" {obj}({type(obj)})")
         append(lines, f'.. warning:: Unnamed argument: {what} {name}',
                multiline)
 
@@ -243,4 +242,3 @@ def setup(app):
     app.connect('autodoc-process-signature', process_signature)
 
     app.add_autodocumenter(StaticClassMembersDocumenter)
-

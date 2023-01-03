@@ -1,13 +1,12 @@
 import logging
 import pydoc
-import warnings
 from pathlib import Path
 from random import Random
 
 import pytest
-
 from abrain.core.config import Config
 from abrain.core.genome import Genome, logger as genome_logger
+
 from _utils import assert_equal
 
 logging.root.setLevel(logging.NOTSET)
@@ -34,16 +33,16 @@ def test_random_genome():
 
     size_before = len(g.links)
     g._add_link(0, 0, 0)
-    assert len(g.links) == size_before + 1, f"Failed to append a link"
+    assert len(g.links) == size_before + 1, "Failed to append a link"
 
     g._add_node("id")
     assert len(g.nodes) == 1
 
     print(f"Full details of {g}")
-    print(f"\tNodes:")
+    print("\tNodes:")
     for node in g.nodes:
         print(f"\t\t{node}")
-    print(f"\tLinks:")
+    print("\tLinks:")
     for link in g.links:
         print(f"\t\t{link}")
 
@@ -210,14 +209,18 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens, capfd) \
             try:
                 g.mutate(rng)
                 assert len(g.nodes) == len(set([n.id for n in g.nodes]))
-                assert len(g.links) == len(set([(li.src, li.dst) for li in g.links]))
+                assert len(g.links) == len(set([(li.src, li.dst) for li
+                                                in g.links]))
                 assert not any(li.src == li.dst for li in g.links)
-                def valid_nid(nid): return nid < g.nextNodeID + g.INPUTS + g.OUTPUTS
+
+                def valid_nid(nid): return nid < \
+                    g.nextNodeID + g.INPUTS + g.OUTPUTS
                 # noinspection PyProtectedMember
                 degrees = Genome._compute_node_degrees(g.links)
                 for node in g.nodes:
                     d = degrees[node.id]
-                    assert not Genome._is_hidden(node.id) or (d.i > 0 and d.o > 0)
+                    assert not Genome._is_hidden(node.id) \
+                           or (d.i > 0 and d.o > 0)
                     assert valid_nid(node.id)
                 for link in g.links:
                     assert link.id < g.nextLinkID
@@ -235,13 +238,15 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens, capfd) \
                 depths = Genome._compute_node_depths(g.links)
                 for node in sorted(g.nodes, key=lambda n_: n_.id):
                     d = degrees[node.id]
-                    genome_logger.debug(f"\t{node} i:{d.i}, o:{d.o}, d:{depths[node.id]}")
+                    genome_logger.debug(f"\t{node} i:{d.i}, o:{d.o},"
+                                        f" d:{depths[node.id]}")
                 genome_logger.debug("Links:")
                 for link in sorted(g.links, key=lambda l_: l_.id):
                     genome_logger.debug(f"\t{link}")
 
                 g.to_dot(f"{tmp_path}/faulty_graph", "png", debug=True)
-                genome_logger.info(f"Wrote faulty graph to {tmp_path}/faulty_graph.png")
+                genome_logger.info(f"Wrote faulty graph to {tmp_path}/"
+                                   f"faulty_graph.png")
                 genome_logger.info(f"Wrote log to {tmp_path}/log")
 
                 raise e
@@ -252,15 +257,16 @@ def mutate_genome_topology(ad_rate, seed, tmp_path, output, gens, capfd) \
         return g
 
 
-def test_mutate_genome_topology_with_gvc_output(ad_rate, seed, tmp_path, capfd):
+def test_mutate_genome_topology_with_gvc_output(ad_rate, seed, tmp_path,
+                                                capfd):
     mutate_genome_topology(ad_rate, seed, tmp_path, output=True, gens=100,
                            capfd=capfd)
 
 
 def test_mutate_genome_topology(ad_rate, seed, tmp_path, capfd):
     gens = 1000
-    g = mutate_genome_topology(ad_rate, seed, tmp_path, output=False, gens=gens,
-                               capfd=None)
+    g = mutate_genome_topology(ad_rate, seed, tmp_path, output=False,
+                               gens=gens, capfd=None)
     save_function(g, tmp_path, capfd)(gens-1,
                                       title=f"gen{gens-1}, add/del: {ad_rate},"
                                             f" seed: {seed}")

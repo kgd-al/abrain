@@ -342,7 +342,7 @@ class Genome(_CPPNData):
 
         cleanup = False if debug is not None and "keepdot" in debug else True
 
-        return dot.render(path, format=ext, cleanup=False)
+        return dot.render(path, format=ext, cleanup=cleanup)
 
     ###########################################################################
     # Private mutation interface

@@ -6,10 +6,8 @@ import sys
 from distutils.command.build import build
 from pathlib import Path
 
-from setuptools import Extension, setup, find_packages, Command
+from setuptools import Extension, setup, Command
 from setuptools.command.build_ext import build_ext
-from setuptools.command.develop import develop
-from setuptools.command.install import install
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
 PLAT_TO_CMAKE = {
@@ -75,7 +73,7 @@ class CMakeBuild(build_ext):
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ")
                            if item]
 
-        # In this example, we pass in the version to C++. You might not need to.
+        # Pass the version to C++ (why not?)
         cmake_args +=\
             [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"] \
             # type: ignore[attr-defined]
@@ -93,7 +91,8 @@ class CMakeBuild(build_ext):
                     ninja_executable_path = Path(ninja.BIN_DIR) / "ninja"
                     cmake_args += [
                         "-GNinja",
-                        f"-DCMAKE_MAKE_PROGRAM:FILEPATH={ninja_executable_path}"
+                        f"-DCMAKE_MAKE_PROGRAM:FILEPATH="
+                        f"{ninja_executable_path}"
                     ]
                 except ImportError:
                     pass
@@ -101,10 +100,13 @@ class CMakeBuild(build_ext):
         else:
 
             # Single config generators are handled "normally"
-            single_config = any(x in cmake_generator for x in {"NMake", "Ninja"})
+            single_config = any(x in cmake_generator for x in
+                                {"NMake", "Ninja"})
 
-            # CMake allows an arch-in-generator style for backward compatibility
-            contains_arch = any(x in cmake_generator for x in {"ARM", "Win64"})
+            # CMake allows an arch-in-generator style for backward
+            # compatibility
+            contains_arch = any(x in cmake_generator for x in
+                                {"ARM", "Win64"})
 
             # Specify the arch if using MSVC generator, but only if it doesn't
             # contain a backward-compatibility arch spec already in the
@@ -130,7 +132,8 @@ class CMakeBuild(build_ext):
         # across all generators.
         if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
             # self.parallel is a Python 3 only way to set parallel jobs by hand
-            # using -j in the build_ext call, not supported by pip or PyPA-build
+            # using -j in the build_ext call, not supported by pip or
+            # PyPA-build
             if hasattr(self, "parallel") and self.parallel:
                 # CMake 3.12+ only.
                 build_args += [f"-j{self.parallel}"]
@@ -178,6 +181,7 @@ def generate_cppn_functions():
 #         install.run(self)
 #
 
+
 class BuildData(Command):
     description = "Build data"
 
@@ -193,6 +197,8 @@ class BuildData(Command):
         generate_cppn_functions()
 
 
+def is_build_ext(item): return item[0] == 'build_ext'
+
 class CustomBuildOrder(build):
     # def run(self):
     #     self.run_command('build_data')
@@ -202,8 +208,8 @@ class CustomBuildOrder(build):
         super().finalize_options()
         print(self.sub_commands)
         t1, t2 = itertools.tee(self.sub_commands)
-        pred = lambda item: item[0] == 'build_ext'
-        build_ext, tail = filter(pred, t1), itertools.filterfalse(pred, t2)
+        build_ext = filter(is_build_ext, t1)
+        tail = itertools.filterfalse(is_build_ext, t2)
         # build_data = ('build_data', build.has_pure_modules)
         # self.sub_commands[:] = [build_data] + list(build_ext) + list(tail)
         self.sub_commands[:] = list(build_ext) + list(tail)
