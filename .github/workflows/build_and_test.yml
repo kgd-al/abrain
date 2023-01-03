@@ -64,8 +64,8 @@ jobs:
       run: |
         mkdir -p $COV_OUT
         mv $(basename $PYCOVERAGE) $PYCOVERAGE
-        coverage report --data-file=$PYCOVERAGE --fail-under=100
         coverage html --data-file=$PYCOVERAGE -d $COV_OUT/html/python
+        coverage report --data-file=$PYCOVERAGE --fail-under=100
     - name: Compute c++ coverage
       continue-on-error: true
       run: |
@@ -95,8 +95,8 @@ jobs:
           )
         color: |
           (
-            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
-            "hsl($(( ${{ env.OUTPUT_TESTS }} > 0 ? 120 : 0)), 100%, 50%)"
-            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
-            "hsl($(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0)), 100%, 50%)"
+            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
+            'hsl('$(( ${{ env.OUTPUT_TESTS }} > 0 ? 120 : 0))', 100%, 50%)'
+            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
+            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
           )
