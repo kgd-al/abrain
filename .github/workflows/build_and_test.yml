@@ -48,8 +48,8 @@ jobs:
       continue-on-error: true
       run: |
         # Ensure PEP8 compliance
-        flake8 . --count --statistics --show-source
         echo "OUTPUT_FLAKE=$(flake8 . --count)" >> $GITHUB_ENV
+        flake8 . --count --statistics --show-source
     - name: Build-A-Badge-flake
       uses: peterrhodesdev/build-a-badge@v1.3.1
       with:
