@@ -106,7 +106,10 @@ jobs:
         [ $pcov != "N/A" -a $ccov != "N/A" ] && tcov=$(echo ".5 * ($pcov + $ccov)" | bc)
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
         covcolor(){
-          case $2 in "N/A") c="0";; "100") c="120";; *) c=$(echo "$2 * .6" | bc);; esac;
+          case $2 in "N/A") c="0";;
+                     "100") c="120";;
+                         *) c=$(echo "scale=0; $2 * .6 / 1" | bc);;
+          esac;
           echo "COLOR_$1=$c" >> $GITHUB_ENV
         }
         covcolor TCOV $tcov
