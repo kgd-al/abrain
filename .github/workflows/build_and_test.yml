@@ -130,7 +130,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         filename: ("badge-flake" "badge-tests" "badge-cov" "badge-pcov" "badge-ccov")
-        label: ("PEP8" "tests" "code coverage" "" "")
+        label: ("PEP8" "tests" "code coverage" " " " ")
         message: |
           (
             "${{ env.MSG_FLAKE }}"

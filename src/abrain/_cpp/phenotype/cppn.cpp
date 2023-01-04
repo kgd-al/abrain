@@ -112,7 +112,7 @@ std::map<V, K> reverse (const std::map<K, V> &m) {
   std::map<V, K> m_;
   for (const auto &p: m) m_.emplace(p.second, p.first);
   return m_;
-}
+} // LCOV_EXCL_LINE
 
 const std::map<CPPN::Function, CPPNData::Node::FuncID>
   CPPN::functionToName = reverse(CPPN::functions);

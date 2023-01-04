@@ -20,7 +20,7 @@ std::map<K,V> normalize (std::initializer_list<std::pair<K, V>> l) {
   for (const auto &p: l)  sum += p.second;
   for (auto &p: l) map[p.first] = p.second / sum;
   return map;
-}
+} // LCOV_EXCL_LINE
 
 Config::MutationRates Config::mutationRates =
     normalize<std::string, float>({
