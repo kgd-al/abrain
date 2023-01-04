@@ -41,6 +41,11 @@ jobs:
         echo "PYCOVERAGE=$pycoverage" >> $GITHUB_ENV
         cppcoverage=$cov_out/cpp.coverage.info
         echo "CPPCOVERAGE=$cppcoverage" >> $GITHUB_ENV
+        # Everything failed unless otherwise specified
+        echo "OUTPUT_TESTS=1" >> $GITHUB_ENV
+        echo "OUTPUT_TCOV=N/A" >> $GITHUB_ENV
+        echo "OUTPUT_PCOV=N/A" >> $GITHUB_ENV
+        echo "OUTPUT_CCOV=N/A" >> $GITHUB_ENV
     - name: Lint with flake8
       id: flake
       continue-on-error: true
@@ -52,7 +57,6 @@ jobs:
       run: |
         lcov --zerocounters --directory .
         
-        echo "OUTPUT_TESTS=1" >> $GITHUB_ENV
         coverage run --branch --data-file=$(basename $PYCOVERAGE) \
           --source=. --omit="tests/conftest.py,setup.py" \
           -m \
@@ -62,10 +66,11 @@ jobs:
     - name: Compute python coverage
       continue-on-error: true
       run: |
-        echo "OUTPUT_PCOV=0" >> $GITHUB_ENV
         mkdir -p $COV_OUT
         mv $(basename $PYCOVERAGE) $PYCOVERAGE
-        echo "OUTPUT_PCOV=0" >> $GITHUB_ENV
+        pcov=$(coverage report --data-file=$PYCOVERAGE \
+        | tail -n 1 | awk '{print $NF } | tr -d "%"')
+        echo "OUTPUT_PCOV=$pcov" >> $GITHUB_ENV
         coverage html --data-file=$PYCOVERAGE -d $COV_OUT/html/python
         coverage report --data-file=$PYCOVERAGE --fail-under=100
     - name: Compute c++ coverage
@@ -90,7 +95,7 @@ jobs:
         setenv '${{ env.OUTPUT_FLAKE }} -eq 0' \
           MSG_FLAKE Compliant "${{ env.OUTPUT_FLAKE }} error(s)"
         setenv '${{ env.OUTPUT_TESTS }} -eq 0' MSG_TESTS passing failed
-        tcov=$(( .5 * (${{ env.OUTPUT_PCOV }} + ${{ env.OUTPUT_CCOV }}))
+        tcov=$(( .5 * (${{ env.OUTPUT_PCOV }} + ${{ env.OUTPUT_CCOV }}) ))
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
     - name: Build Badges
       if: always() && !cancelled()
