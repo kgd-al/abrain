@@ -79,6 +79,8 @@ jobs:
       run: |
         lcov --capture --no-external --directory . --output-file=$CPPCOVERAGE
         lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE
+        ccov=$(lcov --summary $CPPCOVERAGE | grep 'lines' | sed 's/.*: \(.*\)%.*/\1/')
+        echo "OUTPUT_CCOV=$ccov" >> $GITHUB_ENV
         lcov --list $CPPCOVERAGE
         genhtml -q --demangle-cpp -o $COV_OUT/html/cpp $CPPCOVERAGE
     - name: Archive test artifacts
