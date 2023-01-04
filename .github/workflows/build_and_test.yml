@@ -21,7 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install pip
@@ -62,8 +62,10 @@ jobs:
     - name: Compute python coverage
       continue-on-error: true
       run: |
+        echo "OUTPUT_PCOV=0" >> $GITHUB_ENV
         mkdir -p $COV_OUT
         mv $(basename $PYCOVERAGE) $PYCOVERAGE
+        echo "OUTPUT_PCOV=0" >> $GITHUB_ENV
         coverage html --data-file=$PYCOVERAGE -d $COV_OUT/html/python
         coverage report --data-file=$PYCOVERAGE --fail-under=100
     - name: Compute c++ coverage
@@ -79,24 +81,38 @@ jobs:
         name: test-results-artifact
         path: tests-results
         retention-days: 2
+    - name: Prepare Badges variables
+      run: |
+        setenv(){
+          if [ $1 ]; then v=$3; else; v=$4; fi;
+          echo "$2=$v" >> $GITHUB_ENV
+        }
+        setenv '${{ env.OUTPUT_FLAKE }} -eq 0' \
+          MSG_FLAKE Compliant "${{ env.OUTPUT_FLAKE }} error(s)"
+        setenv '${{ env.OUTPUT_TESTS }} -eq 0' MSG_TESTS passing failed
+        tcov=$(( .5 * (${{ env.OUTPUT_PCOV }} + ${{ env.OUTPUT_CCOV }}))
+        echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
     - name: Build Badges
       if: always() && !cancelled()
       uses: peterrhodesdev/build-a-badge@v1.3.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        filename: ("badge-flake" "badge-tests" "badge-pcov" "badge-ccov")
-        label: ("flake" "tests" "py-cov" "cpp-cov")
+        filename: ("badge-flake" "badge-tests" "badge-cov" "badge-pcov" "badge-ccov")
+        label: ("PEP8" "tests" "code coverage" "" "")
         message: |
           (
-            "${{ env.OUTPUT_FLAKE }}"
-            "tests label"
-            "python coverage label"
-            "cpp coverage label"
+            "${{ env.MSG_FLAKE }}"
+            "MSG_TESTS"
+            "${{ env.OUTPUT_TCOV }}%"
+            "${{ env.OUTPUT_PCOV }}%"
+            "${{ env.OUTPUT_CCOV }}%"
           )
         color: |
           (
-            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
-            'hsl('$(( ${{ env.OUTPUT_TESTS }} > 0 ? 120 : 0))', 100%, 50%)'
-            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
-            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 120 : 0))', 100%, 50%)'
+            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 0 : 120))', 100%, 25%)'
+            'hsl('$(( ${{ env.OUTPUT_TESTS }} > 0 ? 0 : 120))', 100%, 25%)'
+            'hsl('$(( ${{ env.OUTPUT_TCOV }} * 1.2))', 100%, 25%)'
+            'hsl('$(( ${{ env.OUTPUT_PCOV }} * 1.2))', 100%, 25%)'
+            'hsl('$(( ${{ env.OUTPUT_CCOV }} * 1.2))', 100%, 25%)'
           )
+        namedLogo: ("" "" "" "python" "c++")
