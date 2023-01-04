@@ -93,9 +93,12 @@ jobs:
           echo "$2=$v" >> $GITHUB_ENV
         }
         setenv '${{ env.OUTPUT_FLAKE }} -eq 0' \
-          MSG_FLAKE Compliant "${{ env.OUTPUT_FLAKE }} error(s)"
+          MSG_FLAKE Compliant "${{ env.OUTPUT_FLAKE }} errors"
         setenv '${{ env.OUTPUT_TESTS }} -eq 0' MSG_TESTS passing failed
-        tcov=$(( .5 * (${{ env.OUTPUT_PCOV }} + ${{ env.OUTPUT_CCOV }}) ))
+        
+        pcov=${{ env.OUTPUT_PCOV }}; ccov=${{ env.OUTPUT_CCOV }};
+        [ $pcov != "N/A" -a $ccov != "N/A" ] \
+        && tcov=$(( .5 * ($pcov + $ccov) ))
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
     - name: Build Badges
       if: always() && !cancelled()
@@ -107,7 +110,7 @@ jobs:
         message: |
           (
             "${{ env.MSG_FLAKE }}"
-            "MSG_TESTS"
+            "${{ env.MSG_TESTS }}"
             "${{ env.OUTPUT_TCOV }}%"
             "${{ env.OUTPUT_PCOV }}%"
             "${{ env.OUTPUT_CCOV }}%"
