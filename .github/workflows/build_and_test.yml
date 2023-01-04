@@ -84,7 +84,7 @@ jobs:
     - name: Prepare Badges variables
       run: |
         setenv(){
-          if [ $1 ]; then v=$3; else; v=$4; fi;
+          if [ $1 ]; then v=$3; else v=$4; fi;
           echo "$2=$v" >> $GITHUB_ENV
         }
         setenv '${{ env.OUTPUT_FLAKE }} -eq 0' \
