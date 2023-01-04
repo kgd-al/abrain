@@ -94,12 +94,21 @@ jobs:
         }
         setenv '${{ env.OUTPUT_FLAKE }} -eq 0' \
           MSG_FLAKE Compliant "${{ env.OUTPUT_FLAKE }} errors"
+        echo "COLOR_FLAKE=$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 0 : 120))" >> $GITHUB_ENV
         setenv '${{ env.OUTPUT_TESTS }} -eq 0' MSG_TESTS passing failed
+        echo "COLOR_TESTS=$(( ${{ env.OUTPUT_TESTS }} > 0 ? 0 : 120))" >> $GITHUB_ENV
         
         pcov=${{ env.OUTPUT_PCOV }}; ccov=${{ env.OUTPUT_CCOV }};
         [ $pcov != "N/A" -a $ccov != "N/A" ] \
-        && tcov=$(( .5 * ($pcov + $ccov) ))
+        && tcov=$(( .5 * ($pcov + $ccov) )) || tcov="N/A"
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
+        covcolor(){
+          case $1 in "N/A") c="0";; "100") c="120";; *) c=$(echo "$1 * .6" | bc);; esac;
+        }
+        echo "COLOR_TCOV=$(covcolor $tcov)" >> $GITHUB_ENV
+        echo "COLOR_PCOV=$(covcolor $pcov)" >> $GITHUB_ENV
+        echo "COLOR_CCOV=$(covcolor $ccov)" >> $GITHUB_ENV
+        
     - name: Build Badges
       if: always() && !cancelled()
       uses: peterrhodesdev/build-a-badge@v1.3.1
@@ -117,10 +126,10 @@ jobs:
           )
         color: |
           (
-            'hsl('$(( ${{ env.OUTPUT_FLAKE }} > 0 ? 0 : 120))', 100%, 25%)'
-            'hsl('$(( ${{ env.OUTPUT_TESTS }} > 0 ? 0 : 120))', 100%, 25%)'
-            'hsl('$(( ${{ env.OUTPUT_TCOV }} * 1.2))', 100%, 25%)'
-            'hsl('$(( ${{ env.OUTPUT_PCOV }} * 1.2))', 100%, 25%)'
-            'hsl('$(( ${{ env.OUTPUT_CCOV }} * 1.2))', 100%, 25%)'
+            'hsl('${{ env.COLOR_FLAKE }}', 100%, 25%)'
+            'hsl('${{ env.COLOR_TESTS }}', 100%, 25%)'
+            'hsl('${{ env.COLOR_TCOV }}', 100%, 25%)'
+            'hsl('${{ env.COLOR_PCOV }}', 100%, 25%)'
+            'hsl('${{ env.COLOR_CCOV }}', 100%, 25%)'
           )
         namedLogo: ("" "" "" "python" "c++")
