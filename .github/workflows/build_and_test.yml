@@ -102,8 +102,8 @@ jobs:
         echo "COLOR_TESTS=$(( ${{ env.OUTPUT_TESTS }} > 0 ? 0 : 120))" >> $GITHUB_ENV
         
         pcov=${{ env.OUTPUT_PCOV }}; ccov=${{ env.OUTPUT_CCOV }};
-        [ $pcov != "N/A" -a $ccov != "N/A" ] \
-        && tcov=$(( .5 * ($pcov + $ccov) )) || tcov="N/A"
+        tcov="N/A"
+        [ $pcov != "N/A" -a $ccov != "N/A" ] && tcov=$(echo ".5 * ($pcov + $ccov)" | bc)
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
         covcolor(){
           case $2 in "N/A") c="0";; "100") c="120";; *) c=$(echo "$2 * .6" | bc);; esac;
