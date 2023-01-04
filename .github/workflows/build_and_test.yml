@@ -69,7 +69,7 @@ jobs:
         mkdir -p $COV_OUT
         mv $(basename $PYCOVERAGE) $PYCOVERAGE
         pcov=$(coverage report --data-file=$PYCOVERAGE \
-        | tail -n 1 | awk '{print $NF } | tr -d "%"')
+        | tail -n 1 | awk '{print $NF }' | tr -d "%")
         echo "OUTPUT_PCOV=$pcov" >> $GITHUB_ENV
         coverage html --data-file=$PYCOVERAGE -d $COV_OUT/html/python
         coverage report --data-file=$PYCOVERAGE --fail-under=100
@@ -103,11 +103,20 @@ jobs:
         && tcov=$(( .5 * ($pcov + $ccov) )) || tcov="N/A"
         echo "OUTPUT_TCOV=$tcov" >> $GITHUB_ENV
         covcolor(){
-          case $1 in "N/A") c="0";; "100") c="120";; *) c=$(echo "$1 * .6" | bc);; esac;
+          case $2 in "N/A") c="0";; "100") c="120";; *) c=$(echo "$1 * .6" | bc);; esac;
+          echo "COLOR_$1=$c" >> $GITHUB_ENV
         }
-        echo "COLOR_TCOV=$(covcolor $tcov)" >> $GITHUB_ENV
-        echo "COLOR_PCOV=$(covcolor $pcov)" >> $GITHUB_ENV
-        echo "COLOR_CCOV=$(covcolor $ccov)" >> $GITHUB_ENV
+        covcolor TCOV $tcov
+        covcolor PCOV $pcov
+        covcolor CCOV $ccov
+        covmsg(){
+          c=$2
+          [ $2 != "N/A" ] && c="$c%"
+          echo "MSG_$1=$c" >> $GITHUB_ENV
+        }
+        covmsg TCOV $tcov
+        covmsg PCOV $pcov
+        covmsg CCOV $ccov
         
     - name: Build Badges
       if: always() && !cancelled()
@@ -120,9 +129,9 @@ jobs:
           (
             "${{ env.MSG_FLAKE }}"
             "${{ env.MSG_TESTS }}"
-            "${{ env.OUTPUT_TCOV }}%"
-            "${{ env.OUTPUT_PCOV }}%"
-            "${{ env.OUTPUT_CCOV }}%"
+            "${{ env.MSG_TCOV }}%"
+            "${{ env.MSG_PCOV }}%"
+            "${{ env.MSG_CCOV }}%"
           )
         color: |
           (
