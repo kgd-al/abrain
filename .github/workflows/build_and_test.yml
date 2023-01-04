@@ -62,7 +62,7 @@ jobs:
           --source=. --omit="tests/conftest.py,setup.py" \
           -m \
           pytest --durations=10 --basetemp=$TEST_OUT -ra \
-            --small-scale
+            --small-scale --test-evolution
         echo "OUTPUT_TESTS=0" >> $GITHUB_ENV
     - name: Compute python coverage
       continue-on-error: true
