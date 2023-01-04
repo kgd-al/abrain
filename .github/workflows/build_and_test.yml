@@ -117,7 +117,7 @@ jobs:
         covcolor CCOV $ccov
         covmsg(){
           c=$2
-          [ $2 != "N/A" ] && c=$(printf "%g%%" "$c"
+          [ $2 != "N/A" ] && c=$(printf "%g%%" "$c")
           echo "MSG_$1=$c" >> $GITHUB_ENV
         }
         covmsg TCOV $tcov
