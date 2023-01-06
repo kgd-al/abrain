@@ -301,7 +301,7 @@ class Genome(_CPPNData):
             if '_' in label:
                 j = label.find('_')
                 label = label[:j] + "<SUB>" + label[j + 1:] + "</SUB>"
-            g_i.node(name, f"<{label}>", shape='plain',
+            g_i.node(name, f"<{label}>", shape='plaintext',
                      xlabel=node_x_label(i))
 
         img_format = "svg" if vectorial else "png"
@@ -320,7 +320,7 @@ class Genome(_CPPNData):
                      fixedsize="shape",
                      image=img_file(f),
                      xlabel=node_x_label(i + self.INPUTS))
-            g_ol.node(name + "_l", shape="plain", label=o_labels[i])
+            g_ol.node(name + "_l", shape="plaintext", label=o_labels[i])
             dot.edge(name, name + "_l")
 
         for i, n in enumerate(self.nodes):

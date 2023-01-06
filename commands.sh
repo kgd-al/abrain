@@ -88,6 +88,10 @@ cmd_install-dev(){  # Editable install (without pip)
 #   do_manual-install 'dev-test-doc'
 }
 
+cmd_install-cached(){
+  do_manual-install 'dev-test-doc'
+}
+
 cmd_pytest(){  # Perform the test suite (small scale with evolution)
   out=tests-results
   cout=$out/coverage

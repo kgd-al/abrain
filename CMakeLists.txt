@@ -8,9 +8,9 @@ project("abrain")
 message("\n####################################################################"
     "############\n## CMakeFile for ${PROJECT_NAME}")
 
-set(CMAKE_CXX_FLAGS "-Wall")
+set(CMAKE_CXX_FLAGS "")
 if(LINUX)
-  string(APPEND CMAKE_CXX_FLAGS " -Wextra -pedantic")
+  string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic")
 endif()
 if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /EHsc")
@@ -213,18 +213,20 @@ if (MAKE_STUBS)
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
         COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-#         COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
-#         COMMAND echo "             PATH: '$ENV{PATH}'"
-#         COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
-#         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
+        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+        COMMAND echo "             PATH: '$ENV{PATH}'"
+        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
         COMMAND ${CMAKE_COMMAND} -E
             env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.:$ENV{PYTHONPATH}"
             pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
                 --skip-signature-downgrade --no-setup-py --log-level DEBUG
                 ${LIB_CPP}
-        COMMAND cp -ruvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
-                      -t ${STUBS_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/ ${STUBS_DIR}
+#         COMMAND cp -ruvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
+#                       -t ${STUBS_DIR}
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMENT "-+ Generating python stubs from c++ bindings"
     )
