@@ -257,7 +257,7 @@ void CPPN::pre_evaluation(const Point &src, const Point &dst) const {
   for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
 
 #if ESHN_WITH_DISTANCE
-  static const float norm = 2*std::sqrt(2);
+  static const float norm = float(2*std::sqrt(2));
   _inputs[2*N]->data = (src - dst).length() / norm;
 #endif
 

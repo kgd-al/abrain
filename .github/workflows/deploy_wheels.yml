@@ -31,7 +31,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.4
         env:
           CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "apt install -y graphviz"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
 

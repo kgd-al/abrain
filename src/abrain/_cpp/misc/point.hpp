@@ -24,7 +24,12 @@ class Point_t {
 public:
   static constexpr auto DIMENSIONS = DI;
   static constexpr auto DECIMALS = DE;
-  static constexpr int RATIO = std::pow(10, DE);
+//   static constexpr int RATIO = std::pow(10, DE);
+  static constexpr int RATIO = [] {
+    int r = 1;
+    for (i=0; i<DE; i++) r *= 10;
+    return r;
+  }();
 
   static constexpr float EPSILON = [] {
     float v = 1;
