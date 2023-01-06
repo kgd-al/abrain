@@ -10,10 +10,12 @@ classifiers = [
   
   "Programming Language :: C++",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
   
   "License :: OSI Approved :: MIT License",
-  
+
+  "Operating System :: Unix",
+
   "Intended Audience :: Science/Research", 
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Artificial Life",
@@ -29,7 +31,7 @@ dependencies = [
 
 [projects.urls]
 "Homepage" = "https://github.com/kgd-al/abrain"
-"Documentation" = "Work in progess"
+"Documentation" = "https://abrain.rtfd.io"
 "Bug Tracker" = "https://github.com/kgd-al/abrain/issues"
 
 [build-system]

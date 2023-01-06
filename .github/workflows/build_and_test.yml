@@ -62,7 +62,7 @@ jobs:
           --source=. --omit="tests/conftest.py,setup.py" \
           -m \
           pytest --durations=10 --basetemp=$TEST_OUT -ra \
-            --small-scale --test-evolution
+            --normal-scale --test-evolution
         echo "OUTPUT_TESTS=0" >> $GITHUB_ENV
     - name: Compute python coverage
       continue-on-error: true
@@ -131,7 +131,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         filename: ("badge-flake" "badge-tests" "badge-cov" "badge-pcov" "badge-ccov")
         label: ("PEP8" "tests" "code coverage" "" "")
-        labelColor: ("" "" "" "555" " ")
+        labelColor: ("" "" "" "555" "555")
         message: |
           (
             "${{ env.MSG_FLAKE }}"

@@ -163,58 +163,27 @@ class CMakeBuild(build_ext):
         )
 
 
-def generate_cppn_functions():
-    print("calling script")
-    if not os.path.exists("src/abrain/core/functions/id.png"):
-        subprocess.check_call("src/abrain/core/functions/plotter.sh")
-
-#
-# class PreDevelopCommands(develop):
-#     def run(self):
-#         generate_cppn_functions()
-#         develop.run(self)
-#
-#
-# class PreInstallCommands(install):
-#     def run(self):
-#         generate_cppn_functions()
-#         install.run(self)
-#
-
-
 class BuildData(Command):
     description = "Build data"
-
     user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
+    def initialize_options(self): pass
+    def finalize_options(self): pass
 
     def run(self):
-        generate_cppn_functions()
+        if not os.path.exists("src/abrain/core/functions/id.png"):
+            subprocess.check_call("src/abrain/core/functions/plotter.sh")
 
 
 def is_build_ext(item): return item[0] == 'build_ext'
 
 
 class CustomBuildOrder(build):
-    # def run(self):
-    #     self.run_command('build_data')
-    #     build.run(self)
-
     def finalize_options(self) -> None:
         super().finalize_options()
-        print(self.sub_commands)
         t1, t2 = itertools.tee(self.sub_commands)
         build_ext = filter(is_build_ext, t1)
         tail = itertools.filterfalse(is_build_ext, t2)
-        # build_data = ('build_data', build.has_pure_modules)
-        # self.sub_commands[:] = [build_data] + list(build_ext) + list(tail)
         self.sub_commands[:] = list(build_ext) + list(tail)
-        print(self.sub_commands)
 
 
 # Most metadata is in pyproject.toml
@@ -225,8 +194,6 @@ setup(
     ext_modules=[CMakeExtension("abrain._cpp")],
     cmdclass={
         'build_ext': CMakeBuild,
-        # 'develop': PreDevelopCommands,
-        # 'install': PreInstallCommands,
         'build_data': BuildData,
         'build': CustomBuildOrder
     },
