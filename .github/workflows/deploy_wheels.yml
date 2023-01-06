@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.8] # Temporary fix. Remove as soon as possible
+        python_tag: [3.8] # Temporary fix. Remove as soon as possible
 
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.4
         env:
-          CIBW_PROJECT_REQUIRES_PYTHON: "== ${{ matrix.python-version }}"
+          CIBW_BUILD: "cp${{ matrix.python-version }}-*"
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
           CIBW_BEFORE_TEST_MACOS: "port install graphviz"
