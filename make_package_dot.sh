@@ -9,13 +9,14 @@ echo -e "\tfontsize=\"18\";" >> $out
 tmp=.$(basename $0)
 
 echo > $tmp.links
-find . -type f | grep -vP "(extern|build)" | grep -P ".*\.(cpp|h|hpp)" | sort \
+find src -type f | grep -vP "(extern|build)" | grep -P ".*\.(cpp|h|hpp)" | sort \
 | while read file
 do
   file=$(sed 's|^\./||' <<< $file)
   for include in $(grep "#include[ ]*\"" $file | sed 's|.*"\(.*\)"|\1|')
   do
     grep -q "pybind11" <<< $include && continue 
+    include=$(sed 's/constants/&_template/' <<< "$include")
     path=$(dirname $file)/$include
     realpath=$(realpath --relative-to=. -e $path)
     if [ -z "$realpath" ]
@@ -31,9 +32,9 @@ done || exit 2
 
 # Collect folders to get potential modules
 modules=(abrain_cpp \
-  $(cd python && find . -name "*.py" | xargs -I{} dirname {} | sed 's|^./||' | sort | uniq))  
+  $(find src -name "*.py" | xargs -I{} dirname {} | sed 's|^./||' | sort | uniq))  
 echo >> $tmp.links
-find python -name "*.py" \
+find src -name "*.py" \
 | while read file
 do
 #   echo $file
@@ -62,7 +63,7 @@ do
         refs+=($ref)
       done
       
-    # Must an honest python import
+    # Must be an honest python import
     else
       refs=("python/"$(tr '.' '/' <<< $module).py)
     fi

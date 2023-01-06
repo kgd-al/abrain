@@ -1,7 +1,11 @@
 name: Build, test, upload (PyPI)
 
 # Build on every branch push, tag push, and pull request change:
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 # Alternatively, to publish when a (published) GitHub Release is created, use the following:
 # on:
 #   push:
@@ -9,6 +13,7 @@ on: [push, pull_request]
 #   release:
 #     types:
 #       - published
+  workflow_dispatch:
 
 jobs:
   build_wheels:
@@ -26,7 +31,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.11.4
         env:
           CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: sudo apt install graphviz
+          CIBW_BEFORE_TEST_LINUX: "which sudo; sudo apt install -y graphviz"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
 

@@ -8,7 +8,10 @@ project("abrain")
 message("\n####################################################################"
     "############\n## CMakeFile for ${PROJECT_NAME}")
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic")
+set(CMAKE_CXX_FLAGS "-Wall")
+if(LINUX)
+  string(APPEND CMAKE_CXX_FLAGS " -Wextra -pedantic")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 

@@ -4,6 +4,8 @@
 #include <cmath>
 #include <sstream>
 
+#include "constants.h"
+
 namespace kgd::eshn::misc {
 
 template <uint DI, uint DE>

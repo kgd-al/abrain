@@ -1,6 +1,8 @@
 #ifndef CPPN_CONSTANTS_TEMPLATE_H
 #define CPPN_CONSTANTS_TEMPLATE_H
 
+typedef unsigned int uint;
+
 namespace kgd::abrain {
 
 static constexpr const char* BUILD_TYPE = "${CMAKE_BUILD_TYPE}";
