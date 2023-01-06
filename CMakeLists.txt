@@ -12,6 +12,9 @@ set(CMAKE_CXX_FLAGS "-Wall")
 if(LINUX)
   string(APPEND CMAKE_CXX_FLAGS " -Wextra -pedantic")
 endif()
+if(MSVC)
+  string(APPEND CMAKE_CXX_FLAGS " /EHsc")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 

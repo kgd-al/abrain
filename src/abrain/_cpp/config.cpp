@@ -32,7 +32,7 @@ Config::MutationRates Config::mutationRates =
                 { "mut_f", 2.5f   },
 });
 
-Config::FBounds Config::cppnWeightBounds {-3.f, -1.f, 1.f, 3.f, 0.01};
+Config::FBounds Config::cppnWeightBounds {-3.f, -1.f, 1.f, 3.f, 0.01f};
 
 /// ================================================
 /// ANN parameters
@@ -47,8 +47,8 @@ uint Config::initialDepth = 2;
 uint Config::maxDepth = 3;
 uint Config::iterations = 10;
 
-float Config::divThr = .3;
-float Config::varThr = .3;
-float Config::bndThr = .15;
+float Config::divThr = .3f;
+float Config::varThr = .3f;
+float Config::bndThr = .15f;
 
 } // end of namespace kgd::eshn

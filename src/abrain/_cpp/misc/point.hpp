@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <sstream>
+#include <array>
 
 #include "constants.h"
 

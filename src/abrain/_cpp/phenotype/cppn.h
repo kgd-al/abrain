@@ -32,13 +32,15 @@ public:
 private:
   struct Node_base {
     float data;
+    
+    virtual ~Node_base(void) = default;
 
     virtual float value (void) = 0;
   };
   using Node_ptr = std::shared_ptr<Node_base>;
   using Node_wptr = std::weak_ptr<Node_base>;
 
-  struct INode : public Node_base {
+  struct INode final : public Node_base {
     float value (void) override;
   };
 
@@ -47,7 +49,7 @@ private:
     Node_wptr node;
   };
 
-  struct FNode : public Node_base {
+  struct FNode final : public Node_base {
     float value (void) override;
 
     const Function func;
