@@ -27,7 +27,7 @@ public:
 //   static constexpr int RATIO = std::pow(10, DE);
   static constexpr int RATIO = [] {
     int r = 1;
-    for (i=0; i<DE; i++) r *= 10;
+    for (uint i=0; i<DE; i++) r *= 10;
     return r;
   }();
 

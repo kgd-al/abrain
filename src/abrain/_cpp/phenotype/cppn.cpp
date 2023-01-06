@@ -70,11 +70,11 @@ using CPPNData = kgd::eshn::genotype::CPPNData;
 //  float. Computationally more expensive but ensures bitwise identical CPPN/ANN
 
 float fd_exp(float x) {
-  return static_cast<double(*)(double)>(std::exp)(x);
+  return (float)static_cast<double(*)(double)>(std::exp)(x);
 }
 
 float fd_sin(float x) {
-  return static_cast<double(*)(double)>(std::sin)(x);
+  return (float)static_cast<double(*)(double)>(std::sin)(x);
 }
 
 #define KGD_EXP fd_exp
