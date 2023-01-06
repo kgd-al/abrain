@@ -27,7 +27,7 @@ jobs:
         env:
           CIBW_TEST_EXTRAS: tests
           CIBW_TEST_COMMAND: |
-            "pytest {project}/tests -ra --small-scale --test-evolution"
+            pytest {project}/tests -ra --small-scale --test-evolution
 
       - uses: actions/upload-artifact@v3
         with:
