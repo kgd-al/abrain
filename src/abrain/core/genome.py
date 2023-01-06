@@ -145,6 +145,8 @@ class Genome(_CPPNData):
             "mut_w": [self.__random_mutate_weight]
         }
 
+        assert sum(rates.values()) > 0  # Should never occur outside tests
+
         choice = rng.choices(list(rates.keys()), list(rates.values()))[0]
         actions[choice][0](rng, *actions[choice][1:])
 

@@ -281,10 +281,9 @@ def test_mutate_genome_deepcopy(seed):
     with RatesGuard({"add_n": 1}):
         for _ in range(steps):
             parent.mutate(rng)
+        child = parent.mutated(rng)
 
         assert_equal(parent, parent.copy())
-
-        child = parent.mutated(rng)
 
     assert len(parent.nodes) == len(child.nodes) - 1
 
@@ -293,7 +292,7 @@ def test_mutate_genome_deepcopy(seed):
             parent.mutate(rng)
 
     with RatesGuard({"del_n": 1}):
-        for _ in range(2*steps+1):
+        for _ in range(steps+1):
             child.mutate(rng)
         assert len(child.nodes) == 0
 

@@ -209,6 +209,10 @@ message("> Compile with: ${CMAKE_CXX_FLAGS}")
 
 if (MAKE_STUBS)
     set(STUBS_DIR ${PROJECT_SOURCE_DIR}/src/${PROJECT_NAME}/${LIB_CPP})
+    set(PATH_SEP ":")
+    if (WIN32)
+      set(PATH_SEP ";")
+    endif()
     add_custom_command(
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
@@ -219,7 +223,7 @@ if (MAKE_STUBS)
         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
         COMMAND ${CMAKE_COMMAND} -E
             env "PATH=${BUILD_TIME_PATH}"
-            env "PYTHONPATH=.:$ENV{PYTHONPATH}"
+            env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"
             pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
                 --skip-signature-downgrade --no-setup-py --log-level DEBUG
                 ${LIB_CPP}

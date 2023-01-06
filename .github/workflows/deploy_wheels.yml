@@ -32,6 +32,7 @@ jobs:
         env:
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
+          CIBW_BEFORE_TEST_MACOS: "port install graphviz"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
 

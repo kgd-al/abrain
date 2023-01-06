@@ -27,7 +27,8 @@ def pytest_addoption(parser):
                      dest='size',
                      help='Run moderate test suite '
                           '(two mutation cases, 8 repeats...)')
-    parser.addoption(flags[TestSize.LARGE], action='store_const',
+    parser.addoption(flags[TestSize.LARGE], "--large-scale",
+                     action='store_const',
                      const=TestSize.LARGE, dest='size',
                      help='Run large test suite '
                           '(4 mutation cases, 16 repeats...). '
