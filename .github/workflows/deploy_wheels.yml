@@ -31,7 +31,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.4
         env:
-          CIBW_BUILD: "cp${{ matrix.python-version }}-*"
+          CIBW_BUILD: "cp${{ matrix.python_tag }}-*"
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
           CIBW_BEFORE_TEST_MACOS: "port install graphviz"
