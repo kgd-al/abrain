@@ -7,6 +7,7 @@ import pathlib
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
+from shutil import which
 from typing import Dict, List
 
 from graphviz import Digraph
@@ -17,6 +18,9 @@ from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData
 
 logger = logging.getLogger(__name__ + ".mutations")
+
+
+dot_found = (which("dot") is not None)
 
 
 class Genome(_CPPNData):
@@ -244,7 +248,18 @@ class Genome(_CPPNData):
 
                 - 'depth' will display every nodes' depth
 
+        Raises:
+            OSError: if the `dot` program is not available (not installed, on
+            the path and executable)
         """
+        if not dot_found:
+            raise OSError("""
+                dot program not found. Make sure it is installed before using
+                 this function.
+                 
+                [ubuntu] sudo apt install graphviz 
+            """)
+
         path = pathlib.Path(path)
         if path.suffix != "":
             ext = path.suffix.replace('.', '')
