@@ -33,7 +33,7 @@ jobs:
           [ "$os" == "linux" ] && github_os="ubuntu" 
           for bt in $(pipx run cibuildwheel --platform $os --print-build-identifiers)
           do
-            mjson="$mjson {\"os\": \"$github_os-latest\", \"build\": \"$bt\"},"
+            mjson="$mjson {\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
         done
         mjson="$mjson]}"
@@ -44,7 +44,7 @@ jobs:
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
@@ -53,6 +53,7 @@ jobs:
       - name: Faking build wheels
         run: |
           echo "Building ${{ matrix.build }}"
+          mkdir wheelhouse
           python -c "import random; exit(random.random() < .5)" && touch "wheelhouse/${{ matrix.build }}.whl"
       #- uses: actions/checkout@v3
 
@@ -100,6 +101,11 @@ jobs:
       - name: Generate summary
         run: |
           ls dist
+          for build in $(echo ${{ needs.collect_targets.outputs.matrix }} | jq -r '.include[].build')
+          do
+            ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
+            echo '$mark $build' >> $GITHUB_STEP_SUMMARY
+          done
 
     # For testing purposes, upload always
     #if: always()
