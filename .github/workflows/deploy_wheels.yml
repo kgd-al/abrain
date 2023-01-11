@@ -40,6 +40,7 @@ jobs:
         mjson=$(sed 's/,]/]/' <<< $mjson)
         echo $mjson | jq .
         echo "matrix=$mjson" >> $GITHUB_OUTPUT
+        
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
@@ -50,10 +51,9 @@ jobs:
 
     steps:
       - name: Faking build wheels
-        continue-on-error: true
         run: |
           echo "Building ${{ matrix.build }}"
-          python -c "import random; exit(random.random() < .5) && touch "wheelhouse/${{ matrix.build }}.whl"
+          python -c "import random; exit(random.random() < .5)" && touch "wheelhouse/${{ matrix.build }}.whl"
       #- uses: actions/checkout@v3
 
       #- name: Build wheels
@@ -68,9 +68,9 @@ jobs:
           #CIBW_TEST_COMMAND: |
             #pytest {project}/tests -ra --small-scale --test-evolution -v
 
-      #- uses: actions/upload-artifact@v3
-        #with:
-          #path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
 
   build_sdist:
     name: Build source distribution
@@ -88,31 +88,29 @@ jobs:
   post_build:
     needs: [build_wheels, build_sdist]
     name: Post-build processing
-    if: always() && !cancelled()
     runs-on: ubuntu-latest
+    if: always() && !cancelled()
     steps:
+      - uses: actions/download-artifact@v3
+        name: download sdist/wheels
+        with:
+          name: artifact
+          path: dist
+          
       - name: Generate summary
         run: |
-          ls wheelhouse
+          ls dist
 
-  upload_pypi:
-    needs: [post_build]
-    runs-on: ubuntu-latest
     # For testing purposes, upload always
     #if: always()
     ## upload to PyPI on every tag starting with 'v'
     #if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     # alternatively, to publish when a GitHub Release is created, use the following rule:
     # if: github.event_name == 'release' && github.event.action == 'published'
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          # unpacks default artifact into dist/
-          # if `name: artifact` is omitted, the action will create extra parent dir
-          name: artifact
-          path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
+        name: upload to PyPI
+        if: ! always()
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
