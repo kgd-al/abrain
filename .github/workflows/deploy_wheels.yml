@@ -19,6 +19,7 @@ jobs:
   collect_targets:
     name: Collecting build targets
     steps:
+    - name: Generating json string
       run: |
         mjson="{\"include\":["
         for os in linux macos windows
