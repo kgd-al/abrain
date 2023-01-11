@@ -33,7 +33,7 @@ jobs:
           done
         done
         mjson="$mjson]}"
-        msjon=$(sed 's/,]/]/' <<< $mjson)
+        mjson=$(sed 's/,]/]/' <<< $mjson)
         echo $mjson
         echo "matrix=$mjson" >> $GITHUB_OUTPUT
   build_wheels:
