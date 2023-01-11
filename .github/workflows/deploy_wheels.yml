@@ -38,7 +38,7 @@ jobs:
         done
         mjson="$mjson]}"
         mjson=$(sed 's/,]/]/' <<< $mjson)
-        echo '${{ toJSON($mjson) }}
+        echo $mjson | jq .
         echo "matrix=$mjson" >> $GITHUB_OUTPUT
   build_wheels:
     needs: collect_targets
