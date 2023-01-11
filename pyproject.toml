@@ -4,7 +4,7 @@ version = "0.1b"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"
-requires-python = ">=3.8,<3.10"
+requires-python = ">=3.8"
 classifiers = [
   "Development Status :: 3 - Alpha",
   

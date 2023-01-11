@@ -16,13 +16,29 @@ on:
   workflow_dispatch:
 
 jobs:
+  collect_targets:
+    name: Collecting build targets
+    steps:
+      run: |
+        mjson="{\"include\":["
+        for os in linux macos windows
+        do
+          for bt in $(pipx cibuildwheel --platform $os --print-build-identifiers)
+          do
+            mjson="$mjson {\"os\": \"$os-latest\", \"build\": \"$bt\"},"
+          done
+        done
+        mjson="$mjson]}"
+        msjon=$(sed 's/,]/]/' <<< $mjson)
+        echo $mjson
+        echo "MATRIX_JSON=$mjson" >> $GITHUB_ENV
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
+    needs: collect_targets
+    name: Build ${{ matrix.build }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+      matrix: ${{ fromJson(env.MATRIX_JSON) }}
 
     steps:
       - uses: actions/checkout@v3
@@ -30,13 +46,13 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.11.4
         env:
-          CIBW_BUILD: "cp*"
+          CIBW_BUILD: ${{ matrix.build }}
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+            pytest {project}/tests -ra --small-scale --test-evolution -v
 
       - uses: actions/upload-artifact@v3
         with:
