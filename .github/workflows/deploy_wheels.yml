@@ -43,7 +43,6 @@ jobs:
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
-    id: build-${{ matrix.os }}-${{ matrix.build }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
