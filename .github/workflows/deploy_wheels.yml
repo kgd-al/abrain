@@ -54,14 +54,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Building ${{ matrix.build }}"
-          python -c - <<EOF
-import random
-fail = random.random() < .5
-if not fail:
-  with open(f"wheelhouse/{${{ matrix.build }}}.whl") as f:
-    f.write("hello")    
-exit(fail)
-EOF
+          python -c "import random; exit(random.random() < .5) && touch "wheelhouse/${{ matrix.build }}.whl"
       #- uses: actions/checkout@v3
 
       #- name: Build wheels
