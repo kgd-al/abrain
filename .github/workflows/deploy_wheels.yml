@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Generating json string
+      id: gen-mjson
       run: |
         mjson="{\"include\":["
         for os in linux macos windows
@@ -33,14 +34,14 @@ jobs:
         mjson="$mjson]}"
         msjon=$(sed 's/,]/]/' <<< $mjson)
         echo $mjson
-        echo "MATRIX_JSON=$mjson" >> $GITHUB_ENV
+        echo "matrix=$mjson" >> $GITHUB_OUTPUT
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(env.MATRIX_JSON) }}
+      matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v3
