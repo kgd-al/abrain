@@ -89,7 +89,7 @@ jobs:
     needs: [build_wheels, build_sdist]
     name: Post-build processing
     runs-on: ubuntu-latest
-    if: always() && !cancelled()
+    if: ${{ always() && !cancelled() }}
     steps:
       - uses: actions/download-artifact@v3
         name: download sdist/wheels
@@ -110,7 +110,7 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
         name: upload to PyPI
-        if: ! always()
+        if: ${{ ! always() }}
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
