@@ -26,7 +26,7 @@ jobs:
         mjson="{\"include\":["
         for os in linux macos windows
         do
-          for bt in $(pipx cibuildwheel --platform $os --print-build-identifiers)
+          for bt in $(pipx run cibuildwheel --platform $os --print-build-identifiers)
           do
             mjson="$mjson {\"os\": \"$os-latest\", \"build\": \"$bt\"},"
           done
