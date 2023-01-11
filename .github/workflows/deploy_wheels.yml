@@ -38,33 +38,47 @@ jobs:
         done
         mjson="$mjson]}"
         mjson=$(sed 's/,]/]/' <<< $mjson)
-        echo $mjson
+        echo '${{ toJSON($mjson) }}
         echo "matrix=$mjson" >> $GITHUB_OUTPUT
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
+    id: build-${{ matrix.os }}-${{ matrix.build }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Faking build wheels
+        continue-on-error: true
+        run: |
+          echo "Building ${{ matrix.build }}"
+          python -c - <<EOF
+import random
+fail = random.random() < .5
+if not fail:
+  with open(f"wheelhouse/{${{ matrix.build }}}.whl") as f:
+    f.write("hello")    
+exit(fail)
+EOF
+      #- uses: actions/checkout@v3
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.11.4
-        env:
-          CIBW_BUILD: ${{ matrix.build }}
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
-          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
-          CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution -v
+      #- name: Build wheels
+      #continue-on-error: true
+        #uses: pypa/cibuildwheel@v2.11.4
+        #env:
+          #CIBW_BUILD: ${{ matrix.build }}
+          #CIBW_TEST_EXTRAS: tests
+          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
+          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          #CIBW_TEST_COMMAND: |
+            #pytest {project}/tests -ra --small-scale --test-evolution -v
 
-      - uses: actions/upload-artifact@v3
-        with:
-          path: ./wheelhouse/*.whl
+      #- uses: actions/upload-artifact@v3
+        #with:
+          #path: ./wheelhouse/*.whl
 
   build_sdist:
     name: Build source distribution
@@ -79,8 +93,18 @@ jobs:
         with:
           path: dist/*.tar.gz
 
-  upload_pypi:
+  post_build:
     needs: [build_wheels, build_sdist]
+    name: Post-build processing
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate summary
+        run: |
+          ls wheelhouse
+
+  upload_pypi:
+    needs: [post_build]
     runs-on: ubuntu-latest
     # For testing purposes, upload always
     #if: always()
