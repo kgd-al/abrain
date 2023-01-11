@@ -29,9 +29,11 @@ jobs:
         mjson="{\"include\":["
         for os in linux macos windows
         do
+          github_os=$os
+          [ "$os" == "linux" ] && github_os="ubuntu" 
           for bt in $(pipx run cibuildwheel --platform $os --print-build-identifiers)
           do
-            mjson="$mjson {\"os\": \"$os-latest\", \"build\": \"$bt\"},"
+            mjson="$mjson {\"os\": \"$github_os-latest\", \"build\": \"$bt\"},"
           done
         done
         mjson="$mjson]}"
