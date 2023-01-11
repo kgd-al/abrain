@@ -105,6 +105,7 @@ jobs:
           do
             ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
             echo '$mark $build' >> $GITHUB_STEP_SUMMARY
+            echo '$mark $build'
           done
 
     # For testing purposes, upload always
