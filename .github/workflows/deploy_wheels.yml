@@ -100,13 +100,18 @@ jobs:
           
       - name: Generate summary
         run: |
-          ls dist
           mjson='${{ needs.collect_targets.outputs.matrix }}'
-          for build in $(echo $mjson | jq -r '.include[].build')
+          builds=$(echo $mjson | jq -r '.include[].build')
+          rate=$(echo $(ls dist/*.whl) $(wc -l <<< $builds) | awk '{printf "%.0g", $1/$2}')
+          echo "# Build summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Global rate: $rate%" >> $GITHUB_STEP_SUMMARY
+          echo "## Details:" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Build |" >> $GITHUB_STEP_SUMMARY
+          echo "| :----: | :---- |" >> $GITHUB_STEP_SUMMARY
+          for build in $builds
           do
             ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
-            echo "$mark $build" >> $GITHUB_STEP_SUMMARY
-            echo "$mark $build"
+            echo "| $mark | $build |" >> $GITHUB_STEP_SUMMARY
           done
 
     # For testing purposes, upload always
