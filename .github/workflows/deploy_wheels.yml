@@ -62,11 +62,11 @@ jobs:
         env:
           CIBW_BUILD: ${{ matrix.build }}
           CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution -v
+            pytest {project}/tests -ra --small-scale --test-evolution
 
       - uses: actions/upload-artifact@v3
         with:
@@ -111,7 +111,7 @@ jobs:
           
           for outfile in $wiki $GITHUB_STEP_SUMMARY
           do
-            echo "# Build summary" >> 
+            echo "# Build summary" >> $outfile
             echo "Successfully $rate% of wheels" >> $outfile
             echo "## Details:" >> $outfile
             echo "| Status | Build |" >> $outfile
