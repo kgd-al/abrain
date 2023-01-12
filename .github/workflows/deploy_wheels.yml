@@ -102,7 +102,10 @@ jobs:
         run: |
           mjson='${{ needs.collect_targets.outputs.matrix }}'
           builds=$(echo $mjson | jq -r '.include[].build')
-          rate=$(echo $(ls dist/*.whl) $(wc -l <<< $builds) | awk '{printf "%.0g", $1/$2}')
+          builds_n=$(wc -l <<< $builds)
+          found=$(ls dist/*.whl | wc -l)
+          echo "Built $found / $builds_n"
+          rate=$(echo "$found $builds_n" | awk '{printf "%.0g", $1/$2}')
           echo "# Build summary" >> $GITHUB_STEP_SUMMARY
           echo "## Global rate: $rate%" >> $GITHUB_STEP_SUMMARY
           echo "## Details:" >> $GITHUB_STEP_SUMMARY
