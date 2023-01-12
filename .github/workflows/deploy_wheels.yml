@@ -50,24 +50,23 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      - name: Faking build wheels
-        run: |
-          echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse
-          python -c "import random; exit(random.random() < .5)" && touch "wheelhouse/${{ matrix.build }}.whl"
-      #- uses: actions/checkout@v3
+      #- name: Faking build wheels
+        #run: |
+          #echo "Building ${{ matrix.build }}"
+          #mkdir wheelhouse
+          #python -c "import random; exit(random.random() < .5)" && touch "wheelhouse/${{ matrix.build }}.whl"
+      - uses: actions/checkout@v3
 
-      #- name: Build wheels
-      #continue-on-error: true
-        #uses: pypa/cibuildwheel@v2.11.4
-        #env:
-          #CIBW_BUILD: ${{ matrix.build }}
-          #CIBW_TEST_EXTRAS: tests
-          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
-          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
-          #CIBW_TEST_COMMAND: |
-            #pytest {project}/tests -ra --small-scale --test-evolution -v
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.11.4
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_TEST_EXTRAS: tests
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz"
+          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          CIBW_TEST_COMMAND: |
+            pytest {project}/tests -ra --small-scale --test-evolution -v
 
       - uses: actions/upload-artifact@v3
         with:
@@ -105,7 +104,7 @@ jobs:
           builds_n=$(wc -l <<< $builds)
           found=$(ls dist/*.whl | wc -l)
           echo "Built $found / $builds_n"
-          rate=$(echo "$found $builds_n" | awk '{printf "%.0g", $1/$2}')
+          rate=$(echo "$found $builds_n" | awk '{printf "%.0g", 100*$1/$2}')
           echo "# Build summary" >> $GITHUB_STEP_SUMMARY
           echo "## Global rate: $rate%" >> $GITHUB_STEP_SUMMARY
           echo "## Details:" >> $GITHUB_STEP_SUMMARY
