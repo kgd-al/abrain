@@ -2,9 +2,9 @@ name: Build, test, upload (PyPI)
 
 # Build on every branch push, tag push, and pull request change:
 on:
-  #push:
-    #branches:
-      #- main
+  push:
+    branches:
+      - main
   pull_request:
 # Alternatively, to publish when a (published) GitHub Release is created, use the following:
 # on:
