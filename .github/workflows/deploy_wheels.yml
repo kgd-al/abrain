@@ -2,9 +2,9 @@ name: Build, test, upload (PyPI)
 
 # Build on every branch push, tag push, and pull request change:
 on:
-  push:
-    branches:
-      - main
+  #push:
+    #branches:
+      #- main
   pull_request:
 # Alternatively, to publish when a (published) GitHub Release is created, use the following:
 # on:
@@ -104,18 +104,32 @@ jobs:
           builds_n=$(wc -l <<< $builds)
           found=$(ls dist/*.whl | wc -l)
           echo "Built $found / $builds_n"
-          rate=$(echo "$found $builds_n" | awk '{printf "%.0g", 100*$1/$2}')
-          echo "# Build summary" >> $GITHUB_STEP_SUMMARY
-          echo "## Global rate: $rate%" >> $GITHUB_STEP_SUMMARY
-          echo "## Details:" >> $GITHUB_STEP_SUMMARY
-          echo "| Status | Build |" >> $GITHUB_STEP_SUMMARY
-          echo "| :----: | :---- |" >> $GITHUB_STEP_SUMMARY
-          for build in $builds
+          rate=$(echo "$found $builds_n" | awk '{printf "%.0f", 100*$1/$2}')
+          
+          mkdir wiki
+          wiki="wiki/wheels.md"
+          
+          for outfile in $wiki $GITHUB_STEP_SUMMARY
           do
-            ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
-            echo "| $mark | $build |" >> $GITHUB_STEP_SUMMARY
+            echo "# Build summary" >> 
+            echo "Successfully $rate% of wheels" >> $outfile
+            echo "## Details:" >> $outfile
+            echo "| Status | Build |" >> $outfile
+            echo "| :----: | :---- |" >> $outfile
+            for build in $builds
+            do
+              ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
+              echo "| $mark | $build |" >> $outfile
+            done
           done
-
+      
+      - name: Upload summary to Wiki
+        uses: SwiftDocOrg/github-wiki-publish-action@v1
+        with:
+          path: "wiki"
+        env:
+          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          
     # For testing purposes, upload always
     #if: always()
     ## upload to PyPI on every tag starting with 'v'
