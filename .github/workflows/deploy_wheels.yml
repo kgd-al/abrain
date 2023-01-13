@@ -63,6 +63,7 @@ jobs:
           echo "  print('Simulated error')" >> script.py
           echo "  print('##[error]Process completed with exit code 1')" >> script.py
           echo "exit(fail)" >> script.py
+          python script.py
                     
       #- uses: actions/checkout@v3
 
@@ -121,9 +122,13 @@ jobs:
           mkdir wiki
           wiki="wiki/wheels.md"
           
-          # Get the errors
-          gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed \
-          | grep -i "\berror\b" | grep -v "\]Process completed" > jobs_log
+          # Get the errors (single file log fails while running)
+          #gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed \
+          #| grep -i "\berror\b" | grep -v "\]Process completed" > jobs_log
+          
+          # Get the errors (through a zip archive)
+          gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
+          unzip -d logs/ logs.zip
           
           err_log=errors.md
           echo > $err_log
@@ -132,12 +137,12 @@ jobs:
             echo "# Build summary"
             echo "Successfully built $rate% of wheels"
             echo "## Details:"
-            echo "| Status | Build | Step | Error |"
-            echo "| :----: | :---- | ---- | ----- |"
+            echo "| Status | Build | Error |"
+            echo "| :----: | :---- | ----- |"
             for build in $builds
             do
               mark=":heavy_check_mark:" 
-              error=" | "
+              error=" "
               
               # If wheel file was not uploaded -> error
               if [ ! -f dist/*$build*.whl ]
@@ -146,8 +151,8 @@ jobs:
                 
                 # Look it up in the logs
                 echo "## $build" >> err_log
-                grep $build jobs_log | tr "\t" "|" \
-                | sed 's/:[0-9][0-9]\.[0-9]*Z /|/' | cut -d '|' -f 2,4 >> err_log
+                grep -i '\berror\b' logs/*$build* | cut -d ' ' -f 2- > tmp
+                cat tmp >> err_log
                 error=$(tail -n 1 tmp)
               fi
               echo "| $mark | $build | $error |"
