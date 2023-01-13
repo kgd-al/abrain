@@ -178,7 +178,7 @@ jobs:
                 # Look it up in the logs
                 echo "## $build" >> err_log
                 grep -i '\berror\b' logs/*$build*.log \
-                | grep -v "##\[error\]Process completed" > tmp
+                | grep -v "##\[error\]Process completed" | tr -d '\r' > tmp
                 cat tmp >> err_log
                 error=$(tail -n 1 tmp)
                 
@@ -186,7 +186,7 @@ jobs:
               fi
               echo "| $mark | $build | $error |"
               echo "| $mark | $build | $error |" >&2
-            done | sort -t '|' -k3,3r
+            done | sort -t '|' -k4,4r
             cat err_log
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
