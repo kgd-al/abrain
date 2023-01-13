@@ -16,6 +16,18 @@ on:
   workflow_dispatch:
 
 jobs:
+  try_read_logs:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+      echo "Output something to the logs"
+      echo "Trying to get acces to logs for ${{ github.run_id }}"
+      gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.logs_url'
+      gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
+      gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed
+      ls -lh
+      exit 1
+
   collect_targets:
     name: Collecting build targets
     runs-on: ubuntu-latest
@@ -57,7 +69,7 @@ jobs:
           echo "import random" > script.py
           echo "fail = (random.random() < .5)" >> script.py
           echo "if not fail:" >> script.py
-          echo "  open('wheelhouse/${{ matrix.build }}.whl')" >> script.py
+          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
           echo "  print('Success')" >> script.py
           echo "else:" >> script.py
           echo "  print('Simulated error')" >> script.py
