@@ -27,7 +27,7 @@ jobs:
         echo "Output something to the logs"
         echo "Trying to get acces to logs for ${{ github.run_id }}"
         echo "gh api runs url"
-        gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.' || echo "Failed"
+        gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }} || echo "Failed"
         echo
         echo "gh api runs logs"
         gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip  || echo "Failed"
