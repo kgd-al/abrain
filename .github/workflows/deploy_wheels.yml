@@ -34,7 +34,7 @@ jobs:
         cat logs
         echo
         ls -lh
-        gh run -R kgd-al/abrain cancel ${{ github.run_id }}
+        #gh run -R kgd-al/abrain cancel ${{ github.run_id }}
 
   collect_targets:
     name: Collecting build targets
