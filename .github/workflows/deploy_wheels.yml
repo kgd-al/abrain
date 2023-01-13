@@ -53,7 +53,8 @@ jobs:
       - name: Faking build wheels
         run: |
           echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse logs
+          mkdir -pv wheelhouse
+          mkdir -pv logs
           echo "import random" > script.py
           echo "fail = (random.random() < .5)" >> script.py
           echo "if not fail:" >> script.py
@@ -175,13 +176,16 @@ jobs:
                 mark=":x:"
                 
                 # Look it up in the logs
-                echo "## $build" >> err_log
-                grep -i '\berror\b' logs/*$build*.log | cut -d ' ' -f 2- > tmp
+                echo "## $build {#$build-details}" >> err_log
+                grep -i '\berror\b' logs/*$build*.log \
+                | grep -v "##\[error\]Process completed" > tmp
                 cat tmp >> err_log
                 error=$(tail -n 1 tmp)
+                
+                build="[$build](#$build-details)
               fi
               echo "| $mark | $build | $error |"
-            done
+            done | sort -t '|' -k3,3r
             cat err_log
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
