@@ -28,6 +28,7 @@ jobs:
         echo "Trying to get acces to logs for ${{ github.run_id }}"
         echo "gh api runs url"
         logs_url=$(gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }} -q '.logs_url' || echo "Failed")
+        echo "logs_url: $logs_url"
         curl -H "Authorization: token ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" -L $logs_url -o logs
         echo
         cat logs
