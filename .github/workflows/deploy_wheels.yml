@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Test
+      env:
+        GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
       run: |
         echo "Output something to the logs"
         echo "Trying to get acces to logs for ${{ github.run_id }}"
