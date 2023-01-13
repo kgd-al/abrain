@@ -54,16 +54,16 @@ jobs:
         run: |
           echo "Building ${{ matrix.build }}"
           mkdir wheelhouse
-          flip=$(($RANDOM%2))
-          if [ $flip -eq 0 ]
-          then
-            touch "wheelhouse/${{ matrix.build }}.whl"
-            echo "Success"
-          else
-            echo "Simulated error"
-            echo "##[error]Process completed with exit code 1"
-          fi
-          
+          echo "import random" > script.py
+          echo "fail = (random.random() < .5)" >> script.py
+          echo "if not fail:" >> script.py
+          echo "  open('wheelhouse/${{ matrix.build }}.whl')" >> script.py
+          echo "  print('Success')" >> script.py
+          echo "else:" >> script.py
+          echo "  print('Simulated error')" >> script.py
+          echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          echo "exit(fail)" >> script.py
+                    
       #- uses: actions/checkout@v3
 
       #- name: Build wheels
@@ -110,6 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
+          echo "Generating summary"
           mjson='${{ needs.collect_targets.outputs.matrix }}'
           builds=$(echo $mjson | jq -r '.include[].build')
           builds_n=$(wc -l <<< $builds)
@@ -121,8 +122,8 @@ jobs:
           wiki="wiki/wheels.md"
           
           # Get the errors
-          gh run view ${{ github.run_id }} --log-failed | grep -i "\berror\b" \
-          | grep -v "\]Process completed" > jobs_log
+          gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed \
+          | grep -i "\berror\b" | grep -v "\]Process completed" > jobs_log
           
           err_log=errors.md
           echo > $err_log
