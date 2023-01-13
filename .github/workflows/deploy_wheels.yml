@@ -70,33 +70,33 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      - name: Faking build wheels
-        run: |
-          echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse
-          echo "import random" > script.py
-          echo "fail = (random.random() < .5)" >> script.py
-          echo "if not fail:" >> script.py
-          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          echo "  print('Success')" >> script.py
-          echo "else:" >> script.py
-          echo "  print('Simulated error')" >> script.py
-          echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          echo "exit(fail)" >> script.py
-          python script.py
+      #- name: Faking build wheels
+        #run: |
+          #echo "Building ${{ matrix.build }}"
+          #mkdir wheelhouse
+          #echo "import random" > script.py
+          #echo "fail = (random.random() < .5)" >> script.py
+          #echo "if not fail:" >> script.py
+          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          #echo "  print('Success')" >> script.py
+          #echo "else:" >> script.py
+          #echo "  print('Simulated error')" >> script.py
+          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          #echo "exit(fail)" >> script.py
+          #python script.py
                     
-      #- uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      #- name: Build wheels
-        #uses: pypa/cibuildwheel@v2.11.4
-        #env:
-          #CIBW_BUILD: ${{ matrix.build }}
-          #CIBW_TEST_EXTRAS: tests
-          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
-          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
-          #CIBW_TEST_COMMAND: |
-            #pytest {project}/tests -ra --small-scale --test-evolution
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.11.4
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_TEST_EXTRAS: tests
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
+          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          CIBW_TEST_COMMAND: |
+            pytest {project}/tests -ra --small-scale --test-evolution
 
       - uses: actions/upload-artifact@v3
         with:
