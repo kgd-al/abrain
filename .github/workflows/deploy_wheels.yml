@@ -50,23 +50,32 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      #- name: Faking build wheels
-        #run: |
-          #echo "Building ${{ matrix.build }}"
-          #mkdir wheelhouse
-          #python -c "import random; exit(random.random() < .5)" && touch "wheelhouse/${{ matrix.build }}.whl"
-      - uses: actions/checkout@v3
+      - name: Faking build wheels
+        run: |
+          echo "Building ${{ matrix.build }}"
+          mkdir wheelhouse
+          flip=$(($RANDOM%2))
+          if [ $flip -eq 0 ]
+          then
+            touch "wheelhouse/${{ matrix.build }}.whl"
+            echo "Success"
+          else
+            echo "Simulated error"
+            echo "##[error]Process completed with exit code 1"
+          fi
+          
+      #- uses: actions/checkout@v3
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.11.4
-        env:
-          CIBW_BUILD: ${{ matrix.build }}
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
-          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
-          CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+      #- name: Build wheels
+        #uses: pypa/cibuildwheel@v2.11.4
+        #env:
+          #CIBW_BUILD: ${{ matrix.build }}
+          #CIBW_TEST_EXTRAS: tests
+          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
+          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          #CIBW_TEST_COMMAND: |
+            #pytest {project}/tests -ra --small-scale --test-evolution
 
       - uses: actions/upload-artifact@v3
         with:
@@ -109,19 +118,39 @@ jobs:
           mkdir wiki
           wiki="wiki/wheels.md"
           
-          for outfile in $wiki $GITHUB_STEP_SUMMARY
-          do
-            echo "# Build summary" >> $outfile
-            echo "Successfully $rate% of wheels" >> $outfile
-            echo "## Details:" >> $outfile
-            echo "| Status | Build |" >> $outfile
-            echo "| :----: | :---- |" >> $outfile
+          # Get the errors
+          gh run view ${{ github.run_id }} --log-failed | grep -i "\berror\b" \
+          | grep -v "\]Process completed" > jobs_log
+          
+          err_log=errors.md
+          echo > $err_log
+
+          (
+            echo "# Build summary"
+            echo "Successfully built $rate% of wheels"
+            echo "## Details:"
+            echo "| Status | Build | Step | Error |"
+            echo "| :----: | :---- | ---- | ----- |"
             for build in $builds
             do
-              ls dist/*$build*.whl && mark=":heavy_check_mark:" || mark=":x:"
-              echo "| $mark | $build |" >> $outfile
+              mark=":heavy_check_mark:" 
+              error=" | "
+              
+              # If wheel file was not uploaded -> error
+              if [ ! -f dist/*$build*.whl ]
+              then
+                mark=":x:"
+                
+                # Look it up in the logs
+                echo "## $build" >> err_log
+                grep $build jobs_log | tr "\t" "|" \
+                | sed 's/:[0-9][0-9]\.[0-9]*Z /|/' | cut -d '|' -f 2,4 >> err_log
+                error=$(tail -n 1 tmp)
+              fi
+              echo "| $mark | $build | $error |"
             done
-          done
+            cat err_log
+          ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
       - name: Upload summary to Wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
