@@ -92,8 +92,9 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          path: ./wheelhouse/*.whl
-          path: ./logs/*.log
+          path: |
+            ./wheelhouse/*.whl
+            ./logs/*.log
 
   build_sdist:
     name: Build source distribution
