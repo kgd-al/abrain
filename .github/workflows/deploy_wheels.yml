@@ -182,7 +182,7 @@ jobs:
                 cat tmp >> err_log
                 error=$(tail -n 1 tmp)
                 
-                build="[$build](#$build-details)
+                build="[$build](#$build-details)"
               fi
               echo "| $mark | $build | $error |"
             done | sort -t '|' -k3,3r
