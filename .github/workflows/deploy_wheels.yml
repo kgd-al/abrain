@@ -19,14 +19,15 @@ jobs:
   try_read_logs:
     runs-on: ubuntu-latest
     steps:
-    - run: |
-      echo "Output something to the logs"
-      echo "Trying to get acces to logs for ${{ github.run_id }}"
-      gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.logs_url'
-      gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
-      gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed
-      ls -lh
-      exit 1
+    - name: Test
+      run: |
+        echo "Output something to the logs"
+        echo "Trying to get acces to logs for ${{ github.run_id }}"
+        gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.logs_url'
+        gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
+        gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed
+        ls -lh
+        exit 1
 
   collect_targets:
     name: Collecting build targets
