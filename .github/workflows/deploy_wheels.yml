@@ -16,26 +16,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  try_read_logs:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-    - name: Test
-      env:
-        GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-      run: |
-        echo "Output something to the logs"
-        echo "Trying to get acces to logs for ${{ github.run_id }}"
-        echo "gh api runs url"
-        logs_url=$(gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }} -q '.logs_url' || echo "Failed")
-        echo "logs_url: $logs_url"
-        curl -H "Authorization: token ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" -L $logs_url -o logs
-        echo
-        cat logs
-        echo
-        ls -lh
-        #gh run -R kgd-al/abrain cancel ${{ github.run_id }}
-
   collect_targets:
     name: Collecting build targets
     runs-on: ubuntu-latest
@@ -96,9 +76,9 @@ jobs:
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
-          run: |
-            mkdir logs
-            pipx run cibuildwheel | tee logs/${{ matrix.build }}.log
+        run: |
+          mkdir logs
+          pipx run cibuildwheel | tee logs/${{ matrix.build }}.log
       #- name: Build wheels
         #uses: pypa/cibuildwheel@v2.11.4
         #env:
