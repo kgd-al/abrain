@@ -53,14 +53,15 @@ jobs:
       - name: Faking build wheels
         run: |
           echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse
+          mkdir wheelhouse logs
           echo "import random" > script.py
           echo "fail = (random.random() < .5)" >> script.py
           echo "if not fail:" >> script.py
           echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
           echo "  print('Success')" >> script.py
           echo "else:" >> script.py
-          echo "  print('Simulated error')" >> script.py
+          echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
+          echo "  print('Simulated error', msg)" >> script.py
           echo "  print('##[error]Process completed with exit code 1')" >> script.py
           echo "exit(fail)" >> script.py
           python script.py 2>&1 | tee logs/${{ matrix.build }}.log
@@ -102,6 +103,7 @@ jobs:
           name: dist
           path: ./wheelhouse/*.whl
       - uses: actions/upload-artifact@v3
+        if: ${{ always() && !cancelled() }}
         with:
           name: logs
           path: ./logs/*.log
@@ -116,8 +118,8 @@ jobs:
         run: pipx run build --sdist
 
       - uses: actions/upload-artifact@v3
-        name: dist
         with:
+          name: dist
           path: dist/*.tar.gz
 
   post_build:
