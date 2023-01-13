@@ -26,9 +26,9 @@ jobs:
       run: |
         echo "Output something to the logs"
         echo "Trying to get acces to logs for ${{ github.run_id }}"
-        gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.logs_url'
-        gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
-        gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed
+        gh api /repos/kgd-al/abrain/actions/runs/3909767000 -q '.logs_url' || echo "Failed"
+        gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip  || echo "Failed"
+        gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed  || echo "Failed"
         ls -lh
         gh run cancel ${{ github.run_id }}
 
