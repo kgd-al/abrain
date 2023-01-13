@@ -18,8 +18,8 @@ on:
 jobs:
   try_read_logs:
     runs-on: ubuntu-latest
-    steps:
     continue-on-error: true
+    steps:
     - name: Test
       env:
         GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
