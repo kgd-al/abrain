@@ -19,6 +19,7 @@ jobs:
   try_read_logs:
     runs-on: ubuntu-latest
     steps:
+    continue-on-error: true
     - name: Test
       env:
         GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
@@ -29,7 +30,7 @@ jobs:
         gh api /repos/kgd-al/abrain/actions/runs/${{ github.run_id }}/logs > logs.zip
         gh run -R kgd-al/abrain view ${{ github.run_id }} --log-failed
         ls -lh
-        exit 1
+        gh run cancel ${{ github.run_id }}
 
   collect_targets:
     name: Collecting build targets
