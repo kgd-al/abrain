@@ -50,35 +50,41 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      #- name: Faking build wheels
-        #run: |
-          #echo "Building ${{ matrix.build }}"
-          #mkdir wheelhouse
-          #echo "import random" > script.py
-          #echo "fail = (random.random() < .5)" >> script.py
-          #echo "if not fail:" >> script.py
-          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          #echo "  print('Success')" >> script.py
-          #echo "else:" >> script.py
-          #echo "  print('Simulated error')" >> script.py
-          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          #echo "exit(fail)" >> script.py
-          #python script.py
-                    
-      - uses: actions/checkout@v3
-
-      - name: Build wheels
-        env:
-          CIBW_BUILD: ${{ matrix.build }}
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
-          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
-          CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+      - name: Faking build wheels
         run: |
-          mkdir logs
-          pipx run cibuildwheel | tee logs/${{ matrix.build }}.log
+          echo "Building ${{ matrix.build }}"
+          mkdir wheelhouse
+          echo "import random" > script.py
+          echo "fail = (random.random() < .5)" >> script.py
+          echo "if not fail:" >> script.py
+          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          echo "  print('Success')" >> script.py
+          echo "else:" >> script.py
+          echo "  print('Simulated error')" >> script.py
+          echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          echo "exit(fail)" >> script.py
+          python script.py 2>&1 | tee logs/${{ matrix.build }}.log
+          exit ${PIPESTATUS[0]}
+                    
+      #- uses: actions/checkout@v3
+
+      #- name: Build wheels
+        #env:
+          #CIBW_BUILD: ${{ matrix.build }}
+          #CIBW_BUILD_VERBOSITY: -v
+          #CIBW_TEST_EXTRAS: tests
+          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt-get install -y graphviz"
+          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          #CIBW_TEST_COMMAND: |
+            #pytest {project}/tests -ra --small-scale --test-evolution
+        #run: |
+          #mkdir logs
+          #pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
+          #exit ${PIPESTATUS[0]}
+          
+      # --------
+      # Unable to use github logs or redirect. Abandonned in favor of manual invocation
       #- name: Build wheels
         #uses: pypa/cibuildwheel@v2.11.4
         #env:
@@ -89,12 +95,16 @@ jobs:
           #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
           #CIBW_TEST_COMMAND: |
             #pytest {project}/tests -ra --small-scale --test-evolution
+      # --------
 
       - uses: actions/upload-artifact@v3
         with:
-          path: |
-            ./wheelhouse/*.whl
-            ./logs/*.log
+          name: dist
+          path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v3
+        with:
+          name: logs
+          path: ./logs/*.log
 
   build_sdist:
     name: Build source distribution
@@ -106,6 +116,7 @@ jobs:
         run: pipx run build --sdist
 
       - uses: actions/upload-artifact@v3
+        name: dist
         with:
           path: dist/*.tar.gz
 
@@ -118,8 +129,14 @@ jobs:
       - uses: actions/download-artifact@v3
         name: download sdist/wheels
         with:
-          name: artifact
+          name: dist
           path: dist
+          
+      - uses: actions/download-artifact@v3
+        name: download logs
+        with:
+          name: logs
+          path: logs
           
       - name: Generate summary
         env:
