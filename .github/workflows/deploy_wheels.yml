@@ -76,9 +76,9 @@ jobs:
           CIBW_BUILD_VERBOSITY: -v
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk install -y graphviz"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
         run: |
@@ -183,13 +183,16 @@ jobs:
               error=" "
               
               # If wheel file was not uploaded -> error
-              if [ ! -f dist/*$build*.whl ]
+              # x86 final name is different from built type
+              build_search=$(sed 's/x86/*x86/' <<< $build)
+              wheel=$(find dist -name "*$build_search*.whl")
+              if [ ! -z $wheel ]
               then
                 mark=":x:"
                 
                 # Look it up in the logs
                 echo "## $build" >> err_log
-                grep -i '\berror\b' logs/*$build*.log \
+                grep -i -e '\berror\b' -e '\bfailed\b' logs/*$build*.log \
                 | grep -v "##\[error\]Process completed" | tr -d '\r' > tmp
                 cat tmp >> err_log
                 error=$(tail -n 1 tmp)

@@ -21,7 +21,17 @@ C++/Python implementation of the genotype/phenotype components of Evolvable Subs
 
 ## Optional dependencies:
 
-    - Graphviz (dot) to generate directed graphs for the genomes
+### Graphviz (dot)
+
+To generate directed graphs for the genomes
+Can only be fetched by system installer (apt-get, yum, ...)
+See https://graphviz.org/download/ for instructions
+
+### Kaleido
+
+To generate non-interactive images of ANN (through plotly)
+Due to inconsistent support, left as an optional dependency
+Use `pip install abrain[...,kaleido]` to get it
 
 ## Todo list:
  - Functionalities:
