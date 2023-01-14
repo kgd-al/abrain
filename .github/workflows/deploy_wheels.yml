@@ -50,43 +50,43 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      - name: Faking build wheels
-        shell: bash
-        run: |
-          echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse
-          mkdir logs
-          echo "import random" > script.py
-          echo "fail = (random.random() < .5)" >> script.py
-          echo "if not fail:" >> script.py
-          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          echo "  print('Success')" >> script.py
-          echo "else:" >> script.py
-          echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
-          echo "  print('Simulated error', msg)" >> script.py
-          echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          echo "exit(fail)" >> script.py
-          python3 script.py 2>&1 | tee logs/${{ matrix.build }}.log
-          exit ${PIPESTATUS[0]}
-                    
-      #- uses: actions/checkout@v3
-
-      #- name: Build wheels
-        #env:
-          #CIBW_BUILD: ${{ matrix.build }}
-          #CIBW_BUILD_VERBOSITY: -v
-          #CIBW_TEST_EXTRAS: tests
-          #CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
-          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
-          #CIBW_TEST_COMMAND: |
-            #pytest {project}/tests -ra --small-scale --test-evolution
+      #- name: Faking build wheels
         #shell: bash
         #run: |
+          #echo "Building ${{ matrix.build }}"
+          #mkdir wheelhouse
           #mkdir logs
-          #pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
+          #echo "import random" > script.py
+          #echo "fail = (random.random() < .5)" >> script.py
+          #echo "if not fail:" >> script.py
+          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          #echo "  print('Success')" >> script.py
+          #echo "else:" >> script.py
+          #echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
+          #echo "  print('Simulated error', msg)" >> script.py
+          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          #echo "exit(fail)" >> script.py
+          #python3 script.py 2>&1 | tee logs/${{ matrix.build }}.log
           #exit ${PIPESTATUS[0]}
+                    
+      - uses: actions/checkout@v3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_BUILD_VERBOSITY: -v
+          CIBW_TEST_EXTRAS: tests
+          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
+          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
+          CIBW_TEST_COMMAND: |
+            pytest {project}/tests -ra --small-scale --test-evolution
+        shell: bash
+        run: |
+          mkdir logs
+          pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
+          exit ${PIPESTATUS[0]}
           
       # --------
       # Unable to use github logs or redirect. Abandonned in favor of manual invocation
