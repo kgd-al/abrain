@@ -189,7 +189,7 @@ jobs:
               echo find dist -name "*$build_search*.whl" >&2
               wheel=$(find dist -name "*$build_search*.whl")
               echo ">> $wheel" >&2
-              if [ ! -z $wheel ]
+              if [ -z $wheel ]
               then
                 mark=":x:"
                 
@@ -203,7 +203,7 @@ jobs:
                 build="[$build](#$build)"
               fi
               echo "| $mark | $build | $error |"
-            done | sort -t '|' -k4,4 | nl -s '|'
+            done | sort -t '|' -k4,4 | nl -s ' ' | sed 's/^/|/'
             cat err_log
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
