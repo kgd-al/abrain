@@ -75,7 +75,8 @@ jobs:
           CIBW_BUILD: ${{ matrix.build }}
           CIBW_BUILD_VERBOSITY: -v
           CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt-get install -y graphviz"
+          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk install -y graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
           CIBW_TEST_COMMAND: |
@@ -84,6 +85,7 @@ jobs:
           mkdir logs
           pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
           exit ${PIPESTATUS[0]}
+        shell: bash
           
       # --------
       # Unable to use github logs or redirect. Abandonned in favor of manual invocation
@@ -116,12 +118,18 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Build sdist
-        run: pipx run build --sdist
+        run: pipx run build --sdist | tee logs/sdist.log
+          exit ${PIPESTATUS[0]}
 
       - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist/*.tar.gz
+      - uses: actions/upload-artifact@v3
+        if: ${{ always() && !cancelled() }}
+        with:
+          name: logs
+          path: ./logs/*.log
 
   post_build:
     needs: [collect_targets, build_wheels, build_sdist]
@@ -146,6 +154,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Generating summary"
+          ls dist/* logs/*
+          
           mjson='${{ needs.collect_targets.outputs.matrix }}'
           builds=$(echo $mjson | jq -r '.include[].build')
           builds_n=$(wc -l <<< $builds)

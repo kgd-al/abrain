@@ -26,7 +26,6 @@ dependencies = [
   "importlib_resources",
   "graphviz",
   "pyrecord",
-  "kaleido"
 ]
 
 [projects.urls]
@@ -59,6 +58,8 @@ docs = [
   "sphinx_design",  # for the nice flowing cards
   "matplotlib"  # for the plot extension
 ]
+
+kaleido = [ "kaleido" ]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
