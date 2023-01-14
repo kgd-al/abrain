@@ -186,8 +186,9 @@ jobs:
               # If wheel file was not uploaded -> error
               # x86 final name is different from built type
               build_search=$(sed 's/x86/*x86/' <<< $build)
-              echo find dist -name "*$build_search*.whl"
+              echo find dist -name "*$build_search*.whl" >&2
               wheel=$(find dist -name "*$build_search*.whl")
+              echo ">> $wheel" >&2
               if [ ! -z $wheel ]
               then
                 mark=":x:"
