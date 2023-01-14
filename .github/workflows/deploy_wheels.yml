@@ -119,7 +119,8 @@ jobs:
 
       - name: Build sdist
         run: |
-          pipx run build --sdist | tee logs/sdist.log
+          mkdir logs
+          pipx run build --sdist 2>&1 | tee logs/sdist.log
           exit ${PIPESTATUS[0]}
 
       - uses: actions/upload-artifact@v3
