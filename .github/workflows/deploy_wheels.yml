@@ -78,7 +78,7 @@ jobs:
           CIBW_BUILD_VERBOSITY: -v
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz libjpeg"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_TEST_COMMAND: |
@@ -178,7 +178,7 @@ jobs:
                 # Look it up in the logs
                 log=$(ls logs/*$build*.log)
                 echo "#### $build" >> $errs_log
-                grep -i -e '\berror\b' -e '\bfailed\b' log \
+                grep -i -e '\berror\b' -e '\bfailed\b' -e '\bwarning\b' $log \
                 | grep -v "##\[error\]Process completed" \
                 | sed -e 's/##\[error\]//' -e 's/::error:://' | tr -d '\r' > tmp
                 cat tmp >> $errs_log
@@ -197,7 +197,7 @@ jobs:
               
               echo "$build|$status" | sed -e 's/-/|/' \
                 -e 's/\([cp]p\)\([0-9]\)/\1 \2./' -e 's/^cp/CPython/' \
-                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1 (\2)/' \
+                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1<br>(\2)/' \
                 >> $matrix_log
             done
             
@@ -212,11 +212,14 @@ jobs:
               }{
                 d[$1][$2]=$3; r[$1]=1; c[$2]=1 
               }END{
-                printf " |";
+                PROCINFO["sorted_in"] = "@ind_str_asc";
+                printf "| |";
                 for (c_ in c) printf " %s |", c_;
+                printf "\n| --- |";
+                for (c_ in c) printf " %s |", ":---:";
                 printf "\n";
                 for (r_ in r) {
-                  printf "%s |", r_;
+                  printf "| %s |", r_;
                   for (c_ in c) printf " %s |", symbols[d[r_][c_]];
                   printf "\n";
                 }

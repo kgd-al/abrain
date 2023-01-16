@@ -16,7 +16,6 @@
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-ccov.md)
 
 
-
 C++/Python implementation of the genotype/phenotype components of Evolvable Substrate HyperNEAT (read without evolution and speciation).
 
 ## Optional dependencies:
@@ -55,3 +54,10 @@ Use `pip install abrain[...,kaleido]` to get it
     - Packaging:
       - include c++ stubs?
       - move to scikit/poetry/... ?
+      
+    - Installation errors:
+      - cp38,...,311-manylinux_i686 fail because cppn outputs diverge between manual and subset/all
+      - pp38,39-manylinux_i686,x86_64; pp38,39-macosx_x86_64; pp38,39-win_amd64 fail because of strange import error in numpy
+      - cp38,...,311-musllinux_i686 fail because of pillow needs a jpeg library
+        > Solved? Added libjpeg to the apk (musllinux) install
+      - cp38,..,311-win32,amd64 fail because of encoding error in ANN rendering
