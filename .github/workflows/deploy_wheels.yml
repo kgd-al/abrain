@@ -157,15 +157,16 @@ jobs:
           mkdir wiki
           wiki="wiki/wheels.md"
                     
-          built_log=built.md
-          truncate -s 0 $built_log
-
-          errs_log=errors.md
-          truncate -s 0 $errs_log
+          built_table=built.md
+          errs_table=errors.md
+          matrix_log=matrix_log
+          errs_log=err_log
 
           (
             for build in $builds
             do
+              status=0
+            
               # If wheel file was not uploaded -> error
               # x86 final name is different from built type
               build_search=$(sed 's/x86/*x86/' <<< $build)
@@ -175,35 +176,64 @@ jobs:
               if [ -z $wheel ]
               then
                 # Look it up in the logs
-                echo "## $build" >> err_log
+                echo "#### $build" >> $errs_log
                 grep -i -e '\berror\b' -e '\bfailed\b' logs/*$build*.log \
                 | grep -v "##\[error\]Process completed" \
                 | sed -e 's/##\[error\]//' -e 's/::error:://' | tr -d '\r' > tmp
-                cat tmp >> err_log
+                cat tmp >> $errs_log
                 
                 n=1 # Windows logs contain a newline in the last error -> merge
                 [[ $wheel == *win* ]] && n=$(($n + 1))
                 error=$(tail -n $n tmp | tr -d '\n' | sed 's/$/\n/')
                 
                 build="[$build](#$build)"
-                echo "| :x: | $build | $error |" >> $errs_log
+                echo "| :x: | $build | $error |" >> $errs_table
+                status=1
                 
               else
-                echo "| :heavy_check_mark: | $build |" >> $built_log
+                echo "| :heavy_check_mark: | $build |" >> $built_table
               fi
+              
+              echo "$build|$status" | sed -e 's/-/|/' \
+                -e 's/\([cp]p\)\([0-9]\)/\1 \2./' -e 's/^cp/CPython/' \
+                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1 (\2)/' \
+                >> $matrix_log
             done
             
             echo "# Build summary"
             echo "## Sucessfully built wheels"
             echo "|     | Build |"
             echo "| :-: | :---- |"
-            cat $built_log
+            cat $built_table
+            echo
             echo "Successfully built $rate% of wheels"
             
             echo "## Unsuccessful builds:"
             echo "|     | Build | Error |"
             echo "| :-: | :---- | ----- |"
-            cat $errs_log  | sort -t '|' -k4,4
+            cat $errs_table  | sort -t '|' -k4,4
+            echo
+            echo "### Details:"
+            cat $errs_log
+            
+            echo "## Matrix summary test"
+            awk -F '|' '
+              BEGIN{
+                symbols[""]=":black_circle:";
+                symbols[0]=":heavy_check_mark:";
+                symbols[1]=":x:";
+              }{
+                d[$1][$2]=$3; r[$1]=1; c[$2]=1 
+              }END{
+                printf " |";
+                for (c_ in c) printf " %s |", c_;
+                printf "\n";
+                for (r_ in r) {
+                  printf "%s |", r_;
+                  for (c_ in c) printf " %s |", symbols[d[r_][c_]];
+                  printf "\n";
+                }
+              }' $matrix_log
             
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
