@@ -50,58 +50,46 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      #- name: Faking build wheels
-        #shell: bash
-        #run: |
-          #echo "Building ${{ matrix.build }}"
-          #mkdir wheelhouse
-          #mkdir logs
-          #echo "import random" > script.py
-          #echo "fail = (random.random() < .5)" >> script.py
-          #echo "if not fail:" >> script.py
-          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          #echo "  print('Success')" >> script.py
-          #echo "else:" >> script.py
-          #echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
-          #echo "  print('Simulated error', msg)" >> script.py
-          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          #echo "exit(fail)" >> script.py
-          #python3 script.py 2>&1 | tee logs/${{ matrix.build }}.log
-          #exit ${PIPESTATUS[0]}
-                    
-      - uses: actions/checkout@v3
-
-      - name: Build wheels
-        env:
-          CIBW_BUILD: ${{ matrix.build }}
-          CIBW_BUILD_VERBOSITY: -v
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
-          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
-          CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+      - name: Faking build wheels
         shell: bash
         run: |
+          echo "Building ${{ matrix.build }}"
+          mkdir wheelhouse
           mkdir logs
-          pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
+          log=logs/${{ matrix.build }}.log
+          echo "import random" > script.py
+          echo "fail = (random.random() < .5)" >> script.py
+          echo "if not fail:" >> script.py
+          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          echo "  print('Success')" >> script.py
+          echo "else:" >> script.py
+          echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
+          echo "  print('Simulated error', msg)" >> script.py
+          echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          echo "exit(fail)" >> script.py
+          python3 script.py 2>&1 | tee $log
           exit ${PIPESTATUS[0]}
-          
-      # --------
-      # Unable to use github logs or redirect. Abandonned in favor of manual invocation
+                    
+      #- uses: actions/checkout@v3
+
       #- name: Build wheels
-        #uses: pypa/cibuildwheel@v2.11.4
         #env:
           #CIBW_BUILD: ${{ matrix.build }}
+          #CIBW_BUILD_VERBOSITY: -v
           #CIBW_TEST_EXTRAS: tests
-          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apt install -y graphviz"
+          #CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz"
+          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           #CIBW_TEST_COMMAND: |
             #pytest {project}/tests -ra --small-scale --test-evolution
-      # --------
-
+        #shell: bash
+        #run: |
+          #mkdir logs
+          #pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
+          #ls -lh .
+          #exit ${PIPESTATUS[0]}
+          
       - uses: actions/upload-artifact@v3
         with:
           name: dist
@@ -169,20 +157,15 @@ jobs:
           mkdir wiki
           wiki="wiki/wheels.md"
                     
-          err_log=errors.md
-          echo > $err_log
+          built_log=built.md
+          echo > $built_log
+
+          errs_log=errors.md
+          echo > $errs_log
 
           (
-            echo "# Build summary"
-            echo "Successfully built $rate% of wheels"
-            echo "## Details:"
-            echo "| ID  | Ok  | Build | Error |"
-            echo "| :-: | :-: | :---- | ----- |"
             for build in $builds
             do
-              mark=":heavy_check_mark:" 
-              error=" "
-              
               # If wheel file was not uploaded -> error
               # x86 final name is different from built type
               build_search=$(sed 's/x86/*x86/' <<< $build)
@@ -191,20 +174,37 @@ jobs:
               echo ">> $wheel" >&2
               if [ -z $wheel ]
               then
-                mark=":x:"
-                
                 # Look it up in the logs
                 echo "## $build" >> err_log
                 grep -i -e '\berror\b' -e '\bfailed\b' logs/*$build*.log \
-                | grep -v "##\[error\]Process completed" | tr -d '\r' > tmp
+                | grep -v "##\[error\]Process completed" \
+                | sed -e 's/##\[error\]//' -e 's/::error:://' | tr -d '\r' > tmp
                 cat tmp >> err_log
-                error=$(tail -n 1 tmp)
+                
+                n=1 # Windows logs contain a newline in the last error -> merge
+                [[ $wheel == *win* ]] && n=$(($n + 1))
+                error=$(tail -n $n tmp | tr -d '\n' | sed 's/$/\n/')
                 
                 build="[$build](#$build)"
+                echo "| :x: | $build | $error |" >> $built_log
+                
+              else
+                echo "| :heavy_check_mark: | $build |" >> $errs_log
               fi
-              echo "| $mark | $build | $error |"
-            done | sort -t '|' -k4,4 | nl -s ' ' | sed 's/^/|/'
-            cat err_log
+            done
+            
+            echo "# Build summary"
+            echo "## Sucessfully built wheels"
+            echo "|     | Build |"
+            echo "| :-: | :---- |"
+            cat $built_log
+            echo "Successfully built $rate% of wheels"
+            
+            echo "## Unsuccessful builds:"
+            echo "|     | Build | Error |"
+            echo "| :-: | :---- | ----- |"
+            cat $errs_log  | sort -t '|' -k4,4
+            
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
       
       - name: Upload summary to Wiki

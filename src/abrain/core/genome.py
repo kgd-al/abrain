@@ -252,7 +252,7 @@ class Genome(_CPPNData):
 
         Raises:
             OSError: if the `dot` program is not available (not installed, on
-            the path and executable)
+                the path and executable)
         """
         if not dot_found:
             raise OSError("""
