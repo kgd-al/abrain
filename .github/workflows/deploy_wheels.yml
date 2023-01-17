@@ -78,11 +78,11 @@ jobs:
           CIBW_BUILD_VERBOSITY: -v
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz libjpeg"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz libjpeg-dev"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+            LC_ALL=C pytest {project}/tests -ra --small-scale --test-evolution
         shell: bash
         run: |
           mkdir logs
