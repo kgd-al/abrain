@@ -78,11 +78,12 @@ jobs:
           CIBW_BUILD_VERBOSITY: -v
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz libjpeg-dev"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz jpeg-dev"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_TEST_COMMAND: |
-            LC_ALL=C pytest {project}/tests -ra --small-scale --test-evolution
+            pytest {project}/tests -ra --small-scale --test-evolution
+          LC_ALL: C
         shell: bash
         run: |
           mkdir logs
@@ -185,7 +186,6 @@ jobs:
                 
                 n=1 # Windows logs contain a newline in the last error -> merge
                 [[ $log == *win* ]] && n=$(($n + 1))
-                echo "Fetching $n last line"
                 error=$(tail -n $n tmp | tr -d '\n' | sed 's/$/\n/')
                 
                 echo "| :x: | [$build](#$build) | $error |" >> $errs_table
