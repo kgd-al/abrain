@@ -72,7 +72,7 @@ void init_cppn_phenotype (py::module_ &m) {
 //      }, py::keep_alive<0, 1>())
       .def_property_readonly("__iter__", [] (py::object) { return py::none(); },
            "Cannot be iterated. Use direct access instead.")
-      .def("__getitem__", [] (Outputs &o, size_t i) { return o[i]; })
+      .def("__getitem__", [] (Outputs &o, size_t i) -> float { return o[i]; })
       ;
 //  py::class_<OutputSubset>(m, "OutputSubset");
 
@@ -81,20 +81,22 @@ void init_cppn_phenotype (py::module_ &m) {
       .def("__call__", py::overload_cast<const Point&,
                                          const Point&,
                                          Outputs&>(
-                                           &CPPN::operator (), py::const_),
+                                           &CPPN::operator ()),
            "Evaluates on provided coordinates and retrieve all outputs",
            "src"_a, "dst"_a, "buffer"_a)
       .def("__call__", py::overload_cast<const Point&,
                                          const Point&,
                                          Output>(
-                                           &CPPN::operator (), py::const_),
-           "Evaluates on provided coordinates for the requested output",
+                                           &CPPN::operator ()),
+           "Evaluates on provided coordinates for the requested output\n\n"
+           ".. note: due to an i686 bug this function is unoptimized on said"
+           " platforms",
            "src"_a, "dst"_a, "type"_a)
       .def("__call__", py::overload_cast<const Point&,
                                          const Point&,
                                          Outputs&,
                                          const OutputSubset&>(
-                                           &CPPN::operator (), py::const_),
+                                           &CPPN::operator ()),
            "Evaluates on provided coordinates for the requested outputs",
            "src"_a, "dst"_a, "buffer"_a, "subset"_a)
 

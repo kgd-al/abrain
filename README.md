@@ -59,6 +59,7 @@ Use `pip install abrain[...,kaleido]` to get it
       - cp38,...,311-manylinux_i686 fail because cppn outputs diverge between manual and subset/all
         > Caused by unmatched image/host platforms?
         > Heisenbug, printing an FNode value before returning it makes it work
+        > Also disapears in when compiling in debug mode
       - pp38,39-manylinux_i686,x86_64; pp38,39-macosx_x86_64; pp38,39-win_amd64 fail because of strange import error in numpy
         > Solved by removing numpy dependency
       - cp38,...,311-musllinux_i686 fail because pillow needs a jpeg library

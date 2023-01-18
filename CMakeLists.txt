@@ -130,11 +130,11 @@ if(WITH_COVERAGE)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
-    if(WITH_DEBUG_INFO)
-        message(SEND_ERROR
-            "Generating debug information is only available in debug mode "
-            "(currently using ${CMAKE_BUILD_TYPE})")
-    endif()
+#     if(WITH_DEBUG_INFO)
+#         message(SEND_ERROR
+#             "Generating debug information is only available in debug mode "
+#             "(currently using ${CMAKE_BUILD_TYPE})")
+#     endif()
     if(WITH_COVERAGE)
         message(SEND_ERROR
             "Generating coverage information is only available in debug mode "

@@ -93,7 +93,7 @@ QOTreeNode::ptr node (ARGS... args) {
   return std::make_shared<QOTreeNode>(args...);
 }
 
-QOTree divisionAndInitialisation(const CPPN &cppn, const Point &p, bool out) {
+QOTree divisionAndInitialisation(CPPN &cppn, const Point &p, bool out) {
   static const auto &initialDepth = Config::initialDepth;
   static const auto &maxDepth = Config::maxDepth;
   static const auto &divThr = Config::divThr;
@@ -158,12 +158,12 @@ QOTree divisionAndInitialisation(const CPPN &cppn, const Point &p, bool out) {
   return root;
 }
 
-void pruneAndExtract (const CPPN &cppn, const Point &p, Connections &con,
+void pruneAndExtract (CPPN &cppn, const Point &p, Connections &con,
                       const QOTree &t, bool out) {
 
   static const auto &varThr = Config::varThr;
   static const auto &bndThr = Config::bndThr;
-  static const auto leo = [] (const auto &cppn, auto i, auto o) {
+  static const auto leo = [] (auto &cppn, auto i, auto o) {
     return (bool)cppn(i, o, Output::LEO);
   };
 
@@ -371,7 +371,7 @@ void collect (const Connections &newConnections, Connections &connections,
   connections.insert(newConnections.begin(), newConnections.end());
 }
 
-bool connect (const CPPN &cppn,
+bool connect (CPPN &cppn,
               const Coordinates &inputs, const Coordinates &outputs,
               Coordinates &hidden, Connections &connections) {
 

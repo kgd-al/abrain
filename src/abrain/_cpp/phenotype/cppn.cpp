@@ -10,6 +10,8 @@
 //#define DEBUG_CPPN
 #endif
 
+#include <iomanip> /// TODO REMOVE
+
 #ifdef DEBUG_CPPN
 #include <iomanip>
 
@@ -240,7 +242,6 @@ float CPPN::FNode::value (void) {
 #else
   }
 #endif
-  std::cerr << "[kgd-debug] " << data << "\n";
   return data;
 }
 
@@ -252,7 +253,7 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 }
 #endif
 
-void CPPN::pre_evaluation(const Point &src, const Point &dst) const {
+void CPPN::pre_evaluation(const Point &src, const Point &dst) {
   static constexpr auto N = DIMENSIONS;
   for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
   for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
@@ -277,7 +278,7 @@ void CPPN::pre_evaluation(const Point &src, const Point &dst) const {
 }
 
 void CPPN::operator() (const Point &src, const Point &dst,
-                       Outputs &outputs) const {
+                       Outputs &outputs) {
   assert(outputs.size() == _outputs.size());
 
   pre_evaluation(src, dst);
@@ -290,7 +291,7 @@ void CPPN::operator() (const Point &src, const Point &dst,
 }
 
 void CPPN::operator() (const Point &src, const Point &dst, Outputs &outputs,
-                       const OutputSubset &oset) const {
+                       const OutputSubset &oset) {
   assert(outputs.size() == _outputs.size());
   assert(oset.size() <= _outputs.size());
 
@@ -303,16 +304,20 @@ void CPPN::operator() (const Point &src, const Point &dst, Outputs &outputs,
 #endif
 }
 
-float CPPN::operator() (const Point &src, const Point &dst,
-                        CPPNData::Output o) const {
-  pre_evaluation(src, dst);
-#ifdef DEBUG_CPPN
-  auto v =  _outputs[uint(o)]->value();
-  return v;
-#else
-  return _outputs[uint(o)]->value();
+// Hopefully will get rid of i686 float c++ -> python transfer errors
+#if __i386__
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 #endif
+float CPPN::operator() (const Point &src, const Point &dst,
+                        CPPNData::Output o) {
+  pre_evaluation(src, dst);
+    
+  float v =  _outputs[uint(o)]->value();
+  return v;
 }
-
+#if __i386__
+#pragma GCC pop_options
+#endif
 
 } // end of namespace kgd::eshn::phenotype

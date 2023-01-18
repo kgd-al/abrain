@@ -47,7 +47,7 @@ using CPPN = kgd::eshn::phenotype::CPPN;
 using Point = CPPN::Point;
 using Coordinates = std::vector<Point>;
 
-bool connect (const CPPN &cppn,
+bool connect (CPPN &cppn,
               const Coordinates &inputs, const Coordinates &outputs,
               Coordinates &hidden, Connections &connections);
 

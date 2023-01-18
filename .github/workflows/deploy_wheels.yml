@@ -35,7 +35,7 @@ jobs:
           do
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done | grep "win32" >> mjson_file
+        done >> mjson_file
         echo "$mjson]}" >> mjson_file
         mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
@@ -190,7 +190,8 @@ jobs:
                 [[ $log == *win* ]] && n=$(($n + 1))
                 error=$(tail -n $n tmp | tr -d '\n' | sed 's/$/\n/')
                 
-                echo "| :x: | [$build](#$build) | $error |" >> $errs_table
+                permalink="https://github.com/kgd-al/abrain/wiki/wheels/#$build"
+                echo "| :x: | [$build]($permalink) | $error |" >> $errs_table
                 status=1
                 
               else
@@ -199,7 +200,8 @@ jobs:
               
               prettybuild=$(sed -e 's/-/|/' \
                 -e 's/\([cp]p\)\([0-9]\)/\1 \2./' -e 's/^cp/CPython/' \
-                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1<br>(\2)/')
+                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1<br>(\2)/' \
+                <<< "$build")
               echo "$build|$prettybuild|$status" >> $matrix_log
             done
             

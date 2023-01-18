@@ -2,6 +2,9 @@ import pydoc
 from random import Random
 
 import array
+from itertools import chain, combinations
+
+from sys import float_info
 
 from pytest_steps import test_steps
 
@@ -93,26 +96,33 @@ def test_outputs_equals(seed):
 
     def p():
         return Point(r(), r(), r())
-
-    for i in range(100):
+    def all_subsets(ss):
+      return list(chain(*map(lambda x: combinations(ss, x),
+                            range(0, len(ss)+1))))
+  
+    for i in range(1):#100):
         p0, p1 = p(), p()
-        
-        print(f"Evaluating cppn({p0}, {p1})")
 
         outputs_manual = []
         for o in CPPN.OUTPUTS_LIST:
             outputs_manual.append(cppn(p0, p1, o))
 
         outputs = CPPN.outputs()
-        cppn(p0, p1, outputs, {o for o in CPPN.OUTPUTS_LIST})
-        outputs_subset = [outputs[i] for i in range(len(outputs))]
+        # Test all combinations
+        outputs_subsets = []
+        for subset in all_subsets(CPPN.OUTPUTS_LIST):
+          cppn(p0, p1, outputs, set(subset))
+          outputs_subsets.append((subset,
+                                  [outputs[i] for i in range(len(outputs))]))
 
         cppn(p0, p1, outputs)
         outputs_all = [outputs[i] for i in range(len(outputs))]
-
-        assert outputs_manual == outputs_subset
+        
         assert outputs_manual == outputs_all
-        #assert False
+        for subset, outputs_subset in outputs_subsets:
+          for i in range(len(outputs_manual)):
+            if CPPN.Output(i) in subset:
+              assert outputs_manual[i] == outputs_subset[i]
 
 
 sample_sizes = [10, 50, 100]

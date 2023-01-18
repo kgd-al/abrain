@@ -67,17 +67,17 @@ public:
   static constexpr auto &OUTPUTS_LIST = cppn::CPPN_OUTPUT_LIST;
   using Outputs = std::array<float, OUTPUTS>;
 
-  void operator() (const Point &src, const Point &dst, Outputs &outputs) const;
+  void operator() (const Point &src, const Point &dst, Outputs &outputs);
 
   using Output = Genotype::Output;
-  float operator() (const Point &src, const Point &dst, Output o) const;
+  float operator() (const Point &src, const Point &dst, Output o);
 
   using OutputSubset = std::set<Output>;
   void operator() (const Point &src, const Point &dst, Outputs &outputs,
-                   const OutputSubset &oset) const;
+                   const OutputSubset &oset);
 
 private:
-  void pre_evaluation (const Point &src, const Point &dst) const;
+  void pre_evaluation (const Point &src, const Point &dst);
 };
 
 } // end of namespace kgd::eshn::phenotype
