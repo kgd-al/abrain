@@ -26,18 +26,18 @@ jobs:
     - name: Generating json string
       id: gen-mjson
       run: |
-        mjson="{\"include\":["
+        echo "{\"include\":[" > mjson_file
         for os in linux macos windows
         do
           github_os=$os
           [ "$os" == "linux" ] && github_os="ubuntu" 
           for bt in $(pipx run cibuildwheel --platform $os --print-build-identifiers)
           do
-            mjson="$mjson {\"os\": \"$github_os\", \"build\": \"$bt\"},"
+            echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done
-        mjson="$mjson]}"
-        mjson=$(sed 's/,]/]/' <<< $mjson)
+        done | grep "win32" >> mjson_file
+        echo "$mjson]}" >> mjson_file
+        mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
         echo "matrix=$mjson" >> $GITHUB_OUTPUT
         
@@ -81,6 +81,7 @@ jobs:
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
+          CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
           CIBW_TEST_COMMAND: |
             pytest {project}/tests -ra --small-scale --test-evolution
           LC_ALL: C
@@ -204,13 +205,13 @@ jobs:
             
             echo "# Build summary"
             
+            echo "## Raw matrix input"
+            
+            cat $matrix_log
+            
             echo "## Matrix summary test"
             awk -F '|' '
-              BEGIN{
-                symbols[""]=":black_circle:";
-                symbols[0]=":heavy_check_mark:";
-                symbols[1]=":x:";
-              }{
+              {
                 d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
               }END{
                 PROCINFO["sorted_in"] = "@ind_str_asc";
@@ -223,7 +224,9 @@ jobs:
                   printf "| %s |", r_;
                   for (c_ in c) {
                     v = d[r_][c_];
-                    if (v == 1) v = "["v"](#"b[r_][c_]")"
+                    if (v == 1)       v = "[:x:](#"b[r_][c_]")";
+                    else if (v == 0)  v = ":heavy_check_mark:";
+                    else              v = ":black_circle:";
                     printf " %s |", symbols[v];
                   }
                   printf "\n";
