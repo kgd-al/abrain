@@ -75,10 +75,10 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BUILD: ${{ matrix.build }}
-          CIBW_BUILD_VERBOSITY: -v
+          CIBW_BUILD_VERBOSITY: 1
           CIBW_TEST_EXTRAS: tests
           CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz jpeg-dev"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_TEST_COMMAND: |
@@ -183,6 +183,7 @@ jobs:
                 | grep -v "##\[error\]Process completed" \
                 | sed -e 's/##\[error\]//' -e 's/::error:://' | tr -d '\r' > tmp
                 cat tmp >> $errs_log
+                printf "\0" >> $errs_log
                 
                 n=1 # Windows logs contain a newline in the last error -> merge
                 [[ $log == *win* ]] && n=$(($n + 1))
@@ -195,10 +196,10 @@ jobs:
                 echo "| :heavy_check_mark: | $build |" >> $built_table
               fi
               
-              echo "$build|$status" | sed -e 's/-/|/' \
+              prettybuild=$(sed -e 's/-/|/' \
                 -e 's/\([cp]p\)\([0-9]\)/\1 \2./' -e 's/^cp/CPython/' \
-                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1<br>(\2)/' \
-                >> $matrix_log
+                -e 's/^pp/PyPy/' -e 's/\(|[^_]*\)_\([^|]*\)/\1<br>(\2)/')
+              echo "$build|$prettybuild|$status" >> $matrix_log
             done
             
             echo "# Build summary"
@@ -210,7 +211,7 @@ jobs:
                 symbols[0]=":heavy_check_mark:";
                 symbols[1]=":x:";
               }{
-                d[$1][$2]=$3; r[$1]=1; c[$2]=1 
+                d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
               }END{
                 PROCINFO["sorted_in"] = "@ind_str_asc";
                 printf "| |";
@@ -220,7 +221,11 @@ jobs:
                 printf "\n";
                 for (r_ in r) {
                   printf "| %s |", r_;
-                  for (c_ in c) printf " %s |", symbols[d[r_][c_]];
+                  for (c_ in c) {
+                    v = d[r_][c_];
+                    if (v == 1) v = "["v"](#"b[r_][c_]")"
+                    printf " %s |", symbols[v];
+                  }
                   printf "\n";
                 }
               }' $matrix_log
@@ -240,7 +245,7 @@ jobs:
             cat $errs_table  | sort -t '|' -k4,4
             echo
             echo "### Details:"
-            cat $errs_log
+            cat $errs_log | sort -z -k2,2 | tr -d '\0'
             echo
             
             

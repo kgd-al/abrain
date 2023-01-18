@@ -64,11 +64,6 @@ private:
 public:
   CPPN(const Genotype &genotype);
 
-// TODO What for?
-// .. todo:: What for?
-//  auto inputSize (void) const { return _inputs.size();  }
-//  auto outputSize (void) const {  return _outputs.size();  }
-
   static constexpr auto &OUTPUTS_LIST = cppn::CPPN_OUTPUT_LIST;
   using Outputs = std::array<float, OUTPUTS>;
 

@@ -69,9 +69,11 @@ class CMakeBuild(build_ext):
         build_args = []
         # Adding CMake arguments set as environment variable
         # (needed e.g. to build for ARM OSx on conda-forge)
+        
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ")
                            if item]
+        print('[kgd-debug]', cmake_args)
 
         # Pass the version to C++ (why not?)
         cmake_args +=\

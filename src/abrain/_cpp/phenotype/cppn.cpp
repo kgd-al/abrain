@@ -7,10 +7,10 @@
 #include <iostream>
 
 #ifndef NDEBUG
-//#define DEBUG
+//#define DEBUG_CPPN
 #endif
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
 #include <iomanip>
 
 namespace utils { // Contains debugging tools
@@ -156,7 +156,7 @@ CPPN::CPPN (const CPPNData &genotype) {
   uint off = 0; // Inputs are first
   _inputs.resize(NI);
   for (NID i=0; i<NI; i++) {
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
     std::cerr << "(I) " << NID(i) << " " << i << std::endl;
 #endif
     nodes[i] = _inputs[i] = std::make_shared<INode>();
@@ -165,7 +165,7 @@ CPPN::CPPN (const CPPNData &genotype) {
   off = NI; // Outputs are after inputs
   _outputs.resize(NO);
   for (NID i=0; i<NO; i++) {
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
     std::cerr << "(O) " << i+off << " " << i << " " << ofuncs(i) << std::endl;
 #endif
     nodes[i+off] = _outputs[i] = fnode(ofuncs(i));
@@ -174,7 +174,7 @@ CPPN::CPPN (const CPPNData &genotype) {
   uint i=0;
   _hidden.resize(genotype.nodes.size());
   for (const CPPNData::Node &n_g: genotype.nodes) {
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
     std::cerr << "(H) " << n_g.id << " " << i << " " << n_g.func << std::endl;
 #endif
     nodes[n_g.id] = _hidden[i] = fnode(n_g.func);
@@ -186,7 +186,7 @@ CPPN::CPPN (const CPPNData &genotype) {
     n.links.push_back({l_g.weight, nodes.at(l_g.src)});
   }
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   i=0;
   std::map<Node_ptr, uint> map;
   printf("Built CPPN:\n");
@@ -208,7 +208,7 @@ CPPN::CPPN (const CPPNData &genotype) {
 }
 
 float CPPN::INode::value (void) {
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
   std::cout << "I: " << data << std::endl;
 #endif
@@ -216,7 +216,7 @@ float CPPN::INode::value (void) {
 }
 
 float CPPN::FNode::value (void) {
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
   std::cout << "F:\n";
 #endif
@@ -225,7 +225,7 @@ float CPPN::FNode::value (void) {
     for (Link &l: links)
       data += l.weight * l.node.lock()->value();
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
     auto val = func(data);
     std::cout << val << " = " << functionToName.at(func)
               << "(" << data << ")\n";
@@ -234,16 +234,17 @@ float CPPN::FNode::value (void) {
     data = func(data);
 #endif
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   } else
     std::cout << data << "\n";
 #else
   }
 #endif
+  std::cerr << "[kgd-debug] " << data << "\n";
   return data;
 }
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
 std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
   os << "[";
   for (float f: v)  os << " " << f;
@@ -266,7 +267,7 @@ void CPPN::pre_evaluation(const Point &src, const Point &dst) const {
   for (auto &n: _hidden)  n->data = NAN;
   for (auto &n: _outputs)  n->data = NAN;
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
   std::cout << "compute step\n\tInputs:"
             << std::setprecision(std::numeric_limits<float>::max_digits10);
@@ -282,7 +283,7 @@ void CPPN::operator() (const Point &src, const Point &dst,
   pre_evaluation(src, dst);
   for (uint i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   using utils::operator<<;
   std::cout << outputs << "\n" << std::endl;
 #endif
@@ -296,7 +297,7 @@ void CPPN::operator() (const Point &src, const Point &dst, Outputs &outputs,
   pre_evaluation(src, dst);
   for (auto o: oset) outputs[uint(o)] = _outputs[uint(o)]->value();
 
-#ifdef DEBUG
+#ifdef DEBUG_CPPN
   using utils::operator<<;
   std::cout << outputs << "\n" << std::endl;
 #endif
@@ -305,7 +306,12 @@ void CPPN::operator() (const Point &src, const Point &dst, Outputs &outputs,
 float CPPN::operator() (const Point &src, const Point &dst,
                         CPPNData::Output o) const {
   pre_evaluation(src, dst);
+#ifdef DEBUG_CPPN
+  auto v =  _outputs[uint(o)]->value();
+  return v;
+#else
   return _outputs[uint(o)]->value();
+#endif
 }
 
 

@@ -8,9 +8,9 @@ project("abrain")
 message("\n####################################################################"
     "############\n## CMakeFile for ${PROJECT_NAME}")
 
-set(CMAKE_CXX_FLAGS "")
+# set(CMAKE_CXX_FLAGS "")
 if(LINUX)
-  string(APPEND CMAKE_CXX_FLAGS "-Wall -Wextra -pedantic")
+  string(APPEND CMAKE_CXX_FLAGS " -Wall -Wextra -pedantic")
 endif()
 if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /EHsc")

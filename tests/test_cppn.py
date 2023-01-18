@@ -1,8 +1,8 @@
 import pydoc
 from random import Random
 
-import numpy as np
-from PIL import Image
+import array
+
 from pytest_steps import test_steps
 
 from abrain._cpp.phenotype import ( # noqa
@@ -96,20 +96,23 @@ def test_outputs_equals(seed):
 
     for i in range(100):
         p0, p1 = p(), p()
+        
+        print(f"Evaluating cppn({p0}, {p1})")
 
-        manual_outputs = []
+        outputs_manual = []
         for o in CPPN.OUTPUTS_LIST:
-            manual_outputs.append(cppn(p0, p1, o))
+            outputs_manual.append(cppn(p0, p1, o))
 
         outputs = CPPN.outputs()
         cppn(p0, p1, outputs, {o for o in CPPN.OUTPUTS_LIST})
-        subset_outputs = [outputs[i] for i in range(len(outputs))]
+        outputs_subset = [outputs[i] for i in range(len(outputs))]
 
         cppn(p0, p1, outputs)
-        all_outputs = [outputs[i] for i in range(len(outputs))]
+        outputs_all = [outputs[i] for i in range(len(outputs))]
 
-        assert manual_outputs == subset_outputs
-        assert manual_outputs == all_outputs
+        assert outputs_manual == outputs_subset
+        assert outputs_manual == outputs_all
+        #assert False
 
 
 sample_sizes = [10, 50, 100]
@@ -134,7 +137,8 @@ def test_multiscale_sampling(mutations, seed,
         def to_substrate_coord(index):
             return 2 * index / (size - 1) - 1
 
-        data = np.zeros((2, size, size, 3), dtype=np.uint8)
+        data = array.array('B', [0,0,0] * size * size * 2)
+        
         outputs = CPPN.outputs()
 
         for i in range(size):
@@ -144,16 +148,17 @@ def test_multiscale_sampling(mutations, seed,
                 p = Point(x, y, 0)
                 for k, p0, p1 in [(0, p, dp), (1, dp, p)]:
                     cppn(p, dp, outputs)
-                    data[k, i, j] = \
-                        .5 * (
-                            np.array([outputs[i] for i in range(len(outputs))])
-                            + 1
-                        ) * 255
+                    ix = 3*(i+size*(j+size*k))
+                    for l, v in \
+                      enumerate([outputs[i] for i in range(len(outputs))]):
+                      data[ix+l] = \
+                        int(.5 * (max(-1, min(outputs[l], 1)) + 1) * 255)
 
         for name, i in [('input', 0), ('output', 1)]:
-            file = f"{folder}/xy_{name}_plane_{size:03}x{size:03}.png"
-            img = Image.fromarray(data[i])
-            img.save(file)
-            print('Generated', file)
+            filename = f"{folder}/xy_{name}_plane_{size:03}x{size:03}.ppm"
+            with open(filename, 'wb') as f:
+              f.write(bytearray(f"P6\n{size} {size}\n255\n", 'ascii'))
+              data.tofile(f)
+            print('Generated', filename)
 
         yield f"sample_at_{size}"

@@ -32,3 +32,17 @@ Tutorials
 
     advanced/cppn
     advanced/mutations
+   
+FAQ
+---
+
+Musllinux wheels
+****************
+
+.. note: For tests only
+
+Pillow (used to generate images of CPPN outputs) has no available wheels.
+Manual installation requires at least a jpeg library (e.g. `apk add jpeg-dev`)
+See https://pillow.readthedocs.io/en/stable/installation.html#building-from-source
+
+
