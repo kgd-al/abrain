@@ -160,7 +160,8 @@ jobs:
           rate=$(echo "$found $builds_n" | awk '{printf "%.0f", 100*$1/$2}')
           
           mkdir wiki
-          wiki="wiki/wheels.md"
+          wiki_summary=wiki/wheels.md
+          matrix_summary=wiki/matrix.md
                     
           built_table=built.md
           errs_table=errors.md
@@ -229,7 +230,7 @@ jobs:
                   }
                   printf "\n";
                 }
-              }' $matrix_log
+              }' $matrix_log | tee $matrix_summary
             echo
 
             echo "Successfully built $rate% of wheels"
@@ -247,7 +248,7 @@ jobs:
               echo
             fi
             
-          ) | tee -a $wiki $GITHUB_STEP_SUMMARY
+          ) | tee -a $wiki_summary $GITHUB_STEP_SUMMARY
           
           # Generate synthetic badges
           for type in macosx manylinux musllinux win
@@ -261,7 +262,7 @@ jobs:
             echo "   labels: $labels"
             
             all=$(grep "$type" $matrix_log | cut -d '|' -f4 | wc -l)
-            passed=$(grep '$type.*1$' $matrix_log | cut -d '|' -f4 | wc -l)
+            passed=$(grep "$type.*0$" $matrix_log | cut -d '|' -f4 | wc -l)
             msg="$passed/$all"
             echo "stats: $msg"
             color=$(echo "$passed $all" | awk '{
@@ -279,6 +280,9 @@ jobs:
           echo "BADGES_LABELS=($labels )" >> $GITHUB_ENV
           echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
+          
+          ls wiki
+          wc -l wiki/*
           
 
       - name: Build Badges
