@@ -11,11 +11,10 @@ End-user installation
 
    (.venv)$ pip install abrain
 
-Precompiled wheels are available (see
-https://github.com/kgd-al/abrain/wiki/wheels for the full list)
+Precompiled wheels are available for most linux distributions, macosx and
+windows on python 3.8+.
+See https://github.com/kgd-al/abrain/wiki/wheels for the full list.
 
-.. include:: https://github.com/kgd-al/abrain/wiki/matrix.md
-    :parser: myst_parser.sphinx_
 
 Editable install
 ****************
@@ -38,6 +37,19 @@ Tutorials
    
 FAQ
 ---
+
+Windows
+*******
+
+Exporting an ANN through plotly requires UTF-8 encoding which is not the
+default. Setting an environment variable to `PYTHONUTF8=1` fixes the problem
+
+
+Kaleido
+*******
+
+Rendering an ANN in non-interactive format requires either kaleido or orca.
+While the former is unavailable on some distributions, the latter seems out
 
 Musllinux wheels
 ****************

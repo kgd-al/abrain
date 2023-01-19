@@ -161,7 +161,6 @@ jobs:
           
           mkdir wiki
           wiki_summary=wiki/wheels.md
-          matrix_summary=wiki/matrix.md
                     
           built_table=built.md
           errs_table=errors.md
@@ -204,11 +203,6 @@ jobs:
             
             echo "# Build summary"
             
-            #echo "## Raw matrix input"
-            
-            #cat $matrix_log
-            
-            #echo "## Matrix summary test"
             awk -F '|' -vurl=$wurl '
               {
                 d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
@@ -230,7 +224,7 @@ jobs:
                   }
                   printf "\n";
                 }
-              }' $matrix_log | tee $matrix_summary
+              }' $matrix_log
             echo
 
             echo "Successfully built $rate% of wheels"
@@ -280,9 +274,7 @@ jobs:
           echo "BADGES_LABELS=($labels )" >> $GITHUB_ENV
           echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
-          
-          ls wiki
-          wc -l wiki/*
+
           
           
       - name: Upload summary to Wiki
@@ -310,7 +302,7 @@ jobs:
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
         name: upload to PyPI
-        if: ${{ ! always() }}
+        if: always()
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
