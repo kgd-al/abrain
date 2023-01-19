@@ -35,7 +35,7 @@ jobs:
           do
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done >> mjson_file
+        done | shuf | head -n 1 >> mjson_file
         echo "$mjson]}" >> mjson_file
         mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
@@ -50,51 +50,51 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      - name: Faking build wheels
-        shell: bash --noprofile --norc {0} # No automatic fail-fast
-        run: |
-          echo "Building ${{ matrix.build }}"
-          mkdir wheelhouse
-          mkdir logs
-          log=logs/${{ matrix.build }}.log
-          echo "import random" > script.py
-          echo "fail = (random.random() < .5)" >> script.py
-          echo "if not fail:" >> script.py
-          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          echo "  print('Success')" >> script.py
-          echo "else:" >> script.py
-          echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
-          echo "  print('Simulated error', msg)" >> script.py
-          echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          echo "exit(fail)" >> script.py
-          python3 script.py 2>&1 | tee $log
-          res=${PIPESTATUS[0]}
-          echo "[kgd-build-status] $res" >> $log
-          exit $res
-                    
-      #- uses: actions/checkout@v3
-
-      #- name: Build wheels
-        #env:
-          #CIBW_BUILD: ${{ matrix.build }}
-          #CIBW_BUILD_VERBOSITY: 1
-          #CIBW_TEST_EXTRAS: tests
-          #CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
-          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
-          #CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
-          #CIBW_TEST_COMMAND: |
-            #pytest {project}/tests -ra --small-scale --test-evolution
-          #LC_ALL: C
+      #- name: Faking build wheels
         #shell: bash --noprofile --norc {0} # No automatic fail-fast
         #run: |
+          #echo "Building ${{ matrix.build }}"
+          #mkdir wheelhouse
           #mkdir logs
           #log=logs/${{ matrix.build }}.log
-          #pipx run cibuildwheel 2>&1 | tee $log
+          #echo "import random" > script.py
+          #echo "fail = (random.random() < .5)" >> script.py
+          #echo "if not fail:" >> script.py
+          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          #echo "  print('Success')" >> script.py
+          #echo "else:" >> script.py
+          #echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
+          #echo "  print('Simulated error', msg)" >> script.py
+          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          #echo "exit(fail)" >> script.py
+          #python3 script.py 2>&1 | tee $log
           #res=${PIPESTATUS[0]}
           #echo "[kgd-build-status] $res" >> $log
           #exit $res
+                    
+      - uses: actions/checkout@v3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: ${{ matrix.build }}
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_TEST_EXTRAS: tests
+          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
+          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
+          CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
+          CIBW_TEST_COMMAND: |
+            pytest {project}/tests -ra --small-scale --test-evolution
+          LC_ALL: C
+        shell: bash --noprofile --norc {0} # No automatic fail-fast
+        run: |
+          mkdir logs
+          log=logs/${{ matrix.build }}.log
+          pipx run cibuildwheel 2>&1 | tee $log
+          res=${PIPESTATUS[0]}
+          echo "[kgd-build-status] $res" >> $log
+          exit $res
           
       - uses: actions/upload-artifact@v3
         with:
@@ -159,9 +159,9 @@ jobs:
           echo "Built $found / $builds_n"
           rate=$(echo "$found $builds_n" | awk '{printf "%.0f", 100*$1/$2}')
           
-          mkdir saucisson
-          wiki_summary=saucisson/wheels.md
-          matrix_summary=saucisson/matrix.md
+          mkdir wiki
+          wiki_summary=wiki/wheels.md
+          matrix_summary=wiki/matrix.md
                     
           built_table=built.md
           errs_table=errors.md
@@ -281,21 +281,14 @@ jobs:
           echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
           
-          ls saucisson
-          wc -l saucisson/*
+          ls wiki
+          wc -l wiki/*
           
           
-      - name: Generate html summary
-        uses: jaywcjlove/markdown-to-html-cli@main
-        with:
-          source: saucisson/matrix.md
-          output: saucisson/matrix.html
-          github-corners: https://github.com/jaywcjlove/markdown-to-html-cli
-
       - name: Upload summary to Wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
         with:
-          path: "saucisson"
+          path: "wiki"
         env:
           GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
 
