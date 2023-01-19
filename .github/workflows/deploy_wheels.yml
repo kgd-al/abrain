@@ -265,14 +265,13 @@ jobs:
             labels="$labels $pretty_type"
             echo "   labels: $labels"
             
-            read msg color < <( \
-              grep "$type" $matrix_log | awk -F'|' \
-              '{ ok += ($4 == 0) }END{ 
-                c=(ok==NR ? 'green' : (ok > 0 ? 'orange' : 'red'))
-                printf "%d/%d %s", ok, NR, c;
-              }' \
-            )
-            echo "Parsed stats"
+            all=$(grep "$type" $matrix_log | cut -d '|' -f4 | wc -l)
+            passed=$(grep '$type.*1$' $matrix_log | cut -d '|' -f4 | wc -l)
+            msg="$passed/$all"
+            echo "stats: $msg"
+            color=$(echo "$passed $all" | awk '{
+              print ($1==$2 ? 'green' : ($1 > 0 ? 'orange' : 'red'))
+            }')
             
             messages="$messages $msg"
             echo " messages: $messages"
