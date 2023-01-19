@@ -281,8 +281,8 @@ jobs:
           echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
           
-          ls wiki
-          wc -l wiki/*
+          ls wikis
+          wc -l wikis/*
           
 
       - name: Build Badges
