@@ -87,7 +87,7 @@ jobs:
           #CIBW_TEST_COMMAND: |
             #pytest {project}/tests -ra --small-scale --test-evolution
           #LC_ALL: C
-        #shell: bash
+        shell: bash --noprofile --norc {0} # No automatic fail-fast
         #run: |
           #mkdir logs
           #log=logs/${{ matrix.build }}.log
@@ -171,7 +171,8 @@ jobs:
             for build in $builds
             do
               log=$(ls logs/*$build*.log)
-              status=$(grep '\[kgd-build-status\]' | cut -d ' ' -f 2)
+              status=$(grep '\[kgd-build-status\]' $log | cut -d ' ' -f 2)
+              echo $status
             
               if [ $status -ne 0 ]
               then
