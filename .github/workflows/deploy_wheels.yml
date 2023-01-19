@@ -152,7 +152,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Generating summary"
-          ls dist/* logs/*
           
           mjson='${{ needs.collect_targets.outputs.matrix }}'
           builds=$(echo $mjson | jq -r '.include[].build')
