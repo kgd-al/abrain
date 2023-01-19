@@ -159,9 +159,9 @@ jobs:
           echo "Built $found / $builds_n"
           rate=$(echo "$found $builds_n" | awk '{printf "%.0f", 100*$1/$2}')
           
-          mkdir wikis
-          wiki_summary=wikis/wheels.md
-          matrix_summary=wikis/matrix.md
+          mkdir saucisson
+          wiki_summary=saucisson/wheels.md
+          matrix_summary=saucisson/matrix.md
                     
           built_table=built.md
           errs_table=errors.md
@@ -281,9 +281,23 @@ jobs:
           echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
           
-          ls wikis
-          wc -l wikis/*
+          ls saucisson
+          wc -l saucisson/*
           
+          
+      - name: Generate html summary
+        uses: jaywcjlove/markdown-to-html-cli@main
+        with:
+          source: saucisson/matrix.md
+          output: saucisson/matrix.html
+          github-corners: https://github.com/jaywcjlove/markdown-to-html-cli
+
+      - name: Upload summary to Wiki
+        uses: SwiftDocOrg/github-wiki-publish-action@v1
+        with:
+          path: "saucisson"
+        env:
+          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
 
       - name: Build Badges
         uses: peterrhodesdev/build-a-badge@v1.3.1
@@ -293,14 +307,7 @@ jobs:
           label: ${{ env.BADGES_LABELS }}
           message: ${{ env.BADGES_MESSAGES }}
           color: ${{ env.BADGES_COLORS }}
-          
-      - name: Upload summary to Wiki
-        uses: SwiftDocOrg/github-wiki-publish-action@v1
-        with:
-          path: "wikis"
-        env:
-          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          
+                    
     # For testing purposes, upload always
     #if: always()
     ## upload to PyPI on every tag starting with 'v'
