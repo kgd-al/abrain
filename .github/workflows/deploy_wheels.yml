@@ -172,7 +172,7 @@ jobs:
             for build in $builds
             do
               log=$(ls logs/*$build*.log)
-              status=$(grep '[kgd-build-status]' | cut -d ' ' -f 2)
+              status=$(grep '\[kgd-build-status\]' | cut -d ' ' -f 2)
             
               if [ $status -ne 0 ]
               then
@@ -240,14 +240,17 @@ jobs:
             echo "Successfully built $rate% of wheels"
             echo
             
-            echo "## Unsuccessful builds:"
-            echo "|     | Build | Error |"
-            echo "| :-: | :---- | ----- |"
-            cat $errs_table  | sort -t '|' -k4,4
-            echo
-            echo "### Details:"
-            cat $errs_log | sort -z -k2,2 | tr -d '\0'
-            echo
+            if [ -f $errs_log ]
+            then
+              echo "## Unsuccessful builds:"
+              echo "|     | Build | Error |"
+              echo "| :-: | :---- | ----- |"
+              cat $errs_table  | sort -t '|' -k4,4
+              echo
+              echo "### Details:"
+              cat $errs_log | sort -z -k2,2 | tr -d '\0'
+              echo
+            fi
             
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
           
