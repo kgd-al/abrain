@@ -135,11 +135,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() }}
     steps:
-      #- uses: actions/download-artifact@v3
-        #name: download sdist/wheels
-        #with:
-          #name: dist
-          #path: dist
+      - uses: actions/download-artifact@v3
+        name: download sdist/wheels
+        with:
+          name: dist
+          path: dist
           
       - uses: actions/download-artifact@v3
         name: download logs
