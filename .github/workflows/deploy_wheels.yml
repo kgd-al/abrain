@@ -35,7 +35,7 @@ jobs:
           do
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done >> mjson_file
+        done | head -n 4 >> mjson_file
         echo "$mjson]}" >> mjson_file
         mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
@@ -257,6 +257,8 @@ jobs:
           # Generate synthetic badges
           for type in macosx manylinux musllinux win
           do
+            echo "$type"
+          
             filenames="$filenames badge-wheel-$type"
             pretty_type=$(sed 's/win/windows/' <<< $type)
             labels="$labels $pretty_type"
@@ -271,6 +273,11 @@ jobs:
             
             messages="$messages $msg"
             colors="$colors $color"
+            
+            echo "filenames: $filenames"
+            echo "   labels: $labels"
+            echo " messages: $messages"
+            echo "   colors: $colors"
           done
           
           echo "BADGES_FILENAMES=($filenames )" >> $GITHUB_ENV
@@ -280,7 +287,6 @@ jobs:
           
 
       - name: Build Badges
-        if: always() && !cancelled()
         uses: peterrhodesdev/build-a-badge@v1.3.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
