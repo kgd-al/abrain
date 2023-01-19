@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Faking build wheels
-        shell: bash
+        shell: bash --noprofile --norc {0} # No automatic fail-fast
         run: |
           echo "Building ${{ matrix.build }}"
           mkdir wheelhouse
@@ -92,7 +92,6 @@ jobs:
           #mkdir logs
           #log=logs/${{ matrix.build }}.log
           #pipx run cibuildwheel 2>&1 | tee $log
-          #ls -lh .
           #res=${PIPESTATUS[0]}
           #echo "[kgd-build-status] $res" >> $log
           #exit $res
