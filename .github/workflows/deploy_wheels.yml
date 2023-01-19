@@ -87,7 +87,7 @@ jobs:
           #CIBW_TEST_COMMAND: |
             #pytest {project}/tests -ra --small-scale --test-evolution
           #LC_ALL: C
-        shell: bash --noprofile --norc {0} # No automatic fail-fast
+        #shell: bash --noprofile --norc {0} # No automatic fail-fast
         #run: |
           #mkdir logs
           #log=logs/${{ matrix.build }}.log
