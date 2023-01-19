@@ -50,47 +50,52 @@ jobs:
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
 
     steps:
-      #- name: Faking build wheels
-        #shell: bash
-        #run: |
-          #echo "Building ${{ matrix.build }}"
-          #mkdir wheelhouse
-          #mkdir logs
-          #log=logs/${{ matrix.build }}.log
-          #echo "import random" > script.py
-          #echo "fail = (random.random() < .5)" >> script.py
-          #echo "if not fail:" >> script.py
-          #echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
-          #echo "  print('Success')" >> script.py
-          #echo "else:" >> script.py
-          #echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
-          #echo "  print('Simulated error', msg)" >> script.py
-          #echo "  print('##[error]Process completed with exit code 1')" >> script.py
-          #echo "exit(fail)" >> script.py
-          #python3 script.py 2>&1 | tee $log
-          #exit ${PIPESTATUS[0]}
-                    
-      - uses: actions/checkout@v3
-
-      - name: Build wheels
-        env:
-          CIBW_BUILD: ${{ matrix.build }}
-          CIBW_BUILD_VERBOSITY: 1
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
-          CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
-          CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
-          CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
-          CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
-          CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
-          LC_ALL: C
+      - name: Faking build wheels
         shell: bash
         run: |
+          echo "Building ${{ matrix.build }}"
+          mkdir wheelhouse
           mkdir logs
-          pipx run cibuildwheel 2>&1 | tee logs/${{ matrix.build }}.log
-          ls -lh .
-          exit ${PIPESTATUS[0]}
+          log=logs/${{ matrix.build }}.log
+          echo "import random" > script.py
+          echo "fail = (random.random() < .5)" >> script.py
+          echo "if not fail:" >> script.py
+          echo "  open('wheelhouse/${{ matrix.build }}.whl', 'w')" >> script.py
+          echo "  print('Success')" >> script.py
+          echo "else:" >> script.py
+          echo "  msg=random.choice(['squares are round', 'err1', 'foo', 'bar'])" >> script.py
+          echo "  print('Simulated error', msg)" >> script.py
+          echo "  print('##[error]Process completed with exit code 1')" >> script.py
+          echo "exit(fail)" >> script.py
+          python3 script.py 2>&1 | tee $log
+          #res=${PIPESTATUS[0]}
+          #echo "[kgd-build-status] $res" >> $log
+          #exit $res
+                    
+      #- uses: actions/checkout@v3
+
+      #- name: Build wheels
+        #env:
+          #CIBW_BUILD: ${{ matrix.build }}
+          #CIBW_BUILD_VERBOSITY: 1
+          #CIBW_TEST_EXTRAS: tests
+          #CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          #CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
+          #CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
+          #CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
+          #CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
+          #CIBW_TEST_COMMAND: |
+            #pytest {project}/tests -ra --small-scale --test-evolution
+          #LC_ALL: C
+        #shell: bash
+        #run: |
+          #mkdir logs
+          #log=logs/${{ matrix.build }}.log
+          #pipx run cibuildwheel 2>&1 | tee $log
+          #ls -lh .
+          #res=${PIPESTATUS[0]}
+          #echo "[kgd-build-status] $res" >> $log
+          #exit $res
           
       - uses: actions/upload-artifact@v3
         with:
@@ -130,11 +135,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() }}
     steps:
-      - uses: actions/download-artifact@v3
-        name: download sdist/wheels
-        with:
-          name: dist
-          path: dist
+      #- uses: actions/download-artifact@v3
+        #name: download sdist/wheels
+        #with:
+          #name: dist
+          #path: dist
           
       - uses: actions/download-artifact@v3
         name: download logs
@@ -167,18 +172,11 @@ jobs:
           (
             for build in $builds
             do
-              status=0
+              log=$(ls logs/*$build*.log)
+              status=$(grep '[kgd-build-status]' | cut -d ' ' -f 2)
             
-              # If wheel file was not uploaded -> error
-              # x86 final name is different from built type
-              build_search=$(sed 's/x86/*x86/' <<< $build)
-              echo find dist -name "*$build_search*.whl" >&2
-              wheel=$(find dist -name "*$build_search*.whl")
-              echo ">> $wheel" >&2
-              if [ -z $wheel ]
+              if [ $status -ne 0 ]
               then
-                # Look it up in the logs
-                log=$(ls logs/*$build*.log)
                 echo "#### $build" >> $errs_log
                 grep -i -e '\berror\b' -e '\bfailed\b' -e '\bwarning\b' $log \
                 | grep -v "##\[error\]Process completed" \
@@ -192,7 +190,6 @@ jobs:
                 
                 permalink="https://github.com/kgd-al/abrain/wiki/wheels/#$build"
                 echo "| :x: | [$build]($permalink) | $error |" >> $errs_table
-                status=1
                 
               else
                 echo "| :heavy_check_mark: | $build |" >> $built_table
@@ -207,11 +204,11 @@ jobs:
             
             echo "# Build summary"
             
-            echo "## Raw matrix input"
+            #echo "## Raw matrix input"
             
-            cat $matrix_log
+            #cat $matrix_log
             
-            echo "## Matrix summary test"
+            #echo "## Matrix summary test"
             awk -F '|' '
               {
                 d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
@@ -229,18 +226,18 @@ jobs:
                     if (v == 1)       v = "[:x:](#"b[r_][c_]")";
                     else if (v == 0)  v = ":heavy_check_mark:";
                     else              v = ":black_circle:";
-                    printf " %s |", symbols[v];
+                    printf " %s |", v;
                   }
                   printf "\n";
                 }
               }' $matrix_log
             echo
               
-            echo "## Sucessfully built wheels"
-            echo "|     | Build |"
-            echo "| :-: | :---- |"
-            cat $built_table
-            echo
+            #echo "## Sucessfully built wheels"
+            #echo "|     | Build |"
+            #echo "| :-: | :---- |"
+            #cat $built_table
+            #echo
             echo "Successfully built $rate% of wheels"
             echo
             
@@ -253,9 +250,40 @@ jobs:
             cat $errs_log | sort -z -k2,2 | tr -d '\0'
             echo
             
+            for type in macosx manylinux musllinux win
+            do
+              filenames="$filenames badge-wheel-$type"
+              pretty_type=$(sed 's/win/windows/' <<< $type)
+              labels="$labels $pretty_type"
+              
+              read msg color < <( \
+                grep "$type" $matrix_log | awk -F'|' \
+                '{ ok += ($4 == 0) }END{ 
+                  c=(ok==NR ? 'green' : (ok > 0 ? 'orange' : 'red'))
+                  printf "%d/%d %s", ok, NR, c;
+                }'
+              
+              messages="$messages $msg"
+              colors="$colors $color"
+            done
+            
+            echo "BADGES_FILENAMES=($filenames )" >> $GITHUB_ENV
+            echo "BADGES_LABELS=($labels )" >> $GITHUB_ENV
+            echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
+            echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
             
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
-      
+
+      - name: Build Badges
+        if: always() && !cancelled()
+        uses: peterrhodesdev/build-a-badge@v1.3.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filename: ${{ env.BADGES_FILENAMES }}
+          label: ${{ env.BADGES_LABELS }}
+          message: ${{ env.BADGES_MESSAGES }}
+          color: ${{ env.BADGES_COLORS }}
+          
       - name: Upload summary to Wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
         with:
