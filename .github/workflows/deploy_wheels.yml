@@ -260,8 +260,10 @@ jobs:
             echo "$type"
           
             filenames="$filenames badge-wheel-$type"
+            echo "filenames: $filenames"
             pretty_type=$(sed 's/win/windows/' <<< $type)
             labels="$labels $pretty_type"
+            echo "   labels: $labels"
             
             read msg color < <( \
               grep "$type" $matrix_log | awk -F'|' \
@@ -270,14 +272,13 @@ jobs:
                 printf "%d/%d %s", ok, NR, c;
               }' \
             )
+            echo "Parsed stats"
             
             messages="$messages $msg"
-            colors="$colors $color"
-            
-            echo "filenames: $filenames"
-            echo "   labels: $labels"
             echo " messages: $messages"
+            colors="$colors $color"
             echo "   colors: $colors"
+            
           done
           
           echo "BADGES_FILENAMES=($filenames )" >> $GITHUB_ENV
