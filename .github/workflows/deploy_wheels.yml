@@ -249,29 +249,32 @@ jobs:
             cat $errs_log | sort -z -k2,2 | tr -d '\0'
             echo
             
-            for type in macosx manylinux musllinux win
-            do
-              filenames="$filenames badge-wheel-$type"
-              pretty_type=$(sed 's/win/windows/' <<< $type)
-              labels="$labels $pretty_type"
-              
-              read msg color < <( \
-                grep "$type" $matrix_log | awk -F'|' \
-                '{ ok += ($4 == 0) }END{ 
-                  c=(ok==NR ? 'green' : (ok > 0 ? 'orange' : 'red'))
-                  printf "%d/%d %s", ok, NR, c;
-                }'
-              
-              messages="$messages $msg"
-              colors="$colors $color"
-            done
-            
-            echo "BADGES_FILENAMES=($filenames )" >> $GITHUB_ENV
-            echo "BADGES_LABELS=($labels )" >> $GITHUB_ENV
-            echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
-            echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
-            
           ) | tee -a $wiki $GITHUB_STEP_SUMMARY
+          
+          # Generate synthetic badges
+          for type in macosx manylinux musllinux win
+          do
+            filenames="$filenames badge-wheel-$type"
+            pretty_type=$(sed 's/win/windows/' <<< $type)
+            labels="$labels $pretty_type"
+            
+            read msg color < <( \
+              grep "$type" $matrix_log | awk -F'|' \
+              '{ ok += ($4 == 0) }END{ 
+                c=(ok==NR ? 'green' : (ok > 0 ? 'orange' : 'red'))
+                printf "%d/%d %s", ok, NR, c;
+              }' \
+            )
+            
+            messages="$messages $msg"
+            colors="$colors $color"
+          done
+          
+          echo "BADGES_FILENAMES=($filenames )" >> $GITHUB_ENV
+          echo "BADGES_LABELS=($labels )" >> $GITHUB_ENV
+          echo "BADGES_MESSAGES=($messages )" >> $GITHUB_ENV
+          echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
+          
 
       - name: Build Badges
         if: always() && !cancelled()
