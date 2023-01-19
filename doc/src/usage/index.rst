@@ -14,6 +14,9 @@ End-user installation
 Precompiled wheels are available (see
 https://github.com/kgd-al/abrain/wiki/wheels for the full list)
 
+.. include:: https://github.com/kgd-al/abrain/wiki/matrix.md
+    :parser: myst_parser.sphinx_
+
 Editable install
 ****************
 

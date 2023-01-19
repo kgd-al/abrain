@@ -40,6 +40,7 @@ extensions = [
     'sphinx.ext.todo',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_design',
+    'myst_parser'
 ]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = []  # ['_templates']
