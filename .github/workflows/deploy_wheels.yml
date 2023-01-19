@@ -35,7 +35,7 @@ jobs:
           do
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done | head -n 4 >> mjson_file
+        done >> mjson_file
         echo "$mjson]}" >> mjson_file
         mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
@@ -166,13 +166,13 @@ jobs:
           errs_table=errors.md
           matrix_log=matrix_log
           errs_log=err_log
+          wurl=https://github.com/kgd-al/abrain/wiki/wheels/#
 
           (
             for build in $builds
             do
               log=$(ls logs/*$build*.log)
               status=$(grep '\[kgd-build-status\]' $log | cut -d ' ' -f 2)
-              echo $status
             
               if [ $status -ne 0 ]
               then
@@ -187,7 +187,7 @@ jobs:
                 [[ $log == *win* ]] && n=$(($n + 1))
                 error=$(tail -n $n tmp | tr -d '\n' | sed 's/$/\n/')
                 
-                permalink="https://github.com/kgd-al/abrain/wiki/wheels/#$build"
+                permalink="$wurl$build"
                 echo "| :x: | [$build]($permalink) | $error |" >> $errs_table
                 
               else
@@ -208,7 +208,7 @@ jobs:
             #cat $matrix_log
             
             #echo "## Matrix summary test"
-            awk -F '|' '
+            awk -F '|' -vurl=$wurl '
               {
                 d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
               }END{
@@ -222,7 +222,7 @@ jobs:
                   printf "| %s |", r_;
                   for (c_ in c) {
                     v = d[r_][c_];
-                    if (v == 1)       v = "[:x:](#"b[r_][c_]")";
+                    if (v == 1)       v = "[:x:]("url"#"b[r_][c_]")";
                     else if (v == 0)  v = ":heavy_check_mark:";
                     else              v = ":black_circle:";
                     printf " %s |", v;
@@ -231,12 +231,7 @@ jobs:
                 }
               }' $matrix_log
             echo
-              
-            #echo "## Sucessfully built wheels"
-            #echo "|     | Build |"
-            #echo "| :-: | :---- |"
-            #cat $built_table
-            #echo
+
             echo "Successfully built $rate% of wheels"
             echo
             
@@ -257,7 +252,7 @@ jobs:
           # Generate synthetic badges
           for type in macosx manylinux musllinux win
           do
-            echo "$type"
+            echo "## $type ##"
           
             filenames="$filenames badge-wheel-$type"
             echo "filenames: $filenames"
@@ -270,7 +265,7 @@ jobs:
             msg="$passed/$all"
             echo "stats: $msg"
             color=$(echo "$passed $all" | awk '{
-              print ($1==$2 ? 'green' : ($1 > 0 ? 'orange' : 'red'))
+              print ($1==$2 ? "green" : ($1 > 0 ? "orange" : "red"))
             }')
             
             messages="$messages $msg"

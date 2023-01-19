@@ -8,7 +8,7 @@
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-manylinux.md)
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-musllinux.md)
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-macosx.md)
-![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-windows.md)
+![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-win.md)
 
 ### Development
 ![](https://img.shields.io/badge/version-!-900)
