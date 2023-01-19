@@ -68,9 +68,9 @@ jobs:
           echo "  print('##[error]Process completed with exit code 1')" >> script.py
           echo "exit(fail)" >> script.py
           python3 script.py 2>&1 | tee $log
-          #res=${PIPESTATUS[0]}
-          #echo "[kgd-build-status] $res" >> $log
-          #exit $res
+          res=${PIPESTATUS[0]}
+          echo "[kgd-build-status] $res" >> $log
+          exit $res
                     
       #- uses: actions/checkout@v3
 
