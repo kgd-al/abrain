@@ -49,7 +49,7 @@ jobs:
         echo "OUTPUT_CCOV=N/A" >> $GITHUB_ENV
         
         # Generate version badge
-        version=$(grep 'version =' | cut -d ' ' -f 3 | tr -d '"')
+        version=$(grep 'version =' pyproject.toml | cut -d ' ' -f 3 | tr -d '"')
         echo "Extracted version: '$version'"
         read lbl color <<< $(echo $arg | awk '
           /a/{ print "alpha", 25; next }
@@ -57,7 +57,7 @@ jobs:
           /rc/{ print "pre-release", 50; next }
           /^[0-9.]*$/{ print "final", 66; next }
           /post/{ print "post-release", 50; next }
-        )'
+        ')
         
         echo "LBL_VERSION=$lbl" >> $GITHUB_ENV
         echo "MSG_VERSION=$version" >> $GITHUB_ENV
