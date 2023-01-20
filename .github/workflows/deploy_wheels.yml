@@ -283,36 +283,6 @@ jobs:
         env:
           GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
 
-      - name: /1/ list dist/*
-        run: |
-          echo "Contents of ~home:"
-          ls -lh
-          echo "Contents of dist folder:"
-          ls dist/* || echo "error"
-          echo
-          echo "Looking for *.whl/*.targ.gz files"
-          find . -name "*.whl" -o -name "*.tar.gz"
-      
-    
-      - name: Build Badges
-        uses: peterrhodesdev/build-a-badge@v1.3.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filename: ${{ env.BADGES_FILENAMES }}
-          label: ${{ env.BADGES_LABELS }}
-          message: ${{ env.BADGES_MESSAGES }}
-          color: ${{ env.BADGES_COLORS }}
-
-      - name: /2/ list dist/*
-        run: |
-          echo "Contents of ~home:"
-          ls -lh
-          echo "Contents of dist folder:"
-          ls dist/* || echo "error"
-          echo
-          echo "Looking for *.whl/*.targ.gz files"
-          find . -name "*.whl" -o -name "*.tar.gz"
-      
                     
     # For testing purposes, upload always
     # if: always()
@@ -337,3 +307,13 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
+
+      - name: Build Badges # Put last because of an internal cleaning checkout 
+        uses: peterrhodesdev/build-a-badge@v1.3.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filename: ${{ env.BADGES_FILENAMES }}
+          label: ${{ env.BADGES_LABELS }}
+          message: ${{ env.BADGES_MESSAGES }}
+          color: ${{ env.BADGES_COLORS }}
+
