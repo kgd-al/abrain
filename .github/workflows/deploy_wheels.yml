@@ -301,17 +301,25 @@ jobs:
     #   alternatively, to publish when a GitHub Release is created, use the following rule:
     # if: github.event_name == 'release' && github.event.action == 'published'
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        name: upload to TestPyPI
+      - name: list dist/*
+        run: |
+          echo "Contents of dist folder:"
+          ls dist/*
+          echo
+          echo "Looking for *.whl/*.targ.gz files"
+          find . -name "*.whl" -o -name "*.tar.gz"
+    
+      - name: upload to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         if: always()
         with:
           user: __token__
           password: ${{ secrets.testpypi_password }}
           repository_url: https://test.pypi.org/legacy/
-          # To test: repository_url: https://test.pypi.org/legacy/
-          
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        name: upload to PyPI
+          verbose: true
+
+      - name: upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         if: github.event_name == 'release' && github.event.action == 'published'
         with:
           user: __token__
