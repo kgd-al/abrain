@@ -232,7 +232,7 @@ jobs:
             
             echo "<details><summary>Matrix build log</summary><p>"            
             echo "Input lines:"
-            cat $matrix_log"
+            cat $matrix_log
             echo "Processed as:"
             cat awk.log
             echo "</p></details>"
