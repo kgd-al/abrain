@@ -303,7 +303,7 @@ jobs:
 
       - name: upload to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: github.event_name == 'release' && github.event.action == 'published'
+        if: "contains(github.event.head_commit.message, '[Release]')"
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
