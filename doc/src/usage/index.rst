@@ -19,9 +19,12 @@ See https://github.com/kgd-al/abrain/wiki/wheels for the full list.
 Editable install
 ****************
 
+Due to inconsistent behavior with pip editable install, it is recommended to
+instead clone the repository and use the built dedicated install command:
+
 .. code-block:: console
 
-   $ git clone ...
+   $ git clone https://github.com/kgd-al/abrain.git
    $ ./commands.sh install-dev
    OR
    $ ./commands.sh install-dev-tests
@@ -50,14 +53,3 @@ Kaleido
 
 Rendering an ANN in non-interactive format requires either kaleido or orca.
 While the former is unavailable on some distributions, the latter seems out
-
-Musllinux wheels
-****************
-
-.. note: For tests only
-
-Pillow (used to generate images of CPPN outputs) has no available wheels.
-Manual installation requires at least a jpeg library (e.g. `apk add jpeg-dev`)
-See https://pillow.readthedocs.io/en/stable/installation.html#building-from-source
-
-

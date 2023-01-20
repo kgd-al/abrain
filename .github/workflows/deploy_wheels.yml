@@ -202,10 +202,12 @@ jobs:
             done
             
             echo "# Build summary"
+            echo "Generated on $(LC_ALL=C date)"
             
             awk -F '|' -vurl=$wurl '
               {
                 d[$2][$3]=$4; r[$2]=1; c[$3]=1; b[$2][$3]=$1;
+                printf "d[%s][%s] = %s; r[%s] = 1; c[%s] = 1; b[%s][%s] = %s", $2, $3, $4, $2, $3, $2, $3, $1 >> "awk.log"
               }END{
                 PROCINFO["sorted_in"] = "@ind_str_asc";
                 printf "| |";
@@ -221,11 +223,19 @@ jobs:
                     else if (v == 0)  v = ":heavy_check_mark:";
                     else              v = ":black_circle:";
                     printf " %s |", v;
+                    print r_, c_, d[r_][c_], v >> "awk.log";
                   }
                   printf "\n";
                 }
               }' $matrix_log
             echo
+            
+            echo "<details><summary>Matrix build log</summary><p>"            
+            echo "Input lines:"
+            cat $matrix_log"
+            echo "Processed as:"
+            cat awk.log
+            echo "</p></details>
 
             echo "Successfully built $rate% of wheels"
             echo
@@ -257,7 +267,8 @@ jobs:
             
             all=$(grep "$type" $matrix_log | cut -d '|' -f4 | wc -l)
             passed=$(grep "$type.*0$" $matrix_log | cut -d '|' -f4 | wc -l)
-            msg="$passed/$all"
+            msg="$passed"
+            [ $passed -lt $all ] && msg="$msg/$all"
             echo "stats: $msg"
             color=$(echo "$passed $all" | awk '{
               print ($1==$2 ? "success" : ($1 > 0 ? "important" : "critical"))

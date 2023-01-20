@@ -106,12 +106,13 @@ def test_view_neurons_png(mutations, seed, tmp_path):
 
     file = f"{tmp_path}/ann.png"
     fig = plotly_render(ann)
-    
+
     try:
-      fig.write_image(file)
-      print("Generated", file)
-    except Exception as e:
-      pytest.skip(f"Ignoring exceptions from unstable kaleido: {e=}, {type(e)=}")
+        fig.write_image(file)
+        print("Generated", file)    # pragma: no cover
+    except Exception as e:  # pragma: no cover
+        pytest.skip(f"Ignoring exceptions from unstable kaleido: "
+                    f"{e=}, {type(e)=}")
 
 
 @pytest.mark.parametrize('mutations', [10])

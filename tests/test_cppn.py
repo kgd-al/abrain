@@ -1,17 +1,13 @@
+import array
 import pydoc
+from itertools import chain, combinations
 from random import Random
 
-import array
-from itertools import chain, combinations
-
-from sys import float_info
-
-from pytest_steps import test_steps
-
-from abrain._cpp.phenotype import ( # noqa
+from abrain._cpp.phenotype import (  # noqa
     CPPN, Point,
 )
 from abrain.core.genome import Genome
+from pytest_steps import test_steps
 
 
 def _make_cppn(seed, mutations=0):
@@ -96,11 +92,12 @@ def test_outputs_equals(seed):
 
     def p():
         return Point(r(), r(), r())
+
     def all_subsets(ss):
-      return list(chain(*map(lambda x: combinations(ss, x),
-                            range(0, len(ss)+1))))
-  
-    for i in range(1):#100):
+        return list(chain(*map(lambda x: combinations(ss, x),
+                               range(0, len(ss)+1))))
+
+    for _ in range(100):
         p0, p1 = p(), p()
 
         outputs_manual = []
@@ -111,18 +108,18 @@ def test_outputs_equals(seed):
         # Test all combinations
         outputs_subsets = []
         for subset in all_subsets(CPPN.OUTPUTS_LIST):
-          cppn(p0, p1, outputs, set(subset))
-          outputs_subsets.append((subset,
-                                  [outputs[i] for i in range(len(outputs))]))
+            cppn(p0, p1, outputs, set(subset))
+            outputs_subsets.append((subset,
+                                    [outputs[i] for i in range(len(outputs))]))
 
         cppn(p0, p1, outputs)
         outputs_all = [outputs[i] for i in range(len(outputs))]
-        
+
         assert outputs_manual == outputs_all
         for subset, outputs_subset in outputs_subsets:
-          for i in range(len(outputs_manual)):
-            if CPPN.Output(i) in subset:
-              assert outputs_manual[i] == outputs_subset[i]
+            for i in range(len(outputs_manual)):
+                if CPPN.Output(i) in subset:
+                    assert outputs_manual[i] == outputs_subset[i]
 
 
 sample_sizes = [10, 50, 100]
@@ -147,8 +144,8 @@ def test_multiscale_sampling(mutations, seed,
         def to_substrate_coord(index):
             return 2 * index / (size - 1) - 1
 
-        data = array.array('B', [0,0,0] * size * size * 2)
-        
+        data = array.array('B', [0, 0, 0] * size * size * 2)
+
         outputs = CPPN.outputs()
 
         for i in range(size):
@@ -159,16 +156,17 @@ def test_multiscale_sampling(mutations, seed,
                 for k, p0, p1 in [(0, p, dp), (1, dp, p)]:
                     cppn(p, dp, outputs)
                     ix = 3*(i+size*(j+size*k))
-                    for l, v in \
-                      enumerate([outputs[i] for i in range(len(outputs))]):
-                      data[ix+l] = \
-                        int(.5 * (max(-1, min(outputs[l], 1)) + 1) * 255)
+                    for o, v in enumerate(
+                            [outputs[i] for i in range(len(outputs))]):
+                        data[ix+o] = \
+                            int(.5 * (max(-1.0, min(outputs[o], 1.0)) + 1)
+                                * 255)
 
         for name, i in [('input', 0), ('output', 1)]:
             filename = f"{folder}/xy_{name}_plane_{size:03}x{size:03}.ppm"
             with open(filename, 'wb') as f:
-              f.write(bytearray(f"P6\n{size} {size}\n255\n", 'ascii'))
-              data.tofile(f)
+                f.write(bytearray(f"P6\n{size} {size}\n255\n", 'ascii'))
+                data.tofile(f)
             print('Generated', filename)
 
         yield f"sample_at_{size}"

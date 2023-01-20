@@ -258,8 +258,8 @@ class Genome(_CPPNData):
             raise OSError("""
                 dot program not found. Make sure it is installed before using
                  this function.
-                 
-                [ubuntu] sudo apt install graphviz 
+
+                [ubuntu] sudo apt install graphviz
             """)
 
         path = pathlib.Path(path)

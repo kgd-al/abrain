@@ -47,6 +47,23 @@ jobs:
         echo "OUTPUT_TCOV=N/A" >> $GITHUB_ENV
         echo "OUTPUT_PCOV=N/A" >> $GITHUB_ENV
         echo "OUTPUT_CCOV=N/A" >> $GITHUB_ENV
+        
+        # Generate version badge
+        version=$(grep 'version =' | cut -d ' ' -f 3 | tr -d '"')
+        echo "Extracted version: '$version'"
+        read lbl color <<< $(echo $arg | awk '
+          /a/{ print "alpha", 25; next }
+          /b/{ print "beta", 25; next }
+          /rc/{ print "pre-release", 50; next }
+          /^[0-9.]*$/{ print "final", 66; next }
+          /post/{ print "post-release", 50; next }
+        )'
+        
+        echo "LBL_VERSION=$lbl" >> $GITHUB_ENV
+        echo "MSG_VERSION=$version" >> $GITHUB_ENV
+        echo "COLOR_VERSION=$color" >> $GITHUB_ENV
+
+        echo "
     - name: Lint with flake8
       id: flake
       continue-on-error: true
@@ -129,11 +146,12 @@ jobs:
       uses: peterrhodesdev/build-a-badge@v1.3.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        filename: ("badge-flake" "badge-tests" "badge-cov" "badge-pcov" "badge-ccov")
-        label: ("PEP8" "tests" "code coverage" "" "")
+        filename: ("badge-version" "badge-flake" "badge-tests" "badge-cov" "badge-pcov" "badge-ccov")
+        label: ("${{ env.LBL_VERSION }}" "PEP8" "tests" "code coverage" "" "")
         labelColor: ("" "" "" "555" "555")
         message: |
           (
+            "${{ env.MSG_VERSION }}"
             "${{ env.MSG_FLAKE }}"
             "${{ env.MSG_TESTS }}"
             "${{ env.MSG_TCOV }}"
@@ -142,6 +160,7 @@ jobs:
           )
         color: |
           (
+            'hsl(240, 100%, '${{ env.COLOR_VERSION }}'%)'
             'hsl('${{ env.COLOR_FLAKE }}', 100%, 25%)'
             'hsl('${{ env.COLOR_TESTS }}', 100%, 25%)'
             'hsl('${{ env.COLOR_TCOV }}', 100%, 25%)'

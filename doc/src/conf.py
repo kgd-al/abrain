@@ -115,7 +115,7 @@ html_css_files = ['custom.css']
 # -- Infuriating checker for undocumented items ------------------------------
 
 logger = logging.getLogger(__name__)
-kgd_logger = None
+kgd_logger: str = None
 kgd_verbose = False
 
 # set up the types of member to check that are documented
