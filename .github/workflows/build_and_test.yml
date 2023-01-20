@@ -52,12 +52,13 @@ jobs:
         version=$(grep '^version =' pyproject.toml | cut -d ' ' -f 3 \
                   | tr -d '"')
         echo "Extracted version: '$version'"
-        read lbl color <<< $(echo $arg | awk '
+        read lbl color <<< $(echo $version | awk '
           /a/{ print "alpha", 25; next }
           /b/{ print "beta", 25; next }
           /rc/{ print "pre-release", 50; next }
           /^[0-9.]*$/{ print "final", 66; next }
           /post/{ print "post-release", 50; next }
+          { print "error", 100; next }
         ')
         
         echo "LBL_VERSION=$lbl" >> $GITHUB_ENV

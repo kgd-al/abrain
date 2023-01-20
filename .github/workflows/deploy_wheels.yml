@@ -235,7 +235,7 @@ jobs:
             cat $matrix_log"
             echo "Processed as:"
             cat awk.log
-            echo "</p></details>
+            echo "</p></details>"
 
             echo "Successfully built $rate% of wheels"
             echo

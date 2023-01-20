@@ -18,8 +18,7 @@ The API is served in Python and computations are performed in C++.
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-wheel-win.md)
 
 ### Development
-https://github.com/kgd-al/abrain/blob/a4c956fc0112418b760e2a465bbd1df635378b6d/pyproject.toml#L3
-
+![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-version.md)
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-tests.md)
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-cov.md)
 ![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/wiki/kgd-al/abrain/badge-pcov.md)
