@@ -49,7 +49,8 @@ jobs:
         echo "OUTPUT_CCOV=N/A" >> $GITHUB_ENV
         
         # Generate version badge
-        version=$(grep 'version =' pyproject.toml | cut -d ' ' -f 3 | tr -d '"')
+        version=$(grep '^version =' pyproject.toml | cut -d ' ' -f 3 \
+                  | tr -d '"')
         echo "Extracted version: '$version'"
         read lbl color <<< $(echo $arg | awk '
           /a/{ print "alpha", 25; next }
@@ -63,7 +64,6 @@ jobs:
         echo "MSG_VERSION=$version" >> $GITHUB_ENV
         echo "COLOR_VERSION=$color" >> $GITHUB_ENV
 
-        echo "
     - name: Lint with flake8
       id: flake
       continue-on-error: true
