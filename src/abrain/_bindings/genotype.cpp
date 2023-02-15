@@ -5,6 +5,7 @@
 
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
+using namespace pybind11::literals;
 
 #include "pybind11/stl_bind.h"
 PYBIND11_MAKE_OPAQUE(std::vector<kgd::eshn::genotype::CPPNData::Node>)
@@ -18,10 +19,40 @@ static const utils::DocMap _cppn_doc {
   { "OUTPUTS", "Number of outputs for the CPPN" },
 };
 
-void init_genotype (py::module_ &m) {
-  using Node = CPPNData::Node;
-  using Link = CPPNData::Link;
+py::dict to_json (const CPPNData &d) {
+  py::dict dict;
+  py::list nodes, links;
+  for (auto &n: d.nodes)  nodes.append(py::make_tuple(n.id, n.func));
+  for (auto &l: d.links)
+    links.append(py::make_tuple(l.id, l.src, l.dst, l.weight));
+  dict["nodes"] = nodes;
+  dict["links"] = links;
+  dict["nextNodeID"] = d.nextNodeID;
+  dict["nextLinkID"] = d.nextLinkID;
+  return dict;
+}
 
+using Node = CPPNData::Node;
+using Link = CPPNData::Link;
+
+CPPNData from_json (py::dict dict) {
+  CPPNData d;
+  d.nextNodeID = dict["nextNodeID"].cast<int>();
+  d.nextLinkID = dict["nextLinkID"].cast<int>();
+  for (const py::handle &h: dict["nodes"]) {
+    py::tuple t = h.cast<py::tuple>();
+    d.nodes.push_back(Node{t[0].cast<int>(), t[1].cast<std::string>()});
+  }
+  for (const py::handle &h: dict["links"]) {
+    py::tuple t = h.cast<py::tuple>();
+    d.links.push_back(Link{t[0].cast<int>(),
+                            t[1].cast<uint>(), t[2].cast<uint>(),
+                            t[3].cast<float>()});
+  }
+  return d;
+}
+
+void init_genotype (py::module_ &m) {
   auto cppn = py::class_<CPPNData>(m, "CPPNData");
   auto node = py::class_<Node>(cppn, "Node");
   auto link = py::class_<Link>(cppn, "Link");
@@ -40,6 +71,13 @@ void init_genotype (py::module_ &m) {
       .def_readwrite ID(links, "The collection of inter-node relationships")
       .def_readwrite ID(nextNodeID, "ID for the next random node (monotonic)")
       .def_readwrite ID(nextLinkID, "ID for the next random link (monotonic")
+      .def("to_json", to_json, "Convert to a json-compliant Python dictionary")
+      .def_static("from_json", from_json, "j"_a,
+                  "Convert from the json-compliant Python dictionary `j`")
+      .def(py::pickle(
+        [] (const CLASS &d) { return to_json(d); },
+        [](py::dict d) {      return from_json(d);  }
+      ))
       ;
 
 #undef CLASS

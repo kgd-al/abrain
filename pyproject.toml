@@ -22,7 +22,6 @@ classifiers = [
 ]
 dependencies = [
   "plotly",
-  "configobj",
   "importlib_resources",
   "graphviz",
   "pyrecord",

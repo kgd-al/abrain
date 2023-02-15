@@ -14,8 +14,12 @@ namespace kgd::eshn::phenotype {
 using Output = CPPN::Output;
 using Point = es::Point;
 
-bool ANN::empty(void) const {
-  return stats().edges == 0;
+bool ANN::empty(bool strict) const {
+  return strict ? (stats().hidden == 0) : (stats().edges == 0);
+}
+
+bool ANN::perceptron(void) const {
+  return (stats().hidden == 0) && stats().edges > 0;
 }
 
 ANN ANN::build (const Coordinates &inputs,
@@ -48,8 +52,8 @@ ANN ANN::build (const Coordinates &inputs,
 
   Coordinates hidden;
   evolvable_substrate::Connections connections;
-  if (evolvable_substrate::connect(cppn, inputs, outputs, hidden,
-                                   connections)) {
+  if (evolvable_substrate::connect(cppn, inputs, outputs,
+                                   hidden, connections)) {
     for (auto &p: hidden) neurons.insert(add(p, Neuron::H));
     for (auto &c: connections)
       ann.neuronAt(c.to)->addLink(c.weight * weightRange, ann.neuronAt(c.from));
@@ -147,16 +151,14 @@ uint computeDepth (ANN &ann) {
 }
 
 void ANN::computeStats(void) {
-  if (_neurons.size() == _inputs.size() + _outputs.size()) {
+  _stats.hidden = _neurons.size() - _inputs.size() - _outputs.size();
+  if (_stats.hidden == 0) {
     for (Neuron::ptr &n: _inputs)   n->depth = 0;
     for (Neuron::ptr &n: _outputs)  n->depth = 1;
     _stats.depth = 1;
-    _stats.edges = 0;
-    _stats.axons = 0;
-    return;
-  }
 
-  _stats.depth = computeDepth(*this);
+  } else
+    _stats.depth = computeDepth(*this);
 
   auto &e = _stats.edges = 0;
   float &l = _stats.axons = 0;

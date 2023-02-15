@@ -37,25 +37,9 @@ static const Sections _sections {
     "divThr",
     "varThr",
     "bndThr",
+    "allowPerceptrons"
   }}
 };
-
-using ParseInserter = std::function<void(const std::string&)>;
-bool do_parse_string (const std::string &s, ParseInserter inserter,
-                      const std::string &delims) {
-  auto l = s.find_first_of(delims[0]), r = s.find_last_of(delims[1]);
-  if (l != std::string::npos && r != std::string::npos) {
-    std::stringstream ss (s.substr(l+1, r-l-1));
-    std::string item;
-    while (std::getline(ss, item, ',')) {
-      if (item[0] == ' ') item = item.substr(1);
-      inserter(item);
-    }
-
-  } else
-    return false;
-  return true;
-}
 
 static utils::DocMap _docs {
   { "functionSet",
@@ -112,6 +96,9 @@ static utils::DocMap _docs {
 
   { "bndThr",
     "Minimal divergence threshold for discovering neurons" },
+
+  { "allowPerceptrons",
+    "Attempt to generate a perceptron if no hidden neurons were discovered" },
 };
 
 void init_config (py::module_ &m) {
@@ -155,6 +142,7 @@ void init_config (py::module_ &m) {
       .def_readwrite_static ID(divThr)
       .def_readwrite_static ID(varThr)
       .def_readwrite_static ID(bndThr)
+      .def_readwrite_static ID(allowPerceptrons)
 
       .def_readonly_static("_sections", &_sections)
       .def_readonly_static("_docstrings", &_docs)
@@ -191,60 +179,48 @@ void init_config (py::module_ &m) {
       })
   ;
 
-  /// String parser methods (for config file reading)
-  fbnd.def_static("ccpParseString", [] (const std::string &s) {
-    Config::FBounds b {};
-    std::vector<float> values;
-    bool ok = do_parse_string(s, [&values] (auto item) {
-      std::istringstream iss (item);
-      float f;
-      iss >> f;
-      values.push_back(f);
-    }, "()");
-
-    ok &= (values.size() == 5);
-    if (ok) {
-      b.min = values[0], b.rndMin = values[1],
-      b.rndMax = values[2], b.max = values[3],
-      b.stddev = values[4];
-    }
-    return b;
-  }, "Try to parse the provided string into a mutation bounds object")
-      .def_static("isValid", [] (const Config::FBounds &b) {
+  // json converter (read/write to primitive python types)
+  fbnd.def("toJson", [] (const Config::FBounds &b) {
+      std::vector<float> v {{b.min, b.rndMin, b.rndMax, b.max, b.stddev}};
+        return py::list(py::cast(v));
+  }, "Convert to a python list of floats")
+      .def_static("fromJson", [] (const std::vector<float> &l) {
+        return Config::FBounds{l[0], l[1], l[2], l[3], l[4]};
+  }, "Convert from a python list of floats")
+      .def("isValid", [] (const Config::FBounds &b) {
     return b.min <= b.rndMin && b.rndMin <= b.rndMax && b.rndMax <= b.max
         && b.stddev > 0;
   }, "Whether this is a valid mutation bounds object");
 
-  strs.def_static("ccpParseString", [] (const std::string &s) {
-    Strings strs;
-    bool ok = do_parse_string(s, [&strs] (auto item) {
-      strs.push_back(item);
-    }, "[]");
-
-    if (ok) return strs;
-    else    return Strings{};
-  }, "Try to parse the provided string into a strings collection")
-      .def_static("isValid", [] (const Strings &s) {
+  strs.def("toJson", [] (const Strings &s) {
+      return py::list(py::cast(s));
+  }, "Convert to a python list of strings")
+      .def_static("fromJson", [] (const py::list &l) {
+        Strings s;
+        for (auto item: l)  s.push_back(item.cast<std::string>());
+        return s;
+  }, "Convert from a python list of strings")
+      .def("isValid", [] (const Strings &s) {
     return !s.empty();
   }, "Whether this is a valid strings colleciton (not empty)");
 
-  mutr.def_static("ccpParseString", [] (const std::string &s) {
-    Config::MutationRates mr;
-    bool ok = do_parse_string(s, [&mr] (auto item) {
-      auto d = item.find_first_of(':');
-      auto key = item.substr(0, d), value = item.substr(d+2);
 
-      std::istringstream iss (value);
-      float f;
-      iss >> f;
-      mr[key] = f;
-    }, "{}");
-
-    if (ok) return mr;
-    else    return Config::MutationRates{};
-  }, "Try to parse the provided string into a dictionary of mutation rates")
-      .def_static("isValid", [] (const Config::MutationRates &r) {
-    return !r.empty();
+  mutr.def("toJson", [] (const Config::MutationRates &s) {
+      return py::dict(py::cast(s));
+  }, "Convert to a python map of strings/float")
+      .def_static("fromJson", [] (const py::dict &d) {
+        Config::MutationRates r;
+        for (auto pair: d)
+          r[pair.first.cast<std::string>()] = pair.second.cast<float>();
+        return r;
+  }, "Convert from a python map of strings/floats")
+      .def("isValid", [] (const Config::MutationRates &r) {
+    float sum = 0;
+    for (const auto &p: r) {
+      if (p.second < 0) return false;
+      sum += p.second;
+    }
+    return sum > 0;
   }, "Whether this is a valid dictionary of mutation rates");
 }
 

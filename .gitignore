@@ -12,7 +12,7 @@ tests-results/
 .coverage
 tests.xml
 
-_autogen/errors.rst
+doc/src/_autogen/errors.rst
 
 package.dot
 package.pdf

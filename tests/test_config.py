@@ -1,5 +1,7 @@
+import json
 import shutil
 from pathlib import Path
+from typing import Dict
 
 import pytest
 from configobj import ConfigObj
@@ -9,14 +11,15 @@ from abrain.core.config import Config
 default_config = None
 
 
+@pytest.fixture
+def tmp_config_file(tmp_path):
+    return tmp_path.joinpath("config.json")
+
+
 def get_default_config():
     global default_config
     if default_config is None:
-        default_config = {}
-        # noinspection PyProtectedMember
-        for section in Config._sections.values():
-            for item in section:
-                default_config[item] = str(getattr(Config, item))
+        default_config = Config.to_json()
     return default_config
 
 
@@ -27,10 +30,7 @@ def restore_config_after():
     yield
 
     # noinspection PyProtectedMember
-    for section in Config._sections.values():
-        for item in section:
-            # noinspection PyProtectedMember
-            setattr(Config, item, Config._convert(item, config[item]))
+    Config.from_json(config)
     Config.show()
 
 
@@ -43,24 +43,36 @@ def test_config_exists():
         print(f"\t{k}: {v}")
 
 
-def test_config_read_write(tmp_path):
+@pytest.mark.parametrize("key", ["cppnWeightBounds",
+                                 "functionSet", "outputFunctions",
+                                 "mutationRates"])
+def test_json_conversions(key):
+    value = getattr(Config, key)
+    fake_json = value.toJson()
+    roundtrip = type(value).fromJson(fake_json)
+
+    print(value, fake_json, roundtrip)
+
+
+def test_config_read_write(tmp_config_file):
     Config.show()
-    Config.write(tmp_path)
-    Config.read(tmp_path)
+    Config.write(tmp_config_file)
+    Config.read(tmp_config_file)
     Config.show()
 
 
-def test_round_loop(tmp_path):
+def test_round_loop(tmp_config_file):
     """
     Execute last in case configuration is screwed up for every one
-    :param tmp_path:
+    :param tmp_config_file:
     :return:
     """
     print(Config.mutationRates)
     print(str(Config.mutationRates))
 
-    original = Config.write(None)
-    path = Config.write(tmp_path)
+    original = Config.to_json()
+
+    Config.write(tmp_config_file)
 
     def header(msg):
         sw, _ = shutil.get_terminal_size((80, 20))
@@ -74,7 +86,7 @@ def test_round_loop(tmp_path):
     show("Default file contents")
 
     header("On-disk config file")
-    print(Path(path).read_text())
+    print(tmp_config_file.read_text())
     print()
 
     header("Resetting values")
@@ -88,47 +100,54 @@ def test_round_loop(tmp_path):
 
     show("Reset values")
 
-    Config.read(tmp_path)
+    Config.read(tmp_config_file)
 
     show("Restored values")
 
-    assert Config.write(None) == original
+    assert Config.to_json() == original
 
 
-def test_failed_write(tmp_path):
-    Config.write(tmp_path)
+def test_failed_write(tmp_config_file):
+    Config.write(tmp_config_file)
     with pytest.raises(IOError, match="exist"):
-        Config.write(tmp_path)
+        Config.write(tmp_config_file)
 
 
-def test_failed_read(tmp_path):
+def test_failed_read(tmp_config_file):
     with pytest.raises(IOError, match="not exist"):
-        Config.read(Path(f"{tmp_path}/not-existing-sub-folder"))
+        Config.read(Path(f"{tmp_config_file}/not-existing-sub-folder"))
+
+
+def nested_getter(key: str, j: Dict):  # pragma: no cover
+    for section, items in Config._sections.items():
+        for k in items:
+            if k == key:
+                return j[section][key]
+    raise KeyError
+
+
+def nested_setter(key: str, value, j: Dict):  # pragma: no cover
+    for section, items in Config._sections.items():
+        for k in items:
+            if k == key:
+                j[section][key] = value
+                return
+    raise KeyError
 
 
 def change_config_value(key, value, path):
-    contents = Config.write(None)
+    contents = Config.to_json()
 
     # print("--"*80)
     # print(f"Changing {key}: {value}")
     # print(contents)
 
-    modified_contents = []
-    for line in contents:
-        tokens = line.split(" = ")
-        if len(tokens) == 2:
-            k, v = tokens
-            if k == key:
-                v = value
-                # print(f"\t\t{k}:{type(k)}, {v}:{type(k)}")
-            line = " = ".join([k, v])
-            # print("\t", line)
-        modified_contents.append(line)
+    nested_setter(key, value, contents)
 
-    # print(modified_contents)
+    # print(contents)
 
-    with open(f"{path}/{Config.file}", 'wb') as outfile:
-        ConfigObj(modified_contents).write(outfile)
+    with open(path, 'w') as outfile:
+        json.dump(contents, outfile)
         # print("Writing altered configuration to", outfile.name)
     Config.read(path)
     # Config.show()
@@ -138,18 +157,18 @@ def change_config_value(key, value, path):
 @pytest.mark.parametrize(
     'key, value',
     [
-        pytest.param("iterations", "15", id="int->int"),
-        pytest.param("annWeightsRange", "1.5", id="float->float"),
+        pytest.param("iterations", 15, id="int->int"),
+        pytest.param("annWeightsRange", 1.5, id="float->float"),
         pytest.param("activationFunc", "id", id="str->str"),
-        pytest.param("cppnWeightBounds", "Bounds(1,1,1,1,1)",
-                     id="Bounds->Bounds"),
-        pytest.param("functionSet", "[id,abs,ssgn]", id="Strings->Strings"),
+        pytest.param("cppnWeightBounds", [1, 1, 1, 1, 1],
+                     id="List->Bounds"),
+        pytest.param("functionSet", ["id", "abs", "ssgn"], id="List->Strings"),
         pytest.param("mutationRates",
-                     str(get_default_config()["mutationRates"]),
+                     nested_getter("mutationRates", get_default_config()),
                      id="MutationRates->MutationRates")
     ])
-def test_correct_read_type(key, value, tmp_path):
-    change_config_value(key, value, tmp_path)
+def test_correct_read_type(key, value, tmp_config_file):
+    change_config_value(key, value, tmp_config_file)
 
 
 @pytest.mark.usefixtures("restore_config_after")
@@ -157,19 +176,14 @@ def test_correct_read_type(key, value, tmp_path):
     'key, value',
     [
         pytest.param("annWeightsRange", "error", id="str->float"),
-        pytest.param("iterations", "4.2", id="float->int"),
+        pytest.param("iterations", 4.2, id="float->int"),
         pytest.param("cppnWeightBounds", "foo", id="str->Bounds"),
-        pytest.param("cppnWeightBounds", "Bounds(3, 1, -1, -3, .1)",
-                     id="inv_bounds"),
-        pytest.param("cppnWeightBounds", "Bounds(-3, -1, 1, 3, -.1)",
-                     id="neg_bounds"),
         pytest.param("functionSet", "42", id="str->Strings"),
-        pytest.param("mutationRates", "{}", id="empty_mr"),
-        pytest.param("mutationRates", "[foo,bar]", id="bad_mr"),
+        pytest.param("mutationRates", ["foo", "bar"], id="bad_mr"),
     ])
-def test_failed_read_type(key, value, tmp_path):
+def test_failed_read_type(key, value, tmp_config_file):
     with pytest.raises(TypeError):
-        change_config_value(key, value, tmp_path)
+        change_config_value(key, value, tmp_config_file)
 
 
 @pytest.mark.usefixtures("restore_config_after")
@@ -177,11 +191,11 @@ def test_failed_read_type(key, value, tmp_path):
     'key, value',
     [
         pytest.param("activationFunc", "sin", id="act"),
-        pytest.param("functionSet", "[abs, id]", id="funcs"),
-        pytest.param("outputFunctions", "[id,id,id]", id="outputs")
+        pytest.param("functionSet", ["abs", "id"], id="funcs"),
+        pytest.param("outputFunctions", ["id", "id", "id"], id="outputs")
     ])
-def test_correct_read_depends(key, value, tmp_path):
-    change_config_value(key, value, tmp_path)
+def test_correct_read_depends(key, value, tmp_config_file):
+    change_config_value(key, value, tmp_config_file)
 
 
 @pytest.mark.usefixtures("restore_config_after")
@@ -189,15 +203,20 @@ def test_correct_read_depends(key, value, tmp_path):
     'key, value',
     [
         pytest.param("activationFunc", "1", id="act"),
-        pytest.param("functionSet", "[circle_quadrature]", id="funcs"),
-        pytest.param("outputFunctions", "[id,id]", id="outputs"),
-        pytest.param("outputFunctions", "[sa,la,mi]", id="outputs"),
-        pytest.param("mutationRates", "{add_n: 0}", id="null_mr"),
-        pytest.param("mutationRates", "{add_n: -1}", id="neg_mr"),
+        pytest.param("functionSet", ["circle_quadrature"], id="funcs"),
+        pytest.param("outputFunctions", ["id", "id"], id="outputs"),
+        pytest.param("outputFunctions", ["sa", "la", "mi"], id="outputs"),
+        pytest.param("cppnWeightBounds", [3, 1, -1, -3, .1],
+                     id="inv_bounds"),
+        pytest.param("cppnWeightBounds", [-3, -1, 1, 3, -.1],
+                     id="neg_bounds"),
+        pytest.param("mutationRates", {}, id="empty_mr"),
+        pytest.param("mutationRates", {"add_n": 0}, id="null_mr"),
+        pytest.param("mutationRates", {"add_n": -1}, id="neg_mr"),
     ])
-def test_failed_read_depends(key, value, tmp_path):
+def test_failed_read_depends(key, value, tmp_config_file):
     with pytest.raises(ValueError):
-        change_config_value(key, value, tmp_path)
+        change_config_value(key, value, tmp_config_file)
 
 
 def test_activation_function():

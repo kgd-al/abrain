@@ -371,6 +371,23 @@ void collect (const Connections &newConnections, Connections &connections,
   connections.insert(newConnections.begin(), newConnections.end());
 }
 
+/// Query for direct input-output connections
+void generatePerceptron(CPPN &cppn,
+                        const Coordinates &inputs, const Coordinates &outputs,
+                        Connections &connections) {
+
+  CPPN::OutputSubset wl {{ Output::Weight, Output::LEO }};
+  CPPN::Outputs res;
+
+  for (const Point &i: inputs) {
+    for (const Point &o: outputs) {
+      cppn(i, o, res, wl);
+      if (res[uint(Output::LEO)])
+        connections.insert({i, o, res[uint(Output::Weight)]});
+    }
+  }
+}
+
 bool connect (CPPN &cppn,
               const Coordinates &inputs, const Coordinates &outputs,
               Coordinates &hidden, Connections &connections) {
@@ -503,6 +520,9 @@ bool connect (CPPN &cppn,
 #endif
 
   std::copy(shidden2.begin(), shidden2.end(), std::back_inserter(hidden));
+
+  if (hidden.empty() && Config::allowPerceptrons)
+    generatePerceptron(cppn, inputs, outputs, connections);
 
 #if DEBUG_ES
   std::cerr << oss.str() << std::endl;

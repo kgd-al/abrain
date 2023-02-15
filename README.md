@@ -56,6 +56,4 @@ Use `pip install abrain[...,kaleido]` to get it
       - [ ] move to scikit/poetry/... ?
 
   - [ ] CI/CD
-    - [ ] Wheels marked as passed even for non-existing ones
-    - [ ] 99% python coverage
-    - [ ] PEP8 errors
+    - [ ] Recent install gives `no loadimage plugion for "svg:cairo"` for pdf output

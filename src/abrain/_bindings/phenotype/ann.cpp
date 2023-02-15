@@ -80,7 +80,14 @@ sequential execution in one call
            )", "inputs"_a, "outputs"_a, "substeps"_a = 1)
 
       .def ID(empty,
-              "Whether the ANN contains neurons/connections")
+              R"(
+Whether the ANN contains neurons/connections
+
+:param strict: whether perceptrons count as empty (true) or not (false)
+
+.. seealso:: `Config::allowPerceptrons`
+              )", py::arg("strict") = false)
+      .def ID(perceptron, "Whether this ANN is a perceptron")
       .def ID(stats, "Return associated stats (connections, depth...)")
       .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
            "Provide read-only access to the underlying neurons")
@@ -205,6 +212,13 @@ hidden neurons locations
   stts.def_readonly ID(depth, "Maximal depth of the neural network")
       .def_readonly ID(edges, "Number of connections")
       .def_readonly ID(axons, "Total length of the connections")
+      .def("dict", [] (const CLASS &stats) {
+        return py::dict (
+#define PAIR(X) #X##_a=stats.X
+          PAIR(depth), PAIR(edges), PAIR(axons)
+#undef PAIR
+        );
+      }, "Return the stats as Python dictionary")
       ;
 }
 

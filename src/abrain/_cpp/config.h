@@ -34,7 +34,7 @@ struct Config {
   static FBounds cppnWeightBounds;
 
   /// ================================================
-  /// ANN parameters (none?)
+  /// ANN parameters
   static float annWeightsRange;
   static FID activationFunc;
 
@@ -42,6 +42,7 @@ struct Config {
   /// ES-HyperNEAT parameters
   static uint initialDepth, maxDepth, iterations;
   static float divThr, varThr, bndThr;
+  static bool allowPerceptrons;
 };
 
 } // end of namespace kgd::eshn

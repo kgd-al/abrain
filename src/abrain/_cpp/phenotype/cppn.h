@@ -33,7 +33,7 @@ private:
   struct Node_base {
     float data;
     
-    virtual ~Node_base(void) = default;
+    virtual ~Node_base(void) = default; // LCOVR_EXCL_LINE
 
     virtual float value (void) = 0;
   };

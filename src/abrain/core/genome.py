@@ -8,7 +8,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
 from shutil import which
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from graphviz import Digraph
 from importlib_resources import files
@@ -17,8 +17,9 @@ from pyrecord import Record
 from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData
 
-logger = logging.getLogger(__name__ + ".mutations")
+import pickle
 
+logger = logging.getLogger(__name__ + ".mutations")
 
 dot_found = (which("dot") is not None)
 
@@ -191,20 +192,19 @@ class Genome(_CPPNData):
     # Public json/binary interface
     ###########################################################################
 
-    def to_json(self) -> str:
-        """Return a string json representation of this object"""
-        return json.dumps(dict(
+    def to_json(self) -> Dict[Any, Any]:
+        """Return a json (dict) representation of this object"""
+        return dict(
             nodes=[(n.id, n.func) for n in self.nodes],
             links=[(l_.id, l_.src, l_.dst, l_.weight) for l_ in self.links],
             NID=self.nextNodeID,
             LID=self.nextLinkID
-        ))
+        )
 
     @staticmethod
-    def from_json(json_str: str) -> 'Genome':
+    def from_json(data: Dict[Any, Any]) -> 'Genome':
         """Recreate a Genome from a string json representation
         """
-        data = json.loads(json_str)
         g = Genome(Genome.__private_key)
         g.nodes = _CPPNData.Nodes([
             _CPPNData.Node(n[0], n[1]) for n in data["nodes"]
@@ -254,7 +254,7 @@ class Genome(_CPPNData):
             OSError: if the `dot` program is not available (not installed, on
                 the path and executable)
         """
-        if not dot_found:
+        if not dot_found:  # pragma: no cover
             raise OSError("""
                 dot program not found. Make sure it is installed before using
                  this function.
@@ -400,7 +400,7 @@ class Genome(_CPPNData):
         nid = self._add_node(Genome.__random_node_function(rng))
 
         src, dst, weight = link.src, link.dst, link.weight
-        logger.info(f"[add_n] {src} -> {dst} >> {src} -> {nid} -> {dst}")
+        logger.debug(f"[add_n] {src} -> {dst} >> {src} -> {nid} -> {dst}")
 
         self._add_link(src, nid, 1)
         self._add_link(nid, dst, weight)
@@ -408,7 +408,7 @@ class Genome(_CPPNData):
 
     def __random_del_node(self, rng: Random, candidates) -> None:
         nid = rng.choice(candidates)
-        n_ix, n = next((n_ix, n) for n_ix, n in   # pragma: no branch
+        n_ix, n = next((n_ix, n) for n_ix, n in  # pragma: no branch
                        enumerate(self.nodes) if n.id == nid)
         i_links = [(j, link) for j, link in enumerate(self.links)
                    if link.dst == n.id]
@@ -418,8 +418,8 @@ class Genome(_CPPNData):
 
         j_i, i_l = i_links[0][0], i_links[0][1]
         j_o, o_l = o_links[0][0], o_links[0][1]
-        logger.info(f"[del_n] {i_l.src} -> {n.id} -> {o_l.dst} >>"
-                    f" {i_l.src} -> {o_l.dst}")
+        logger.debug(f"[del_n] {i_l.src} -> {n.id} -> {o_l.dst} >>"
+                     f" {i_l.src} -> {o_l.dst}")
 
         if sum(li.src == i_l.src and li.dst == o_l.dst for li in
                self.links) == 0 \
@@ -436,13 +436,13 @@ class Genome(_CPPNData):
         link = rng.choice(list(candidates))
         weight = Genome.__random_link_weight(rng)
 
-        logger.info(f"[add_l] {link.src} -({weight})-> {link.dst}")
+        logger.debug(f"[add_l] {link.src} -({weight})-> {link.dst}")
 
         self._add_link(link.src, link.dst, weight)
 
     def __random_del_link(self, rng: Random, candidates) -> None:
         i = candidates[rng.randrange(0, len(candidates))]
-        logger.info(f"[del_l] {self.links[i].src} -> {self.links[i].dst}")
+        logger.debug(f"[del_l] {self.links[i].src} -> {self.links[i].dst}")
         self.links.pop(i)
 
     def __random_mutate_weight(self, rng: Random) -> None:
@@ -453,14 +453,14 @@ class Genome(_CPPNData):
             delta = rng.gauss(0, bounds.stddev)
         w = max(bounds.min, min(link.weight + delta, bounds.max))
 
-        logger.info(f"[mut_w] {link.src} -({link.weight})-> {link.dst} >> {w}")
+        logger.debug(f"[mut_w] {link.src} -({link.weight})-> {link.dst} >> {w}")
 
         link.weight = w
 
     def __random_mutate_func(self, rng: Random) -> None:
         n = rng.choice(self.nodes)
         f = rng.choice([f for f in Config.functionSet if not f == n.func])
-        logger.info(f"[mut_f] N({n.id}, {n.func}) -> {f}")
+        logger.debug(f"[mut_f] N({n.id}, {n.func}) -> {f}")
         n.func = f
 
     @staticmethod

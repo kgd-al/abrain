@@ -61,6 +61,7 @@ public:
 
   struct Stats {
     uint depth;
+    uint hidden;
     uint edges;
     float axons;  // total length
   };
@@ -89,7 +90,8 @@ public:
   /// .. todo:: Modify with buffer-based eval. Maybe
   void operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps = 1);
 
-  bool empty (void) const;
+  bool empty (bool strict = false) const;
+  bool perceptron (void) const;
 
   void computeStats (void);
   const auto& stats (void) const {

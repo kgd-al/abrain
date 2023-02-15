@@ -1,12 +1,14 @@
+import logging
 import math
 from random import Random
 from time import perf_counter
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import pytest
 
 from abrain.core.ann import ANN, Point, plotly_render
-from abrain.core.genome import Genome
+from abrain.core.config import Config
+from abrain.core.genome import Genome, logger as genome_logger
 
 
 def test_default_is_empty():
@@ -47,6 +49,45 @@ def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> \
     append(outputs, other_outputs)
 
     return ANN.build(inputs, outputs, genome), inputs, outputs
+
+
+def test_empty_perceptrons(mutations, seed):
+    n = 10
+
+    def generate_stats():
+        rng = Random(seed)
+        l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
+        for _ in range(n):
+            ann, _, _ = _make_ann(mutations, rng)
+            l_stats['empty'] += ann.empty()
+            l_stats['perceptron'] += ann.perceptron()
+            l_stats['ann'] += (not ann.empty(strict=True))
+            assert not ann.empty() or ann.empty(strict=True)
+            assert not ann.perceptron() or ann.empty(strict=True)
+            assert not (ann.empty() and ann.perceptron())
+
+        return l_stats
+
+    genome_logger.setLevel(logging.CRITICAL)
+    allow_perceptrons = bool(Config.allowPerceptrons)
+    Config.allowPerceptrons = True
+    stats_t = generate_stats()
+
+    Config.allowPerceptrons = False
+    stats_f = generate_stats()
+    Config.allowPerceptrons = allow_perceptrons
+
+    print(f"{'-':11s} {'True':10s} {'False':10s}")
+    for k in stats_t:
+        print(f"{k:10s}", end='')
+        for stats in [stats_t, stats_f]:
+            print(f" {100*stats[k]/n:10g}%", end='')
+        print()
+
+    for s in [stats_t, stats_f]:
+        assert(sum(s.values()) == n)
+    assert stats_t['empty'] < stats_f['empty']
+    assert stats_f['perceptron'] == 0
 
 
 @pytest.mark.parametrize(

@@ -83,12 +83,12 @@ cmd_install-tests(){  # Install with test in standard location
   do_pip-install '.[tests]'
 }
 
-cmd_install-dev(){  # Editable install (without pip)
+cmd_install-dev(){  # Editable install (with pip)
   do_pip-install '-e .[docs,tests]'
 #   do_manual-install 'dev-test-doc'
 }
 
-cmd_install-cached(){
+cmd_install-cached(){ # Editable install (without pip and cached build folder)
   do_manual-install 'dev-test-doc'
 }
 
@@ -110,10 +110,11 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
   coverage html --data-file=$pycoverage -d $cout/html/python
   
   cppcoverage=$cout/cpp.coverage.info
-  lcov --capture --no-external --directory . --output-file $cppcoverage
+  lcov --capture --no-external --directory . --rc lcov_branch_coverage=1 --output-file $cppcoverage
+  lcov --remove $cppcoverage '*cppn.h' -o $cppcoverage
   lcov --remove $cppcoverage '*_bindings*' -o $cppcoverage
   lcov --list $cppcoverage
-  genhtml -q --demangle-cpp -o $cout/html/cpp/ $cppcoverage
+  genhtml -q --demangle-cpp --branch-coverage -o $cout/html/cpp/ $cppcoverage
 }
 
 cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP
@@ -197,7 +198,12 @@ help(){
   sed -n 's/^cmd_\(.*\)(){ *\(#\? *\)\(.*\)/\1|\3/p' $0 | column -s '|' -t
 }
 
-# source venv.sh
+if [ -z $VIRTUAL_ENV ]
+then
+  echo "Refusing to work outside of a virtual environment"
+  exit 1
+fi
+
 if [ $1 == "-h" ]
 then
   help

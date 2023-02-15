@@ -51,4 +51,6 @@ float Config::divThr = .3f;
 float Config::varThr = .3f;
 float Config::bndThr = .15f;
 
+bool Config::allowPerceptrons = true;
+
 } // end of namespace kgd::eshn

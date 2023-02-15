@@ -219,9 +219,10 @@ jobs:
                   printf "| %s |", r_;
                   for (c_ in c) {
                     v = d[r_][c_];
-                    if (v == 1)       v = "[:x:]("url"#"b[r_][c_]")";
+                    if (v == "")      v = ":black_circle:";
+                    else if (v == 1)  v = "[:x:]("url"#"b[r_][c_]")";
                     else if (v == 0)  v = ":heavy_check_mark:";
-                    else              v = ":black_circle:";
+                    else              v = ":interrobang:";
                     printf " %s |", v;
                     print r_, c_, d[r_][c_], v >> "awk.log";
                   }

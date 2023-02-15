@@ -13,7 +13,7 @@ import importlib.metadata
 try:  # pragma: no cover
     # __package__ allows for the case where __name__ is "__main__"
     __version__ = importlib.metadata.version(__package__ or __name__)
-except importlib.metadata.PackageNotFoundError:
+except importlib.metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 
