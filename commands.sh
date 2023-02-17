@@ -13,7 +13,7 @@ do_set-env(){
   fi
   export CMAKE_ARGS
   [[ "$1" =~ "dev" ]] && export DEV=1
-  export CMAKE_BUILD_PARALLEL_LEVEL=1
+  export CMAKE_BUILD_PARALLEL_LEVEL=4
 }
 
 do_pip-install(){
@@ -40,8 +40,8 @@ do_manual-install(){
 }
 
 cmd_pretty-tree(){  # Just a regular tree but without .git folder
-  where=$1
-  [ -z $1 ] && where=$(pwd)
+  where=${1:-}
+  [ -z $where ] && where=$(pwd)
   tree -a -I '.git*' $where
 }
 
@@ -66,7 +66,7 @@ cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   find . -name 'abrain.egg-info' | xargs rm -rf
   find src -name "__init__.pyi" | xargs rm -rf
   find src -empty -type d -delete
-  rm sample_*
+  rm -f sample_*
   
   cmd_clean
 }
@@ -189,6 +189,27 @@ cmd_doc(){  # Generate the documentation
   nitpick=-n
   sphinx-build doc/src/ $out/html -b html $nitpick -W $@ 2>&1 \
   | tee $out/log
+}
+
+cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
+  set -euo pipefail
+  shopt -s inherit_errexit
+  ok=1
+  check(){
+    if [ $ok -ne 0 ]
+    then
+      printf "\033[31mPackage is not ready to deploy."
+      printf " See error(s) above.\033[0m\n"
+    else
+      printf "\033[32mPackage checks out.\033[0m\n"
+    fi
+  }
+  trap check exit
+  cmd_very-clean
+  cmd_install-cached
+  cmd_pytest --small-scale --test_evolution
+  pyflakes src tests
+  ok=0
 }
 
 help(){

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict
 
 import pytest
-from configobj import ConfigObj
 
 from abrain.core.config import Config
 

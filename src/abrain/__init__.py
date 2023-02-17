@@ -1,7 +1,7 @@
 """Docstring for abrain module/top-level package"""
 
-from .core.genome import Genome
 from .core.config import Config
+from .core.genome import Genome
 
 from .core.ann import ANN
 from .core.ann import plotly_render

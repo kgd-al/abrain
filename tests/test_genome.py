@@ -2,6 +2,7 @@ import logging
 import pydoc
 from pathlib import Path
 from random import Random
+from typing import Optional
 
 import pytest
 from abrain.core.config import Config
@@ -72,17 +73,17 @@ def test_mutate_genome_create(tmp_path):
 
 
 def save_function(g: Genome, path: Path, capfd):
-    def helper(gen: int = None, title: str = None):
+    def helper(gen: Optional[int] = None, title: Optional[str] = None):
         if gen is not None:
-            helper.gen = gen
+            setattr(helper, 'gen', gen)
 
-        g.to_dot(path=f"{path}/gen{helper.gen:02}", ext="png",
-                 debug="depths", title=title)
+        g.to_dot(path=f"{path}/gen{getattr(helper, 'gen'):02}",
+                 ext="png", debug="depths", title=title)
 
         captured = capfd.readouterr()
         assert len(captured.err) == 0
 
-        helper.gen += 1
+        setattr(helper, 'gen', getattr(helper, 'gen') + 1)
     return helper
 
 

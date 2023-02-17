@@ -1,4 +1,5 @@
 from enum import IntFlag
+from typing import Dict, Any
 
 import pytest
 
@@ -63,7 +64,7 @@ def pytest_addoption(parser):
 best_ad_rate = .75
 
 
-kgd_config = dict(
+kgd_config: Dict[str, Dict[TestSize, Any]] = dict(
     seed={k: range(k) for k in TestSize},
     mutations={
         TestSize.SMALL: [10],

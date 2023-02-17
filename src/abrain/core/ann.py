@@ -1,9 +1,6 @@
-import sys
-
 import plotly.graph_objects as go
 
 from .._cpp.phenotype import ANN
-from .._cpp.phenotype import Point  # noqa For transparent use from importers
 
 
 def plotly_render(ann: ANN) -> go.Figure:

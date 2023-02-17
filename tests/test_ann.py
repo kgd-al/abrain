@@ -6,9 +6,8 @@ from typing import Tuple, List, Dict
 
 import pytest
 
-from abrain.core.ann import ANN, Point, plotly_render
-from abrain.core.config import Config
-from abrain.core.genome import Genome, logger as genome_logger
+from abrain import Point, Config, Genome, ANN, plotly_render
+from abrain.core.genome import logger as genome_logger
 
 
 def test_default_is_empty():

@@ -209,7 +209,8 @@ hidden neurons locations
 #undef CLASS
 #define CLASS ANN::Stats
   stts.doc() = "Contains various statistics about an ANN";
-  stts.def_readonly ID(depth, "Maximal depth of the neural network")
+  stts.def_readonly ID(hidden, "Number of hidden neurons")
+      .def_readonly ID(depth, "Maximal depth of the neural network")
       .def_readonly ID(edges, "Number of connections")
       .def_readonly ID(axons, "Total length of the connections")
       .def("dict", [] (const CLASS &stats) {

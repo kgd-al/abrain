@@ -1,14 +1,13 @@
 """
 Test documentation for genome file (module?)
 """
-import json
 import logging
 import pathlib
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
 from shutil import which
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from graphviz import Digraph
 from importlib_resources import files
@@ -17,11 +16,25 @@ from pyrecord import Record
 from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData
 
-import pickle
-
 logger = logging.getLogger(__name__ + ".mutations")
 
 dot_found = (which("dot") is not None)
+
+
+class GIDManager:
+    """Simple integer-producing class for unique genome identifier
+    """
+    def __init__(self):
+        """Assign 0 as the next value
+        """
+        self._next_value = 0
+
+    def __call__(self) -> int:
+        """Return a new value and increment internal counter
+        """
+        value = self._next_value
+        self._next_value += 1
+        return value
 
 
 class Genome(_CPPNData):
@@ -35,6 +48,14 @@ class Genome(_CPPNData):
     """Private key for preventing default-constructed CPPNs
     """
 
+    __id_field = "_id"
+    """Name of the private field in which to store the optional identifier
+    """
+
+    __parents_field = "_parents"
+    """Name of the private field in which to store the optional genealogy
+    """
+
     def __init__(self, key=None):
         _CPPNData.__init__(self)
         assert (key == Genome.__private_key), \
@@ -44,6 +65,14 @@ class Genome(_CPPNData):
     def __repr__(self):
         return f"CPPN:{Genome.INPUTS}:{Genome.OUTPUTS}([{len(self.nodes)}," \
                f" {self.nextNodeID}], [{len(self.links)},{self.nextLinkID}])"
+
+    def id(self) -> Optional[int]:
+        """Return the genome id if one were generated"""
+        return getattr(self, self.__id_field, None)
+
+    def parents(self) -> Optional[int]:
+        """Return the genome's parent(s) if possible"""
+        return getattr(self, self.__parents_field, None)
 
     @staticmethod
     def _is_input(nid: int):
@@ -58,7 +87,7 @@ class Genome(_CPPNData):
         return Genome.INPUTS + Genome.OUTPUTS <= nid
 
     ###########################################################################
-    # Public mutation interface
+    # Public manipulation interface
     ###########################################################################
 
     def mutate(self, rng: Random) -> None:
@@ -151,31 +180,26 @@ class Genome(_CPPNData):
         choice = rng.choices(list(rates.keys()), list(rates.values()))[0]
         actions[choice][0](rng, *actions[choice][1:])
 
-    def mutated(self, rng: Random) -> 'Genome':
+    def mutated(self, rng: Random, id_manager: Optional[GIDManager] = None) -> 'Genome':
         """Return a mutated (copied) version of this genome
 
         :param rng: the source of randomness
+        :param id_manager: an optional manager providing unique identifiers
         """
         copy = self.copy()
         copy.mutate(rng)
-        return copy
-
-    def copy(self) -> 'Genome':
-        """Return a perfect (deep)copy of this genome"""
-        copy = Genome(Genome.__private_key)
-
-        copy.nodes = self.nodes
-        copy.links = self.links
-        copy.nextNodeID = self.nextNodeID
-        copy.nextLinkID = self.nextLinkID
-
+        if id_manager is not None:
+            setattr(copy, self.__id_field, id_manager())
+            setattr(copy, self.__parents_field, [self.id])
         return copy
 
     @staticmethod
-    def random(rng: Random) -> 'Genome':
+    def random(rng: Random, id_manager: Optional[GIDManager] = None) -> 'Genome':
         """Create a random CPPN with boolean initialization
 
         :param rng: The source of randomness
+        :param id_manager: an optional manager providing unique identifiers
+
         :return: A random CPPN genome
         """
         g = Genome(Genome.__private_key)
@@ -186,7 +210,69 @@ class Genome(_CPPNData):
                     g._add_link(i, j + _CPPNData.INPUTS,
                                 Genome.__random_link_weight(rng))
 
+        if id_manager is not None:
+            setattr(g, g.__id_field, id_manager())
+            setattr(g, g.__parents_field, [])
+
         return g
+
+    def copy(self) -> 'Genome':
+        """Return a perfect (deep)copy of this genome"""
+        copy = Genome(Genome.__private_key)
+
+        copy.nodes = self.nodes
+        copy.links = self.links
+        copy.nextNodeID = self.nextNodeID
+        copy.nextLinkID = self.nextLinkID
+
+        if hasattr(self, self.__id_field):
+            setattr(copy, copy.__id_field, self.id())
+            setattr(copy, copy.__parents_field, self.parents())
+
+        return copy
+
+    ###########################################################################
+    # Public copy/deepcopy interface
+    ###########################################################################
+
+    def __copy__(self):
+        """Return a perfect (deep)copy of this genome
+
+        Implements the shallow copy interface
+        """
+        return self.copy()
+
+    def __deepcopy__(self, _):
+        """Return a perfect (deep)copy of this genome
+
+        Implements the deep copy interface
+        """
+        return self.copy()
+
+    ###########################################################################
+    # Public pickle interface
+    ###########################################################################
+
+    def __getstate__(self):
+        """Pickle the genome
+
+        Also store the id/parents if present
+        """
+        dct = _CPPNData.__getstate__(self)
+        if hasattr(self, self.__id_field):
+            dct[self.__id_field] = self.id()
+            dct[self.__parents_field] = self.parents()
+        return dct
+
+    def __setstate__(self, state):
+        """Unpickle the genome
+
+        Also restore the id/parents if present
+        """
+        _CPPNData.__setstate__(self, state)
+        if self.__id_field in state:
+            setattr(self, self.__id_field, state[self.__id_field])
+            setattr(self, self.__parents_field, state[self.__parents_field])
 
     ###########################################################################
     # Public json/binary interface
@@ -194,12 +280,16 @@ class Genome(_CPPNData):
 
     def to_json(self) -> Dict[Any, Any]:
         """Return a json (dict) representation of this object"""
-        return dict(
+        dct = dict(
             nodes=[(n.id, n.func) for n in self.nodes],
             links=[(l_.id, l_.src, l_.dst, l_.weight) for l_ in self.links],
             NID=self.nextNodeID,
             LID=self.nextLinkID
         )
+        if (gid := self.id()) is not None:
+            dct[self.__id_field] = gid
+            dct[self.__id_field] = self._parents()
+        return dct
 
     @staticmethod
     def from_json(data: Dict[Any, Any]) -> 'Genome':
@@ -214,6 +304,10 @@ class Genome(_CPPNData):
         ])
         g.nextNodeID = data["NID"]
         g.nextLinkID = data["LID"]
+
+        if (gid := data.get(g.__id_field, None)) is not None:
+            setattr(g, g.__id_field, gid)
+            setattr(g, g.__parents_field_field, data[g.__parents_field])
 
         return g
 
@@ -233,7 +327,8 @@ class Genome(_CPPNData):
         """
         raise NotImplementedError  # pragma: no cover
 
-    def to_dot(self, path: str, ext: str = "pdf", title: str = None,
+    def to_dot(self, path: str, ext: str = "pdf",
+               title: Optional[str] = None,
                debug=None) -> str:
         """Produce a graphical representation of this genome
 
