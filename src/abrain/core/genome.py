@@ -67,7 +67,7 @@ class Genome(_CPPNData):
                f" {self.nextNodeID}], [{len(self.links)},{self.nextLinkID}])"
 
     def id(self) -> Optional[int]:
-        """Return the genome id if one were generated"""
+        """Return the genome id if one was generated"""
         return getattr(self, self.__id_field, None)
 
     def parents(self) -> Optional[int]:
@@ -190,7 +190,7 @@ class Genome(_CPPNData):
         copy.mutate(rng)
         if id_manager is not None:
             setattr(copy, self.__id_field, id_manager())
-            setattr(copy, self.__parents_field, [self.id])
+            setattr(copy, self.__parents_field, [self.id()])
         return copy
 
     @staticmethod
@@ -288,7 +288,7 @@ class Genome(_CPPNData):
         )
         if (gid := self.id()) is not None:
             dct[self.__id_field] = gid
-            dct[self.__id_field] = self._parents()
+            dct[self.__parents_field] = self.parents()
         return dct
 
     @staticmethod
@@ -307,7 +307,7 @@ class Genome(_CPPNData):
 
         if (gid := data.get(g.__id_field, None)) is not None:
             setattr(g, g.__id_field, gid)
-            setattr(g, g.__parents_field_field, data[g.__parents_field])
+            setattr(g, g.__parents_field, data[g.__parents_field])
 
         return g
 
