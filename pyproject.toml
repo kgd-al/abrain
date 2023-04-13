@@ -1,6 +1,6 @@
 [project]
 name = "abrain"
-version = "1.0rc"
+version = "1.0rc-post2"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"

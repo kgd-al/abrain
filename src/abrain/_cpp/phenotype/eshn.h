@@ -49,7 +49,8 @@ using Coordinates = std::vector<Point>;
 
 bool connect (CPPN &cppn,
               const Coordinates &inputs, const Coordinates &outputs,
-              Coordinates &hidden, Connections &connections);
+              Coordinates &hidden, Connections &connections,
+              uint &iterations);
 
 } // end of namespace kgd::eshn::evolvable_substrate
 

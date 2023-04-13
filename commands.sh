@@ -32,9 +32,11 @@ do_manual-install(){
   do_set-env "$1"
   # Manually ensuring build/test dependencies
   pip install pybind11 pybind11-stubgen || exit 2
-  [[ "$1" =~ "test" ]] && \
+  if [[ "$1" =~ "test" ]]
+  then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
     || exit 2
+  fi
 #   pip install -e .[$depends] # Should work but fails on various levels
   python setup.py develop # deprecated but functional. Go Python...
 }
@@ -89,7 +91,9 @@ cmd_install-dev(){  # Editable install (with pip)
 }
 
 cmd_install-cached(){ # Editable install (without pip and cached build folder)
-  do_manual-install 'dev-test-doc'
+  type=${1:-'dev-test-doc'}
+  echo "Building for type '$type'"
+  do_manual-install $type
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)

@@ -35,9 +35,6 @@ class CMakeBuild(build_ext):
             # type: ignore[no-untyped-call]
         extdir = ext_fullpath.parent.resolve()
 
-        print(f"{ext_fullpath=}")
-        print(f"{extdir=}")
-
         # Using this requires trailing slash for auto-detection & inclusion of
         # auxiliary "native" libs
 

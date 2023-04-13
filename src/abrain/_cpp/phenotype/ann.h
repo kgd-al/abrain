@@ -64,6 +64,7 @@ public:
     uint hidden;
     uint edges;
     float axons;  // total length
+    uint iterations;
   };
 
   ANN(void) = default;

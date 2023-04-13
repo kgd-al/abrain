@@ -1,25 +1,37 @@
+from typing import Optional
+
 import plotly.graph_objects as go
 
-from .._cpp.phenotype import ANN
+from .._cpp.phenotype import ANN, Point
 
 
-def plotly_render(ann: ANN) -> go.Figure:
+def plotly_render(ann: ANN, labels: Optional[dict[Point, str]] = None) -> go.Figure:
     """
     Produce a 3D figure from an artificial neural network
 
     The returned figure can be used to save an interactive html session or a
     (probably poorly) render to e.g. a png file
     """
-    io_nodes = [[], [], []]
-    hd_nodes = [[], [], []]
+
+    n_type = ANN.Neuron.Type
+    nodes = {t: [[], [], []] for t in [n_type.I, n_type.H, n_type.O]}
     edges = [[], [], []]
+
+    names = {t: [] for t in nodes}
+
     for n in ann.neurons():
         x, y, z = n.pos.tuple()
 
-        nodes = hd_nodes if n.type == ANN.Neuron.Type.H else io_nodes
-        nodes[0] += [x]
-        nodes[1] += [y]
-        nodes[2] += [z]
+        n_list = nodes[n.type]
+        n_list[0] += [x]
+        n_list[1] += [y]
+        n_list[2] += [z]
+
+        if labels is None:
+            names[n.type].append(f"{n.type.name}{len(names[n.type])}")
+        else:
+            label = labels.get(n.pos)
+            names[n.type].append(label if label is not None else "Unnamed")
 
         for link in n.links():
             x2, y2, z2 = link.src().pos.tuple()
@@ -34,21 +46,33 @@ def plotly_render(ann: ANN) -> go.Figure:
     )
 
     trace_nodes = []
-    for nodes, name, color in [(io_nodes, 'inputs/outputs', 'black'),
-                               (hd_nodes, 'hidden neurons', 'gray')]:
+    for n_type, name, color in [(n_type.I, 'Inputs',  'black'),
+                                (n_type.O, 'Outputs', 'black'),
+                                (n_type.H, 'Hidden',  'gray')]:
+        n_list = nodes[n_type]
         trace_nodes.append(
             go.Scatter3d(
-                x=nodes[0], y=nodes[1], z=nodes[2],
+                x=n_list[0], y=n_list[1], z=n_list[2],
                 mode='markers',
                 marker=dict(symbol='circle',
                             size=10,
                             color=color),
-                name=name
+                name=name,
+                hovertemplate='<b>' + name + '</b><br>'
+                              '<i>%{hovertext}</i><br>'
+                              'x: %{x}<br>'
+                              'y: %{y}<br>'
+                              'z: %{z}<extra></extra>',
+                hovertext=names[n_type]
             )
         )
 
     data = [trace_edges, *trace_nodes]
     fig = go.Figure(data=data)
+
+    camera = dict(
+        eye=dict(x=-2, y=0, z=1)
+    )
 
     fig.update_layout(
         scene=dict(
@@ -56,7 +80,16 @@ def plotly_render(ann: ANN) -> go.Figure:
             yaxis=dict(nticks=3, range=[-1.1, 1.1]),
             zaxis=dict(nticks=3, range=[-1.1, 1.1])
         ), scene_aspectmode='cube',
-        showlegend=False
+        scene_camera=camera,
+        showlegend=False,
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=16,
+            font_family="Courrier"
+        )
     )
+
+
+
 
     return fig

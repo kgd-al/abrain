@@ -71,6 +71,10 @@ public:
     for (uint i=0; i<DIMENSIONS; i++) set(i, v);
   }
 
+  const auto& data (void) const {
+    return _data;
+  }
+
   Point_t& operator+= (const Point_t &that) {
     for (uint i=0; i<DIMENSIONS; i++) set(i, get(i) + that.get(i));
     return *this;

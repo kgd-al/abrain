@@ -53,7 +53,8 @@ ANN ANN::build (const Coordinates &inputs,
   Coordinates hidden;
   evolvable_substrate::Connections connections;
   if (evolvable_substrate::connect(cppn, inputs, outputs,
-                                   hidden, connections)) {
+                                   hidden, connections,
+                                   ann._stats.iterations)) {
     for (auto &p: hidden) neurons.insert(add(p, Neuron::H));
     for (auto &c: connections)
       ann.neuronAt(c.to)->addLink(c.weight * weightRange, ann.neuronAt(c.from));

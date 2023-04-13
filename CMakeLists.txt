@@ -67,10 +67,11 @@ target_compile_definitions(${LIB_CPP}
 ################################################################################
 ## C++ Coverage
 ################################################################################
+message("> With coverage ${WITH_COVERAGE}")
 if(WITH_COVERAGE)
     message("#### Searching for packages")
-    find_program(LCOV lcov REQUIRED)
-    find_program(GENHTML genhtml REQUIRED)
+    find_program(LCOV lcov)
+    find_program(GENHTML genhtml)
     if(NOT LCOV OR NOT GENHTML)
         message(SEND_ERROR "Could not find lcov/genhtml program(s). "
             "Either install missing components or run without coverage tests ("

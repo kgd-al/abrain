@@ -390,9 +390,9 @@ void generatePerceptron(CPPN &cppn,
 
 bool connect (CPPN &cppn,
               const Coordinates &inputs, const Coordinates &outputs,
-              Coordinates &hidden, Connections &connections) {
+              Coordinates &hidden, Connections &connections, uint &iterations) {
 
-  static const auto &iterations = Config::iterations;
+  static const auto &max_iterations = Config::iterations;
 
   Coordinates_s sio;  // All fixed positions
   for (const auto &vec: {inputs, outputs}) {
@@ -441,7 +441,7 @@ bool connect (CPPN &cppn,
 
   bool converged = false;
   Coordinates_s unexploredHidden = shidden;
-  for (uint i=0; i<iterations && !converged; i++) {
+  for (iterations = 0; iterations<max_iterations && !converged; iterations++) {
 
     Coordinates_s newHiddens;
     for (const Point &p: unexploredHidden) {

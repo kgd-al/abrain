@@ -8,6 +8,7 @@ namespace py = pybind11;
 
 #include "pybind11/stl_bind.h"
 #include "pybind11/functional.h"
+#include "pybind11/operators.h"
 using namespace pybind11::literals;
 
 using namespace kgd::eshn::phenotype;
@@ -52,6 +53,13 @@ void init_cppn_phenotype (py::module_ &m) {
            "x"_a, "y"_a, "z"_a)
 #endif
       .def("__repr__", [] (const Point &p) { return utils::mergeToString(p); })
+      .def(pybind11::self == pybind11::self)
+      .def(pybind11::self != pybind11::self)
+      .def("__hash__", [] (const Point &p) { // Bad hash
+        int sum = 0;
+        for (int i: p.data()) sum += i;
+        return sum;
+      })
       .def("tuple", [] (const Point &p) {
 #if ESHN_SUBSTRATE_DIMENSION == 3
         return std::tuple(p.x(), p.y(), p.z());
