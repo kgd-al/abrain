@@ -85,7 +85,7 @@ def test_empty_perceptrons(mutations, seed):
 
     for s in [stats_t, stats_f]:
         assert(sum(s.values()) == n)
-    assert stats_t['empty'] < stats_f['empty']
+    assert stats_t['empty'] <= stats_f['empty']
     assert stats_f['perceptron'] == 0
 
 

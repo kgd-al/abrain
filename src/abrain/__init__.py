@@ -1,7 +1,7 @@
 """Docstring for abrain module/top-level package"""
 
 from .core.config import Config
-from .core.genome import Genome
+from .core.genome import Genome, GIDManager
 
 from .core.ann import ANN
 from .core.ann import plotly_render
@@ -17,4 +17,4 @@ except importlib.metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 
-__all__ = ['Genome', 'ANN', 'Config', 'Point', 'CPPN', 'plotly_render']
+__all__ = ['Genome', 'ANN', 'Config', 'Point', 'GIDManager', 'CPPN', 'plotly_render']
