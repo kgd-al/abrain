@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Optional, Dict
 
 import plotly.graph_objects as go
 
 from .._cpp.phenotype import ANN, Point
 
 
-def plotly_render(ann: ANN, labels: Optional[dict[Point, str]] = None) -> go.Figure:
+def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) -> go.Figure:
     """
     Produce a 3D figure from an artificial neural network
 
