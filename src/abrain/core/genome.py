@@ -74,18 +74,6 @@ class Genome(_CPPNData):
         """Return the genome's parent(s) if possible"""
         return getattr(self, self.__parents_field, None)
 
-    @staticmethod
-    def _is_input(nid: int):
-        return nid < Genome.INPUTS
-
-    @staticmethod
-    def _is_output(nid: int):
-        return Genome.INPUTS <= nid < Genome.INPUTS + Genome.OUTPUTS
-
-    @staticmethod
-    def _is_hidden(nid: int):
-        return Genome.INPUTS + Genome.OUTPUTS <= nid
-
     ###########################################################################
     # Public manipulation interface
     ###########################################################################
@@ -180,7 +168,8 @@ class Genome(_CPPNData):
         choice = rng.choices(list(rates.keys()), list(rates.values()))[0]
         actions[choice][0](rng, *actions[choice][1:])
 
-    def mutated(self, rng: Random, id_manager: Optional[GIDManager] = None) -> 'Genome':
+    def mutated(self, rng: Random, id_manager: Optional[GIDManager] = None) \
+            -> 'Genome':
         """Return a mutated (copied) version of this genome
 
         :param rng: the source of randomness
@@ -188,13 +177,16 @@ class Genome(_CPPNData):
         """
         copy = self.copy()
         copy.mutate(rng)
+        assert hasattr(self, self.__id_field) == (id_manager is not None), \
+            "Current genome has an id, but no ID manager provided for child"
         if id_manager is not None:
             setattr(copy, self.__id_field, id_manager())
             setattr(copy, self.__parents_field, [self.id()])
         return copy
 
     @staticmethod
-    def random(rng: Random, id_manager: Optional[GIDManager] = None) -> 'Genome':
+    def random(rng: Random, id_manager: Optional[GIDManager] = None) \
+            -> 'Genome':
         """Create a random CPPN with boolean initialization
 
         :param rng: The source of randomness
@@ -461,6 +453,18 @@ class Genome(_CPPNData):
     ###########################################################################
 
     @staticmethod
+    def _is_input(nid: int):
+        return nid < Genome.INPUTS
+
+    @staticmethod
+    def _is_output(nid: int):
+        return Genome.INPUTS <= nid < Genome.INPUTS + Genome.OUTPUTS
+
+    @staticmethod
+    def _is_hidden(nid: int):
+        return Genome.INPUTS + Genome.OUTPUTS <= nid
+
+    @staticmethod
     def __random_node_function(rng: Random):
         return rng.choice(Config.functionSet)
 
@@ -548,7 +552,8 @@ class Genome(_CPPNData):
             delta = rng.gauss(0, bounds.stddev)
         w = max(bounds.min, min(link.weight + delta, bounds.max))
 
-        logger.debug(f"[mut_w] {link.src} -({link.weight})-> {link.dst} >> {w}")
+        logger.debug(f"[mut_w] {link.src} -({link.weight})->"
+                     f" {link.dst} >> {w}")
 
         link.weight = w
 

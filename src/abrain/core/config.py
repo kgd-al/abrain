@@ -59,7 +59,8 @@ class Config(CPPConfig):
                     attr = type(this_attr).fromJson(j_attr)
 
                     if not attr.isValid():
-                        raise ValueError(f"{attr} is not a valid value for {k}")
+                        raise ValueError(
+                            f"{attr} is not a valid value for {k}")
                 try:
                     setattr(cls, k, attr)
                 except TypeError as e:

@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 from .._cpp.phenotype import ANN, Point
 
 
-def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) -> go.Figure:
+def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
+        -> go.Figure:
     """
     Produce a 3D figure from an artificial neural network
 
@@ -27,11 +28,9 @@ def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) -> go.Fig
         n_list[1] += [y]
         n_list[2] += [z]
 
-        if labels is None:
-            names[n.type].append(f"{n.type.name}{len(names[n.type])}")
-        else:
-            label = labels.get(n.pos)
-            names[n.type].append(label if label is not None else "Unnamed")
+        if labels is None or (label := labels.get(n.pos, None)) is None:
+            label = f"{n.type.name}{len(names[n.type])}"
+        names[n.type].append(label)
 
         for link in n.links():
             x2, y2, z2 = link.src().pos.tuple()
@@ -88,8 +87,5 @@ def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) -> go.Fig
             font_family="Courrier"
         )
     )
-
-
-
 
     return fig

@@ -17,4 +17,5 @@ except importlib.metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 
-__all__ = ['Genome', 'ANN', 'Config', 'Point', 'GIDManager', 'CPPN', 'plotly_render']
+__all__ = ['Genome', 'ANN', 'Config', 'Point', 'GIDManager', 'CPPN',
+           'plotly_render']

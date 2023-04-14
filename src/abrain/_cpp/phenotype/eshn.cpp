@@ -521,6 +521,8 @@ bool connect (CPPN &cppn,
 
   std::copy(shidden2.begin(), shidden2.end(), std::back_inserter(hidden));
 
+  std::cerr << "Allow perceptions? " << Config::allowPerceptrons
+            << "\nNeed perceptron?" << hidden.empty() << "\n";
   if (hidden.empty() && Config::allowPerceptrons)
     generatePerceptron(cppn, inputs, outputs, connections);
 

@@ -211,8 +211,8 @@ cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
   trap check exit
   cmd_very-clean
   cmd_install-cached
-  cmd_pytest --small-scale --test_evolution
-  pyflakes src tests
+  cmd_pytest --small-scale --test-evolution
+  flake8 src tests
   ok=0
 }
 

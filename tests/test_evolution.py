@@ -5,7 +5,7 @@ from pathlib import Path
 from random import Random
 
 from abrain.core.ann import ANN, Point
-from abrain.core.genome import Genome
+from abrain.core.genome import Genome, GIDManager
 
 from _utils import assert_equal
 
@@ -16,21 +16,16 @@ class Robot:
     :param genome: the collection of inheritable characteristics
     """
 
-    r_id = 1
-
     ann_inputs = None
     ann_outputs = None
 
     def __init__(self, genome: Genome):
-        self.r_id = Robot.r_id
-        Robot.r_id += 1
-
         self.genome = genome
         self.brain = ANN.build(Robot.ann_inputs, Robot.ann_outputs, genome)
         self.fitness = self.brain.stats().depth
 
     def __repr__(self):
-        return f"Robot(id={self.r_id}," \
+        return f"Robot(id={self.genome.id()}," \
                f" depth={self.fitness}, neurons={len(self.brain.neurons())}," \
                f" axons={self.brain.stats().edges})"
 
@@ -80,6 +75,8 @@ def test_evolution(evo_config, capsys, tmp_path):
     Robot.ann_inputs = random_coordinates(10, 20, -1)
     Robot.ann_outputs = random_coordinates(5, 10, 1)
 
+    id_manager = GIDManager()
+
     with capsys.disabled():
         print()
         print("========================")
@@ -88,7 +85,8 @@ def test_evolution(evo_config, capsys, tmp_path):
             print(f"\t{k}: {v}")
         print()
 
-        population = [Robot(Genome.random(rng)) for _ in range(pop_size)]
+        population = [Robot(Genome.random(rng, id_manager))
+                      for _ in range(pop_size)]
         print("== Initialized population")
 
         def champion(pop=None) -> Robot:
@@ -112,7 +110,7 @@ def test_evolution(evo_config, capsys, tmp_path):
             new_population = []
             for _ in range(pop_size):
                 winner = champion(rng.sample(population, tour_size))
-                child = Robot(winner.genome.mutated(rng))
+                child = Robot(winner.genome.mutated(rng, id_manager))
                 new_population.append(child)
 
             population = new_population

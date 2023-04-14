@@ -1,4 +1,6 @@
+import copy
 import logging
+import pickle
 import pydoc
 from pathlib import Path
 from random import Random
@@ -6,12 +8,16 @@ from typing import Optional
 
 import pytest
 from abrain.core.config import Config
-from abrain.core.genome import Genome, logger as genome_logger
+from abrain.core.genome import Genome, logger as genome_logger, GIDManager
 
 from _utils import assert_equal
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
+
+###############################################################################
+# Generic tests
+###############################################################################
 
 
 def test_exists():
@@ -47,6 +53,10 @@ def test_random_genome():
     for link in g.links:
         print(f"\t\t{link}")
 
+
+###############################################################################
+# Mutation tests
+###############################################################################
 
 class RatesGuard:
     def __init__(self, rates: dict):
@@ -299,3 +309,51 @@ def test_mutate_genome_deepcopy(seed):
 
     assert len(parent.nodes) == 2*steps
     assert len(child.nodes) == 0
+
+
+###############################################################################
+# Serialization tests
+###############################################################################
+
+def _simple_genome(seed, with_id):
+    rng = Random(seed)
+    id_manager = GIDManager() if with_id else None
+    genome = Genome.random(rng, id_manager)
+    for _ in range(10):
+        genome.mutate(rng)
+    return genome
+
+
+@pytest.mark.parametrize('with_id', [True, False])
+def test_pickle_genome(seed, with_id):
+    genome = _simple_genome(seed, with_id)
+    roundabout = pickle.loads(pickle.dumps(genome))
+    assert_equal(genome, roundabout)
+
+
+@pytest.mark.parametrize('with_id', [True, False])
+def test_json_genome(seed, with_id):
+    genome = _simple_genome(seed, with_id)
+    roundabout = Genome.from_json(genome.to_json())
+    assert_equal(genome, roundabout)
+
+
+@pytest.mark.parametrize('with_id', [True, False])
+def test_copy_genome(seed, with_id):
+    genome = _simple_genome(seed, with_id)
+    copied = genome.copy()
+    assert_equal(genome, copied)
+
+
+@pytest.mark.parametrize('with_id', [True, False])
+def test___copy___genome(seed, with_id):
+    genome = _simple_genome(seed, with_id)
+    copied = copy.copy(genome)
+    assert_equal(genome, copied)
+
+
+@pytest.mark.parametrize('with_id', [True, False])
+def test___deepcopy___genome(seed, with_id):
+    genome = _simple_genome(seed, with_id)
+    copied = copy.deepcopy(genome)
+    assert_equal(genome, copied)

@@ -84,7 +84,7 @@ def test_empty_perceptrons(mutations, seed):
         print()
 
     for s in [stats_t, stats_f]:
-        assert(sum(s.values()) == n)
+        assert (sum(s.values()) == n)
     assert stats_t['empty'] <= stats_f['empty']
     assert stats_f['perceptron'] == 0
 
@@ -157,7 +157,8 @@ def test_view_neurons_png(mutations, seed, tmp_path):
 
 @pytest.mark.parametrize('mutations', [10])
 @pytest.mark.parametrize('seed', [1])
-def test_view_neurons_interactive(mutations, seed, tmp_path):
+@pytest.mark.parametrize('with_labels', [True, False])
+def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
     start = perf_counter()
 
     def time():
@@ -167,10 +168,16 @@ def test_view_neurons_interactive(mutations, seed, tmp_path):
         return duration
 
     rng = Random(seed)
-    ann, _, _ = _make_ann(mutations, rng)
+    ann, inputs, _ = _make_ann(mutations, rng)
     print(f"Generating ANN(gen={mutations}, seed={seed}): {time()}s")
 
-    fig = plotly_render(ann)
+    labels = None
+    if with_labels:
+        labels = {}
+        for i in inputs:
+            labels[i] = f"Input{len(labels)}"
+
+    fig = plotly_render(ann, labels)
     print(f"Preparing rendering: {time()}s")
 
     fig.write_html(f"{tmp_path}/interactive.ann.html")
