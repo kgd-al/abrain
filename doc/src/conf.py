@@ -40,6 +40,7 @@ extensions = [
     'sphinx.ext.todo',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_design',
+    'sphinx.ext.autosectionlabel'
 ]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = []  # ['_templates']
@@ -48,6 +49,9 @@ templates_path = []  # ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
+
+# -- Options for HTML sections -------------------------------------------------
+autosectionlabel_prefix_document = True  # Make sure the target is unique
 
 # -- Options for HTML output -------------------------------------------------
 intersphinx_mapping = {

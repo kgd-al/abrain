@@ -99,7 +99,12 @@ responses computed in the next step.
 
 .. warning::
 
-    The default :ref:`activation function <api/functions.html#activation-function>`
+    The default
+    :ref:`activation function <_autogen/functions:activation function>`
+    for every *hidden* and *output* neurons maps 0 to 0.
+    By contrast input neurons expose the exact same value as that provided.
+    This means that providing constant, small values might result in the whole
+    network staying in a quiescent state.
 
 
 .. literalinclude:: ../../../examples/basics.py
@@ -111,7 +116,7 @@ responses computed in the next step.
 Following that, we can query the outbound activity by invoking the ANN with both
 buffers.
 An optional parameter `substeps` can be provided if more than a single
-activation step is desired, e.g. deep networks with a low update rate. .
+activation step is desired, e.g. deep networks with a low update rate.
 
 .. literalinclude:: ../../../examples/basics.py
     :language: python
