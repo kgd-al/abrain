@@ -42,7 +42,7 @@ struct QOTreeNode {
     for (auto &c: cs) mean += c->weight;
     mean /= cs.size();
     float var = 0;
-    for (auto &c: cs) var += std::pow(c->weight - mean, 2);
+    for (auto &c: cs) var += float(std::pow(c->weight - mean, 2));
     return var / cs.size();
   }
 
@@ -119,7 +119,7 @@ QOTree divisionAndInitialisation(CPPN &cppn, const Point &p, bool out) {
     float cz = n.center.z();
 #endif
     float hr = .5 * n.radius;
-    float nl = n.level + 1;
+    float nl = float(n.level) + 1;
 
     n.cs.resize(1 << ESHN_SUBSTRATE_DIMENSION);
     uint i=0;

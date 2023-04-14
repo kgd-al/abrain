@@ -71,12 +71,12 @@ def test_empty_perceptrons(mutations, seed):
 
     genome_logger.setLevel(logging.CRITICAL)
     allow_perceptrons = bool(Config.allowPerceptrons)
-    Config.allowPerceptrons = True
+    Config.allowPerceptrons = 1
     print(f"Set perceptrons to True == {Config.allowPerceptrons}")
     stats_t = generate_stats()
 
-    Config.allowPerceptrons = False
-    Config.bndThr = 2* Config.bndThr
+    Config.allowPerceptrons = 0
+    Config.bndThr = .42
     print(f"Set perceptrons to False == {Config.allowPerceptrons}")
     stats_f = generate_stats()
     Config.allowPerceptrons = allow_perceptrons

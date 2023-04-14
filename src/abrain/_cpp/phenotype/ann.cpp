@@ -164,7 +164,7 @@ void ANN::computeStats(void) {
   auto &e = _stats.edges = 0;
   float &l = _stats.axons = 0;
   for (const Neuron::ptr &n: _neurons) {
-    e += n->links().size();
+    e += uint(n->links().size());
     for (const Neuron::Link &link: n->links())
       l += (n->pos - link.in.lock()->pos).length();
   }
