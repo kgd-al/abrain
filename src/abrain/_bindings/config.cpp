@@ -142,7 +142,18 @@ void init_config (py::module_ &m) {
       .def_readwrite_static ID(divThr)
       .def_readwrite_static ID(varThr)
       .def_readwrite_static ID(bndThr)
-      .def_readwrite_static ID(allowPerceptrons)
+//       .def_readwrite_static ID(allowPerceptrons)
+      .def_property_static(
+        "allowPerceptrons",
+        [](py::object) {
+          std::cerr << std::boolalpha << "Returning " << Config::allowPerceptrons << "\n";
+          return Config::allowPerceptrons;
+        },
+        [](py::object, bool b) {
+          std::cerr << std::boolalpha << "Setting Config::allowPerceptrons from " << Config::allowPerceptrons;
+          Config::allowPerceptrons = b;
+          std::cerr << " to " << Config::allowPerceptrons << " (" << b << ")\n";
+        })
 
       .def_readonly_static("_sections", &_sections)
       .def_readonly_static("_docstrings", &_docs)

@@ -97,6 +97,10 @@ which can be done by direct assignment (line 29) or through slices (line 30).
 At the same time we also retrieve the output buffer which will store the neural
 responses computed in the next step.
 
+.. info:
+
+    The default activation function (see 
+
 .. literalinclude:: ../../../examples/basics.py
     :language: python
     :linenos:
