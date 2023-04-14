@@ -28,7 +28,7 @@ jobs:
           do
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
-        done | grep cp310-win_amd64 >> mjson_file
+        done >> mjson_file
         echo "$mjson]}" >> mjson_file
         mjson=$(cat mjson_file | tr -d '\n' | sed 's/,]/]/')
         echo $mjson | jq .
@@ -78,7 +78,7 @@ jobs:
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution -k test_empty_perceptrons -s
+            pytest {project}/tests -ra --small-scale --test-evolution
           LC_ALL: C
         shell: bash --noprofile --norc {0} # No automatic fail-fast
         run: |

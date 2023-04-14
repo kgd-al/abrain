@@ -97,9 +97,10 @@ which can be done by direct assignment (line 29) or through slices (line 30).
 At the same time we also retrieve the output buffer which will store the neural
 responses computed in the next step.
 
-.. info:
+.. warning::
 
-    The default activation function (see 
+    The default :ref:`activation function <api/functions.html#activation-function>`
+
 
 .. literalinclude:: ../../../examples/basics.py
     :language: python

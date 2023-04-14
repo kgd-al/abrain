@@ -58,7 +58,6 @@ def test_empty_perceptrons(mutations, seed):
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
             ann, _, _ = _make_ann(mutations, rng)
-            print(f"{ann.perceptron()=}, {Config.allowPerceptrons=}")
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
@@ -71,16 +70,12 @@ def test_empty_perceptrons(mutations, seed):
 
     genome_logger.setLevel(logging.CRITICAL)
     allow_perceptrons = bool(Config.allowPerceptrons)
-    Config.allowPerceptrons = 1
-    print(f"Set perceptrons to True == {Config.allowPerceptrons}")
+    Config.allowPerceptrons = True
     stats_t = generate_stats()
 
-    Config.allowPerceptrons = 0
-    Config.bndThr = .42
-    print(f"Set perceptrons to False == {Config.allowPerceptrons}")
+    Config.allowPerceptrons = False
     stats_f = generate_stats()
     Config.allowPerceptrons = allow_perceptrons
-    print(f"Restored perceptrons to {Config.allowPerceptrons}")
 
     print(f"{'-':11s} {'True':10s} {'False':10s}")
     for k in stats_t:
