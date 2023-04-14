@@ -76,6 +76,7 @@ def test_empty_perceptrons(mutations, seed):
     stats_t = generate_stats()
 
     Config.allowPerceptrons = False
+    Config.bndThr = 2* Config.bndThr
     print(f"Set perceptrons to False == {Config.allowPerceptrons}")
     stats_f = generate_stats()
     Config.allowPerceptrons = allow_perceptrons

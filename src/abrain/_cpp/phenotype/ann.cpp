@@ -152,7 +152,7 @@ uint computeDepth (ANN &ann) {
 }
 
 void ANN::computeStats(void) {
-  _stats.hidden = _neurons.size() - _inputs.size() - _outputs.size();
+  _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
   if (_stats.hidden == 0) {
     for (Neuron::ptr &n: _inputs)   n->depth = 0;
     for (Neuron::ptr &n: _outputs)  n->depth = 1;

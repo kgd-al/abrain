@@ -64,7 +64,7 @@ public:
   }
 
   void set (uint i, float v) {
-    _data[i] = std::round(RATIO * v);
+    _data[i] = int(std::round(RATIO * v));
   }
 
   void set (float v) {
