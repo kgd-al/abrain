@@ -58,12 +58,14 @@ def test_empty_perceptrons(mutations, seed):
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
             ann, _, _ = _make_ann(mutations, rng)
+            print(f"{ann.perceptron()=}, {Config.allowPerceptrons=}")
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
             assert not ann.empty() or ann.empty(strict=True)
             assert not ann.perceptron() or ann.empty(strict=True)
             assert not (ann.empty() and ann.perceptron())
+            assert not ann.perceptron() or Config.allowPerceptrons
 
         return l_stats
 
