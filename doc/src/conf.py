@@ -50,16 +50,16 @@ templates_path = []  # ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
-# -- Options for HTML sections -------------------------------------------------
+# -- Options for HTML sections ------------------------------------------------
 autosectionlabel_prefix_document = True  # Make sure the target is unique
 
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output --------------------------------------------------
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'plotly': ('https://plotly.com/python-api-reference/', None)
 }
 
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output --------------------------------------------------
 autodoc_default_options = {
     "imported-members": True,
     "members": True,

@@ -105,11 +105,16 @@ void init_config (py::module_ &m) {
   using Strings = std::vector<std::string>;
 
   auto strs = py::bind_vector<Strings>(m, "Strings");
+  strs.doc() = "C++ list of strings";
+
   if (!std::is_same<Strings, Config::Functions>::value)
     py::bind_vector<Config::Functions>(m, "Functions");
 
   auto mutr = py::bind_map<Config::MutationRates>(m, "MutationRates");
+  mutr.doc() = "C++ mapping between mutation types and rates";
+
   auto fbnd = py::class_<Config::FBounds>(m, "FBounds");
+  fbnd.doc() = "C++ encapsulation for mutation bounds";
 
   auto cnfg = py::class_<Config>(m, "Config");
 

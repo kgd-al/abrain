@@ -79,7 +79,7 @@ def test_evolution(evo_config, capsys, tmp_path):
 
     with capsys.disabled():
         print()
-        print("========================")
+        print("  ========================")
         print("==== Starting evolution ====")
         for k, v in evo_config.items():
             print(f"\t{k}: {v}")

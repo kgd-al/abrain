@@ -1,6 +1,8 @@
-from abrain import Genome, Point as Pt, ANN, plotly_render
-from random import Random
 import sys
+from random import Random
+
+from abrain import Genome, Point as Pt, ANN, plotly_render
+from common import example_path
 
 seed = 0 if len(sys.argv) < 2 else int(sys.argv[1])
 mutations = 10 if len(sys.argv) < 3 else int(sys.argv[2])
@@ -22,7 +24,7 @@ print(f"empty ANN: {ann.empty()}")
 print(f"maximal depth: {ann.stats().depth}")
 
 # /3.1/ Generate visualization
-plotly_render(ann).write_html("./sample_ann.html")
+plotly_render(ann).write_html(example_path("./sample_ann.html"))
 
 # /4/ Assign neural inputs
 inputs, outputs = ann.buffers()

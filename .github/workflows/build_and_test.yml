@@ -168,4 +168,4 @@ jobs:
             'hsl('${{ env.COLOR_PCOV }}', 100%, 25%)'
             'hsl('${{ env.COLOR_CCOV }}', 100%, 25%)'
           )
-        namedLogo: ("" "" "" "python" "c++")
+        namedLogo: ("" "" "" "" "python" "c++")

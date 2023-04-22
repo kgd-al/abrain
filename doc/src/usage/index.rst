@@ -29,11 +29,19 @@ instead clone the repository and use the built dedicated install command:
    OR
    $ ./commands.sh install-dev-tests
 
+By default these commands will produce a debug build with symbols, suitable
+for coverage monitoring. If you want a performance oriented build, instead use:
+
+.. code-block:: console
+
+    $ ./commands.sh install-cached release
+
 Tutorials
 ---------
 
 .. toctree::
     basics
+    evolution
 
     advanced/cppn
     advanced/mutations

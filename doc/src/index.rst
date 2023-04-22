@@ -1,6 +1,11 @@
 ABrain's documentation
 ======================
 
+This package implements the ES-HyperNEAT algorithms for the production of
+large-scale, regular Artificial Neural Networks.
+For a adequate overview of the related literature see the official homepage
+(http://eplex.cs.ucf.edu/ESHyperNEAT/).
+
 Contents
 --------
 

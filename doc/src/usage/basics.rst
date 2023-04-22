@@ -7,10 +7,9 @@ This section showcases the main components of the library by detailing the
 contents of `examples/basics.py`.
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: -2
+    :emphasize-lines: 4
+    :lines: -5
 
 We start by importing the essential components, aliased directly under the main
 package:
@@ -24,10 +23,8 @@ package:
 - :class:`random.Random` is used as the source of random numbers
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 10-13
+    :lines: 12-15
 
 The first object we need is the Genome which can be created by providing the
 random number generator to its :func:`~abrain.Genome.random` function.
@@ -35,10 +32,8 @@ To simulate an evolutionary process, we subject this Genome `g` to a number of
 undirected mutations (see :ref:`usage-advanced-mutations`)
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 16-17
+    :lines: 18-19
 
 Before instantiating the ANN, we define the coordinates of the neural inputs
 (sensors) and outputs (effectors).
@@ -65,11 +60,9 @@ relationships (i.e. bilateral symmetry, front-back ...).
     inputs/outputs
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
     :emphasize-lines: 1
-    :lines: 20-22
+    :lines: 22-24
 
 Creating the ANN is then as trivial as calling the static
 :func:`~abrain.ANN.build` function with the set of inputs/outputs and the
@@ -78,26 +71,22 @@ Various statistics can be queried on the resulting object including whether the
 build procedure resulted in a functional network.
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 25
+    :lines: 27
 
 Optionally, one can produce a 3D rendering of the network through the utility
 function :func:`~abrain.plotly_render`.
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 28-31
+    :lines: 30-33
 
 Actually using the ANN requires defining the neural inputs at a given time step,
 which can be done by direct assignment (line 29) or through slices (line 30).
 At the same time we also retrieve the output buffer which will store the neural
 responses computed in the next step.
 
-.. warning::
+.. note::
 
     The default
     :ref:`activation function <_autogen/functions:activation function>`
@@ -108,10 +97,8 @@ responses computed in the next step.
 
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 34-35
+    :lines: 36-37
 
 Following that, we can query the outbound activity by invoking the ANN with both
 buffers.
@@ -119,10 +106,8 @@ An optional parameter `substeps` can be provided if more than a single
 activation step is desired, e.g. deep networks with a low update rate.
 
 .. literalinclude:: ../../../examples/basics.py
-    :language: python
-    :linenos:
     :lineno-match:
-    :lines: 38
+    :lines: 40
 
 As with the input buffer, the results can be queried individually or in bulk to
 set the robot's outputs (motors...).

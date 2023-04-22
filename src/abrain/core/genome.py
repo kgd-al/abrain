@@ -223,6 +223,15 @@ class Genome(_CPPNData):
 
         return copy
 
+    def update_lineage(self, id_manager: GIDManager, parents: list['Genome']):
+        """Update lineage fields
+
+        :param id_manager: generator of unique identifiers
+        :param parents: list (potentially empty) of this genome's parents
+        """
+        setattr(self, self.__id_field, id_manager())
+        setattr(self, self.__parents_field, [p.id() for p in parents])
+
     ###########################################################################
     # Public copy/deepcopy interface
     ###########################################################################
