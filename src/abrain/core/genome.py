@@ -393,9 +393,9 @@ class Genome(_CPPNData):
         # input nodes
         i_labels = Config.cppnInputNames
         for i in range(self.INPUTS):
-            name = f"I{i}"
-            ix_to_name[i] = name
             label = i_labels[i]
+            name = "I" + label.upper().replace("_", "")
+            ix_to_name[i] = name
             if '_' in label:
                 j = label.find('_')
                 label = label[:j] + "<SUB>" + label[j + 1:] + "</SUB>"
@@ -410,7 +410,8 @@ class Genome(_CPPNData):
 
         o_labels = Config.cppnOutputNames
         for i in range(self.OUTPUTS):
-            name = f"O{i}"
+            label = o_labels[i]
+            name = "O" + label.upper().replace("_", "")
             ix_to_name[i + self.INPUTS] = name
             f = Config.outputFunctions[i]
             g_o.node(name, "",
@@ -418,7 +419,7 @@ class Genome(_CPPNData):
                      fixedsize="shape",
                      image=img_file(f),
                      xlabel=node_x_label(i + self.INPUTS))
-            g_ol.node(name + "_l", shape="plaintext", label=o_labels[i])
+            g_ol.node(name + "_l", shape="plaintext", label=label)
             dot.edge(name, name + "_l")
 
         for i, n in enumerate(self.nodes):
