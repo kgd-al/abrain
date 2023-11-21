@@ -89,6 +89,7 @@ Whether the ANN contains neurons/connections
               )", py::arg("strict") = false)
       .def ID(perceptron, "Whether this ANN is a perceptron")
       .def ID(stats, "Return associated stats (connections, depth...)")
+      .def ID(reset, "Resets internal state to null (0)")
       .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
            "Provide read-only access to the underlying neurons")
       .def ID(neuronAt, "Query an individual neuron", "pos"_a)

@@ -226,12 +226,11 @@ if (MAKE_STUBS)
             env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"
             pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
-                --skip-signature-downgrade --no-setup-py --log-level DEBUG
+                #--skip-signature-downgrade --no-setup-py --log-level DEBUG
+                --exit-code
                 ${LIB_CPP}
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/ ${STUBS_DIR}
-#         COMMAND cp -ruvf ${PROJECT_BINARY_DIR}/${LIB_CPP}-stubs/*
-#                       -t ${STUBS_DIR}
+            ${PROJECT_BINARY_DIR}/${LIB_CPP}/ ${STUBS_DIR}
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMENT "-+ Generating python stubs from c++ bindings"
     )

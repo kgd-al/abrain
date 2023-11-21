@@ -85,7 +85,7 @@ public:
   struct OBuffer : std::vector<float> {};
   auto& obuffer (void) { return _obuffer; }
 
-//  void reset (void);
+  void reset (void);
 
   /// TODO Modify with buffer-based eval. Maybe
   /// .. todo:: Modify with buffer-based eval. Maybe

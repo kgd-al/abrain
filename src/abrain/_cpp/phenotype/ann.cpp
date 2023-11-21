@@ -98,6 +98,10 @@ ANN ANN::build (const Coordinates &inputs,
 //  that._stats = _stats;
 //}
 
+void ANN::reset(void) {
+  for (auto &p: _neurons)   p->reset();
+}
+
 uint computeDepth (ANN &ann) {
   struct ReverseNeuron {
     ANN::Neuron &n;
