@@ -21,12 +21,14 @@ PYBIND11_MAKE_OPAQUE(ANN::NeuronsMap)
 namespace kgd::eshn::pybind {
 
 #ifndef NDEBUG
+py::tuple tuple(const std::vector<float> &v) { return py::tuple(py::cast(v)); }
 void set_to_nan(std::vector<float> &v) { std::fill(v.begin(), v.end(), NAN); }
 bool valid(const std::vector<float> &v) {
   return std::none_of(v.begin(), v.end(),
                       static_cast<bool(*)(float)>(std::isnan));
 }
 
+static constexpr auto doc_tuple = "Debug helper to convert to Python tuple";
 static constexpr auto doc_set_to_nan = "Debug helper to set all values to NaN";
 static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
 #endif
@@ -136,8 +138,9 @@ hidden neurons locations
       .def("__len__", [] (const ANN::IBuffer &buf) { return buf.size(); },
            "Return the number of expected inputs")
 #ifndef NDEBUG
-      .def("set_to_nan", set_to_nan, doc_set_to_nan)
-      .def("valid", valid, doc_valid)
+      .def("tuple", [] (const IBuffer &buf) { return tuple(buf); }, doc_tuple)
+      .def("set_to_nan", [] (IBuffer &buf) { return set_to_nan(buf); }, doc_set_to_nan)
+      .def("valid", [] (const IBuffer &buf) { return valid(buf); }, doc_valid)
 #endif
   ;
 
@@ -164,8 +167,9 @@ hidden neurons locations
       .def_property_readonly("__iter__", [] (py::object) { return py::none(); },
            "Cannot be iterated. Use direct access instead.")
 #ifndef NDEBUG
-      .def("set_to_nan", set_to_nan, doc_set_to_nan)
-      .def("valid", valid, doc_valid)
+      .def("tuple", [] (const OBuffer &buf) { return tuple(buf); }, doc_tuple)
+      .def("set_to_nan", [] (OBuffer &buf) { set_to_nan(buf); }, doc_set_to_nan)
+      .def("valid", [] (const OBuffer &buf) { return valid(buf); }, doc_valid)
 #endif
       ;
 

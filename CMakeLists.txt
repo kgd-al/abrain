@@ -84,16 +84,6 @@ if(WITH_COVERAGE)
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
-################################################################################
-## Target (cppn test)
-################################################################################
-#if (WITH_TESTS)
-#    add_executable(
-#      cppn_test
-#      "src/tests/cppn.cpp")
-#  target_link_libraries(cppn_test ${CORE_LIBS} eshn-core)
-#endif()
-
 #################################################################################
 ### Additional flags
 #################################################################################
