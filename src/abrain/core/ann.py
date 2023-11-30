@@ -1,3 +1,4 @@
+from enum import Flag, auto
 from typing import Optional, Dict
 
 import plotly.graph_objects as go
@@ -11,7 +12,7 @@ def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
     Produce a 3D figure from an artificial neural network
 
     The returned figure can be used to save an interactive html session or a
-    (probably poorly) render to e.g. a png file
+    (probably poorly) rendering to e.g. a png file
     """
 
     n_type = ANN.Neuron.Type
@@ -89,3 +90,18 @@ def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
     )
 
     return fig
+
+
+class ANNMonitor:
+    class MonitorLevel(Flag):
+        INPUTS = auto()
+        HIDDEN = auto()
+        OUTPUTS = auto()
+        NONE = 0
+        ALL = INPUTS | HIDDEN | OUTPUTS
+
+    def __init__(self, ann: ANN, level: MonitorLevel):
+        self.ann = ann
+
+    def step(self):
+        print("[kgd-debug] Storing data")
