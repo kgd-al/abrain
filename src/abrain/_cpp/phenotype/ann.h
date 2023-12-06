@@ -3,6 +3,10 @@
 
 #include <vector>
 
+#ifndef NDEBUG
+#include <chrono>
+#endif
+
 #include "cppn.h"
 #include "eshn.h"
 
@@ -65,6 +69,14 @@ public:
     uint edges;
     float axons;  // total length
     uint iterations;
+#ifndef NDEBUG
+    using duration = std::chrono::duration<double>;
+    using rep = duration::rep;
+    struct {
+      rep build; // Construction time
+      rep eval; // Evaluation time
+    } time;
+#endif
   };
 
   ANN(void) = default;

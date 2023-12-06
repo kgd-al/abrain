@@ -226,6 +226,12 @@ hidden neurons locations
           PAIR(hidden),
           PAIR(edges), PAIR(axons)
 #undef PAIR
+#ifndef NDEBUG
+          , "time"_a=py::dict(
+            "build"_a=stats.time.build,
+            "eval"_a=stats.time.eval
+          )
+#endif
         );
       }, "Return the stats as Python dictionary")
       ;

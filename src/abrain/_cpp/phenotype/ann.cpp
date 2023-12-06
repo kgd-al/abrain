@@ -5,10 +5,22 @@
 #include "../config.h"
 #include "ann.h"
 
+#include <iostream>
+
 namespace kgd::eshn::phenotype {
 
 #ifndef NDEBUG
 //#define DEBUG_COMPUTE 1
+#endif
+
+#ifndef NDEBUG  // Timing utilities
+using timing_clock = std::chrono::high_resolution_clock;
+using time_point = std::chrono::time_point<timing_clock>;
+
+static time_point t_now(void) { return timing_clock::now(); }
+static ANN::Stats::rep t_diff(time_point start) {
+  return std::chrono::duration_cast<ANN::Stats::duration>(t_now() - start).count();
+}
 #endif
 
 using Output = CPPN::Output;
@@ -25,6 +37,11 @@ bool ANN::perceptron(void) const {
 ANN ANN::build (const Coordinates &inputs,
                 const Coordinates &outputs,
                 const genotype::CPPNData &genome) {
+
+#ifndef NDEBUG
+//  const auto start_time = t_now();
+const auto start_time = timing_clock::now();
+#endif
 
   static const auto& weightRange = Config::annWeightsRange;
 
@@ -61,6 +78,11 @@ ANN ANN::build (const Coordinates &inputs,
   }
 
   ann.computeStats();
+
+#ifndef NDEBUG
+  ann._stats.time.build = t_diff(start_time);
+  ann._stats.time.eval = Stats::rep{0};
+#endif
 
   return ann;
 }
@@ -179,6 +201,10 @@ ANN::Neuron::ptr ANN::addNeuron(const Point &p, Neuron::Type t, float bias) {
 }
 
 void ANN::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
+#ifndef NDEBUG
+  const auto start_time = t_now();
+#endif
+
   static const auto &activation =
     phenotype::CPPN::functions.at(Config::activationFunc);
   assert(inputs.size() == _inputs.size());
@@ -227,6 +253,11 @@ void ANN::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
 #ifdef DEBUG_COMPUTE
   std::cerr << "outputs:\t" << outputs << "\n## --\n";
 #endif
+
+#ifndef NDEBUG
+  _stats.time.eval += t_diff(start_time);
+#endif
+
 }
 
 } // end of namespace kgd::eshn::genotype
