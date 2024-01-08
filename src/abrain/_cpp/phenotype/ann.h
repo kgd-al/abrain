@@ -68,6 +68,7 @@ public:
     uint hidden;
     uint edges;
     float axons;  // total length
+    float density;
     uint iterations;
 #ifndef NDEBUG
     using duration = std::chrono::duration<double>;

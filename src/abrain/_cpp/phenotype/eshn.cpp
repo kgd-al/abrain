@@ -451,15 +451,7 @@ bool connect (CPPN &cppn,
       collect(tmpConnections, connections, shidden, newHiddens);
     }
 
-//    Coordinates_s tmpHidden;
-//    std::set_difference(shidden.begin(), shidden.end(),
-//                        unexploredHidden.begin(), unexploredHidden.end(),
-//                        std::inserter(tmpHidden, tmpHidden.end()));
     unexploredHidden = newHiddens;
-
-//    oss << "\t\t\t" << shidden.size() << " - " << unexploredHidden.size()
-//        << " = " << tmpHidden.size() << "\n";
-//    unexploredHidden = tmpHidden;
 
 #if DEBUG_ES
   oss << "[H -> H] found " << shidden.size() - n_hidden

@@ -218,13 +218,15 @@ hidden neurons locations
       .def_readonly ID(depth, "Maximal depth of the neural network")
       .def_readonly ID(edges, "Number of connections")
       .def_readonly ID(axons, "Total length of the connections")
+      .def_readonly ID(density, "Ratio of expressed connections")
       .def_readonly ID(iterations, "H -> H iterations before convergence")
       .def("dict", [] (const CLASS &stats) {
         return py::dict (
 #define PAIR(X) #X##_a=stats.X
           PAIR(depth), PAIR(iterations),
           PAIR(hidden),
-          PAIR(edges), PAIR(axons)
+          PAIR(edges), PAIR(axons),
+          PAIR(density)
 #undef PAIR
 #ifndef NDEBUG
           , "time"_a=py::dict(

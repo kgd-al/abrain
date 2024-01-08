@@ -178,21 +178,25 @@ uint computeDepth (ANN &ann) {
 }
 
 void ANN::computeStats(void) {
-  _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
-  if (_stats.hidden == 0) {
-    for (Neuron::ptr &n: _inputs)   n->depth = 0;
-    for (Neuron::ptr &n: _outputs)  n->depth = 1;
-    _stats.depth = 1;
-
-  } else
-    _stats.depth = computeDepth(*this);
-
   auto &e = _stats.edges = 0;
   float &l = _stats.axons = 0;
   for (const Neuron::ptr &n: _neurons) {
     e += uint(n->links().size());
     for (const Neuron::Link &link: n->links())
       l += (n->pos - link.in.lock()->pos).length();
+  }
+
+  _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
+  _stats.density = _stats.edges;
+  if (_stats.hidden == 0) {
+    for (Neuron::ptr &n: _inputs)   n->depth = 0;
+    for (Neuron::ptr &n: _outputs)  n->depth = 1;
+    _stats.depth = 1;
+    _stats.density /= _inputs.size() * _outputs.size();
+
+  } else {
+    _stats.depth = computeDepth(*this);
+    _stats.density /= (_inputs.size() * _stats.hidden + _stats.hidden * _outputs.size());
   }
 }
 
