@@ -186,7 +186,7 @@ def _neurons(ann: ANN, labels: dict[Point, str],
     types = {NT.I: "Input", NT.H: "Hidden", NT.O: "Output"}
     n_types = {t: 0 for t in types}
     for n in _iter_neurons(ann):
-        if (label := labels.get(n.pos, None)) is None:
+        if labels is None or (label := labels.get(n.pos, None)) is None:
             label = f"{n.type.name}{n_types[n.type]}"
         n_types[n.type] += 1
         names.append(f"<b>{types[n.type]}</b><br>"
@@ -234,6 +234,10 @@ def _neurons(ann: ANN, labels: dict[Point, str],
 
 def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
            **kwargs) -> go.Scatter3d:
+
+    if ann.stats().edges == 0:
+        return go.Scatter3d()
+
     x, y, z = (
         list(chain.from_iterable(lst)) for lst in
         zip(*[zip(*(src.pos.tuple(), dst.pos.tuple(), (None, None, None)))
