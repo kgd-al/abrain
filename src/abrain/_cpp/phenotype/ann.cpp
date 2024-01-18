@@ -84,6 +84,8 @@ const auto start_time = timing_clock::now();
   ann._stats.time.eval = Stats::rep{0};
 #endif
 
+  (void)malloc(1024*1024*32);
+
   return ann;
 }
 
