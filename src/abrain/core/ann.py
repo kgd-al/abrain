@@ -4,7 +4,7 @@ from collections import Counter
 from enum import Flag, auto
 from itertools import chain
 from pathlib import Path
-from typing import Optional, Dict, Tuple, List, Iterable
+from typing import Optional, Dict, Tuple, List, Iterable, Union
 
 import numpy as np
 import pandas as pd
@@ -40,10 +40,10 @@ def _iter_axons(ann: ANN):
 
 
 class ANNMonitor:
-    def __init__(self, ann: ANN, labels: dict[Point, str],
+    def __init__(self, ann: ANN, labels: Optional[dict[Point, str]],
                  folder: Path,
-                 neurons_file: Optional[Path],
-                 dynamics_file: Optional[Path],
+                 neurons_file: Optional[Union[Path, str]],
+                 dynamics_file: Optional[Union[Path | str]],
                  dt: Optional[float] = None):
         self.ann = ann
 
@@ -52,17 +52,23 @@ class ANNMonitor:
         self.dt = dt
 
         self.save_folder = folder
+        self.neural_data_file = None
         if neurons_file:
             self.neural_data_file = folder.joinpath(neurons_file)
+
+        if self.labels is None:
+            def _id(_n): return str(_n.pos)
+        else:
+            def _id(n): return f"{n.pos}:{self.labels.get(n.pos)}"
 
         self.neurons_data = None
         if neurons_file or dynamics_file:
             self.neurons_data = pd.DataFrame(
-                columns=[f"{n.pos}:{self.labels.get(n.pos)}"
-                         for n in _iter_neurons(self.ann)]
+                columns=[_id(n) for n in _iter_neurons(self.ann)]
             )
 
         self.axonal_data = None
+        self.interactive_plot_file = None
         if dynamics_file:
             self.interactive_plot_file = folder.joinpath(dynamics_file)
             self.axonal_data = pd.DataFrame(
@@ -70,9 +76,6 @@ class ANNMonitor:
                          for _, src, dst in _iter_axons(self.ann)]
             )
             # pprint.pprint(self.axonal_data.columns)
-
-    def open(self):
-        pass
 
     def step(self):
         if self.neurons_data is not None:

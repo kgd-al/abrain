@@ -111,6 +111,7 @@ def test_evolution(evo_config, capsys, tmp_path):
             for _ in range(pop_size):
                 winner = champion(rng.sample(population, tour_size))
                 child = Robot(winner.genome.mutated(rng, id_manager))
+                child.genome.update_lineage(id_manager, [winner.genome])
                 new_population.append(child)
 
             population = new_population

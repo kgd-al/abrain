@@ -7,6 +7,7 @@ from typing import Tuple, List, Dict
 import pytest
 
 from abrain import Point, Config, Genome, ANN, plotly_render
+from abrain.core.ann import ANNMonitor
 from abrain.core.genome import logger as genome_logger
 
 
@@ -141,6 +142,34 @@ def test_random_eval(mutations, seed):
     assert ann.empty() or sum != 0
 
 
+def _random_step(ann: ANN, rng: Random):
+    inputs, outputs = ann.ibuffer(), ann.obuffer()
+    for j in range(len(inputs)):
+        inputs[j] = rng.uniform(-1, 1)
+
+    ann(inputs, outputs, 1)
+    return outputs
+
+
+def test_reset(mutations, seed):
+    rng = Random(seed)
+    ann, _, _ = _make_ann(mutations, rng)
+
+    n = 1000
+    all_outputs = [[], []]
+    for i in range(2):
+        ann.reset()
+        rng = Random(seed)
+        for _ in range(n):
+            outputs = _random_step(ann, rng)
+            all_outputs[i].append([outputs[i] for i in range(len(outputs))])
+
+    assert all(all_outputs[0][i] == all_outputs[1][i]
+               for i in range(n)), \
+        "\n".join(f"{a} =?= {b}" for a, b
+                 in zip(all_outputs[0], all_outputs[1]))
+
+
 def test_view_neurons_png(mutations, seed, tmp_path):
     rng = Random(seed)
     ann, _, _ = _make_ann(mutations, rng)
@@ -156,21 +185,22 @@ def test_view_neurons_png(mutations, seed, tmp_path):
                     f"{e=}, {type(e)=}")
 
 
+def _time(_start=None):
+    duration = perf_counter() - _start if _start else None
+    _start = perf_counter()
+    return duration, _start
+
+
 @pytest.mark.parametrize('mutations', [10])
 @pytest.mark.parametrize('seed', [1])
 @pytest.mark.parametrize('with_labels', [True, False])
 def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
-    start = perf_counter()
-
-    def time():
-        nonlocal start
-        duration = perf_counter() - start
-        start = perf_counter()
-        return duration
+    _, start = _time()
 
     rng = Random(seed)
     ann, inputs, _ = _make_ann(mutations, rng)
-    print(f"Generating ANN(gen={mutations}, seed={seed}): {time()}s")
+    duration, start = _time(start)
+    print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
 
     labels = None
     if with_labels:
@@ -179,7 +209,66 @@ def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
             labels[i] = f"Input{len(labels)}"
 
     fig = plotly_render(ann, labels)
-    print(f"Preparing rendering: {time()}s")
+    duration, start = _time(start)
+    print(f"Preparing rendering: {duration}s")
 
-    fig.write_html(f"{tmp_path}/interactive.ann.html")
-    print(f"Writing: {time()}s")
+    labels_str = "_with_labels" if with_labels else ""
+    fig.write_html(f"{tmp_path}/interactive{labels_str}.ann.html")
+    duration, start = _time(start)
+    print(f"Writing: {duration}s")
+
+
+@pytest.mark.parametrize('mutations', [10])
+@pytest.mark.parametrize('seed', [1])
+@pytest.mark.parametrize('with_labels', [True, False])
+@pytest.mark.parametrize('with_neurons', [True, False])
+@pytest.mark.parametrize('with_dynamics', [True, False])
+@pytest.mark.parametrize('dt', [None, 0.1])
+def test_view_neurons_dynamics(mutations, seed, with_labels,
+                               with_neurons, with_dynamics, dt,
+                               tmp_path):
+    labels_str = "_with_labels" if with_labels else ""
+    prefix = f"interactive_dynamics{labels_str}"
+
+    neurons_file = f"{prefix}.neurons.dat" if with_neurons else None
+    dynamics_file = f"{prefix}.dynamics.dat" if with_dynamics else None
+
+    _, start = _time()
+
+    rng = Random(seed)
+    ann, inputs, _ = _make_ann(mutations, rng)
+    duration, start = _time(start)
+    print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
+
+    labels = None
+    if with_labels:
+        labels = {}
+        for i in inputs:
+            labels[i] = f"Input{len(labels)}"
+
+    n = 100
+    print(f"Stepping {n} times")
+    ann_monitor = ANNMonitor(
+        ann=ann,
+        labels=labels,
+        folder=tmp_path,
+        neurons_file=neurons_file,
+        dynamics_file=dynamics_file,
+        dt=dt
+    )
+
+    for _ in range(n):
+        _random_step(ann, rng)
+        ann_monitor.step()
+
+    ann_monitor.close()
+
+
+    fig = plotly_render(ann, labels)
+    duration, start = _time(start)
+    print(f"Preparing rendering: {duration}s")
+
+    labels_str = "_with_labels" if with_labels else ""
+    fig.write_html(f"{tmp_path}/{prefix}.ann.html")
+    duration, start = _time(start)
+    print(f"Writing: {duration}s")
