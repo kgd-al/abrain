@@ -20,7 +20,7 @@ config = SphinxConfig("../../pyproject.toml", globalns=globals())
 
 # -- Project information -----------------------------------------------------
 
-project = 'a-brain'
+project = 'abrain'
 copyright = '2024, ' + config.author
 author = config.author
 
@@ -104,8 +104,8 @@ html_theme_options = {
     # 'show_relbars': True,
 
     # 'font_family': 'monospace',
-    "light_logo": "favicon-light.png",
-    "dark_logo": "favicon-dark.png",
+    "light_logo": "logo-light.png",
+    "dark_logo": "logo-dark.png",
     "sidebar_hide_name": True,
 
     # 'github_banner': True,
@@ -119,7 +119,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-html_favicon = "_static/favicon-light.png"
+html_favicon = "_static/favicon-dark.png"
 
 html_css_files = ['custom.css']
 
