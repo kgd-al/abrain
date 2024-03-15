@@ -258,7 +258,7 @@ def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
     # w = [link.weight for link, _, _ in _iter_axons(ann)]
 
     c_min, c_max = kwargs.pop("cmin", None), kwargs.pop("cmax", None)
-    # w_min, w_max = kwargs.pop("wmin", None), kwargs.pop("wmax", None)
+    _, _ = kwargs.pop("wmin", None), kwargs.pop("wmax", None)
 
     lines = dict(width=1)
     if data is None:
