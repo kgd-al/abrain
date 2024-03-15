@@ -1,12 +1,9 @@
-import collections
 import logging
 import math
 from itertools import chain
 from pathlib import Path
 from typing import Optional, Dict, List, Iterable, Union
 
-# import numpy as np
-# import pandas as pd
 import plotly.graph_objects as go
 
 from .._cpp.phenotype import ANN, Point
@@ -191,7 +188,7 @@ class ANNMonitor:
             logger.info(f"Generated {interactive_plot_file}")
 
 
-def _neurons(ann: ANN, labels: dict[Point, str],
+def _neurons(ann: ANN, labels: Dict[Point, str],
              data: Optional[Iterable[float]] = None,
              **kwargs) -> go.Scatter3d:
     # noinspection PyPep8Naming
@@ -258,10 +255,10 @@ def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
         list(chain.from_iterable(lst)) for lst in
         zip(*[zip(*(src.pos.tuple(), dst.pos.tuple(), (None, None, None)))
               for _, src, dst in _iter_axons(ann)]))
-    w = [link.weight for link, _, _ in _iter_axons(ann)]
+    # w = [link.weight for link, _, _ in _iter_axons(ann)]
 
     c_min, c_max = kwargs.pop("cmin", None), kwargs.pop("cmax", None)
-    w_min, w_max = kwargs.pop("wmin", None), kwargs.pop("wmax", None)
+    # w_min, w_max = kwargs.pop("wmin", None), kwargs.pop("wmax", None)
 
     lines = dict(width=1)
     if data is None:

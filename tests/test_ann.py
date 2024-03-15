@@ -167,7 +167,7 @@ def test_reset(mutations, seed):
     assert all(all_outputs[0][i] == all_outputs[1][i]
                for i in range(n)), \
         "\n".join(f"{a} =?= {b}" for a, b
-                 in zip(all_outputs[0], all_outputs[1]))
+                  in zip(all_outputs[0], all_outputs[1]))
 
 
 def test_view_neurons_png(mutations, seed, tmp_path):
