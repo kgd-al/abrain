@@ -4,10 +4,9 @@ import random
 from pathlib import Path
 from random import Random
 
+from _utils import assert_equal
 from abrain.core.ann import ANN, Point
 from abrain.core.genome import Genome, GIDManager
-
-from _utils import assert_equal
 
 
 class Robot:

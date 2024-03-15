@@ -1,17 +1,15 @@
+import collections
 import logging
-import pprint
-from collections import Counter
-from enum import Flag, auto
+import math
 from itertools import chain
 from pathlib import Path
-from typing import Optional, Dict, Tuple, List, Iterable, Union
+from typing import Optional, Dict, List, Iterable, Union
 
-import numpy as np
-import pandas as pd
+# import numpy as np
+# import pandas as pd
 import plotly.graph_objects as go
 
 from .._cpp.phenotype import ANN, Point
-
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +61,15 @@ class ANNMonitor:
 
         self.neurons_data = None
         if neurons_file or dynamics_file:
-            self.neurons_data = pd.DataFrame(
+            self.neurons_data = _TinyDataFrame(
                 columns=[_id(n) for n in _iter_neurons(self.ann)]
             )
 
         self.axonal_data = None
-        self.interactive_plot_file = None
+        self.axonal_data_file = None
         if dynamics_file:
-            self.interactive_plot_file = folder.joinpath(dynamics_file)
-            self.axonal_data = pd.DataFrame(
+            self.axonal_data_file = folder.joinpath(dynamics_file)
+            self.axonal_data = _TinyDataFrame(
                 columns=[f"{src.pos}->{dst.pos}"
                          for _, src, dst in _iter_axons(self.ann)]
             )
@@ -79,34 +77,46 @@ class ANNMonitor:
 
     def step(self):
         if self.neurons_data is not None:
-            self.neurons_data.loc[len(self.neurons_data)] = [
+            self.neurons_data.append([
                 n.value for n in _iter_neurons(self.ann)
-            ]
+            ])
         if self.axonal_data is not None:
-            self.axonal_data.loc[len(self.axonal_data)] = [
+            self.axonal_data.append([
                 src.value * link.weight
                 for link, src, dst in _iter_axons(self.ann)
-            ]
+            ])
 
     def close(self):
         if self.neural_data_file:
             self.neurons_data.to_csv(self.neural_data_file, sep=' ')
             logger.info(f"Generated {self.neural_data_file}")
 
-        if self.interactive_plot_file:
+        if self.axonal_data_file:
             def c_range(array):
-                v_min, v_max = np.quantile(array, q=[0, 1])
+                v_min, v_max = math.inf, -math.inf
+                for v in array:
+                    if isinstance(v, Iterable):
+                        _v_min, _v_max = c_range(v)
+                        if _v_min < v_min:
+                            v_min = _v_min
+                        if v_max < _v_max:
+                            v_max = _v_max
+                    else:
+                        if v < v_min:
+                            v_min = v
+                        if v_max < v:
+                            v_max = v
                 v_min = min([v_min, -v_min, v_max, -v_max])
                 return [v_min, -v_min]
 
-            nv_min, nv_max = c_range(self.neurons_data)
+            nv_min, nv_max = c_range(self.neurons_data.data)
             # print(f"[kgd-debug] {nv_min=}, {nv_max=}")
 
             ew_min, ew_max = c_range(
                 [link.weight for link, _, _ in _iter_axons(self.ann)])
             # print(f"[kgd-debug] {ew_min=}, {ew_max=}")
 
-            ev_min, ev_max = c_range(self.axonal_data)
+            ev_min, ev_max = c_range(self.axonal_data.data)
             # print(f"[kgd-debug] {ev_min=}, {ev_max=}")
 
             frames = [
@@ -116,10 +126,10 @@ class ANNMonitor:
                           _edges(self.ann, data=a_row,
                                  wmin=ew_min, wmax=ew_max,
                                  cmin=ev_min, cmax=ev_max)],
-                    name=f'frame{index0}/{index1}'
-                ) for (index0, n_row), (index1, a_row)
-                in zip(self.neurons_data.iterrows(),
-                       self.axonal_data.iterrows())
+                    name=f'frame{index}'
+                ) for index, (n_row, a_row)
+                in enumerate(zip(self.neurons_data.data,
+                                 self.axonal_data.data))
             ]
             fig = _figure(data=frames[0].data, frames=frames)
 
@@ -134,7 +144,7 @@ class ANNMonitor:
             if self.dt is None:
                 def fmt(k): return str(k)
             else:
-                def fmt(k): return f"{k*self.dt}s"
+                def fmt(k): return f"{k*self.dt:g}s"
 
             sliders = [
                 {"pad": {"b": 10, "t": 10},
@@ -173,9 +183,12 @@ class ANNMonitor:
                 sliders=sliders
             )
 
-            fig.write_html(self.interactive_plot_file,
+            self.axonal_data.to_csv(self.axonal_data_file)
+
+            interactive_plot_file = self.axonal_data_file.with_suffix(".html")
+            fig.write_html(interactive_plot_file,
                            auto_play=False)
-            logger.info(f"Generated {self.interactive_plot_file}")
+            logger.info(f"Generated {interactive_plot_file}")
 
 
 def _neurons(ann: ANN, labels: dict[Point, str],
@@ -312,3 +325,18 @@ def _figure(**kwargs) -> go.Figure:
     )
 
     return fig
+
+
+class _TinyDataFrame:
+    def __init__(self, columns: List[str]):
+        self.columns = columns
+        self.data = []
+
+    def append(self, data):
+        self.data.append(data)
+
+    def to_csv(self, file, sep=","):
+        with open(file, "w") as f:
+            f.write(sep.join(f"\"{s}\"" for s in [""] + self.columns) + "\n")
+            for i, row in enumerate(self.data):
+                f.write(sep.join(str(v) for v in [i] + row))

@@ -228,7 +228,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
                                with_neurons, with_dynamics, dt,
                                tmp_path):
     labels_str = "_with_labels" if with_labels else ""
-    prefix = f"interactive_dynamics{labels_str}"
+    prefix = f"interactive{labels_str}"
 
     neurons_file = f"{prefix}.neurons.dat" if with_neurons else None
     dynamics_file = f"{prefix}.dynamics.dat" if with_dynamics else None
@@ -263,12 +263,12 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 
     ann_monitor.close()
 
-
     fig = plotly_render(ann, labels)
     duration, start = _time(start)
     print(f"Preparing rendering: {duration}s")
 
-    labels_str = "_with_labels" if with_labels else ""
-    fig.write_html(f"{tmp_path}/{prefix}.ann.html")
+    ann_path = f"{tmp_path}/{prefix}.ann.html"
+    fig.write_html(ann_path)
     duration, start = _time(start)
     print(f"Writing: {duration}s")
+    print("Wrote to", ann_path)

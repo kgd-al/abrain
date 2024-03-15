@@ -6,9 +6,10 @@ from random import Random
 from abrain import Config, Genome, ANN, Point
 from abrain.core.config import Strings
 from abrain.core.genome import GIDManager
-# /- abrain imports -/
-
 from common import example_path
+
+
+# /- abrain imports -/
 
 
 class MyGenome:

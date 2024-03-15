@@ -7,10 +7,10 @@ from random import Random
 from typing import Optional
 
 import pytest
-from abrain.core.config import Config
-from abrain.core.genome import Genome, logger as genome_logger, GIDManager
 
 from _utils import assert_equal
+from abrain.core.config import Config
+from abrain.core.genome import Genome, logger as genome_logger, GIDManager
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
