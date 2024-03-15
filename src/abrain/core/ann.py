@@ -38,7 +38,7 @@ class ANNMonitor:
     def __init__(self, ann: ANN, labels: Optional[Dict[Point, str]],
                  folder: Path,
                  neurons_file: Optional[Union[Path, str]],
-                 dynamics_file: Optional[Union[Path | str]],
+                 dynamics_file: Optional[Union[Path, str]],
                  dt: Optional[float] = None):
         self.ann = ann
 
