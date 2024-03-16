@@ -6,8 +6,9 @@ from random import Random
 from abrain._cpp.phenotype import (  # noqa
     CPPN, Point,
 )
-from abrain.core.genome import Genome
 from pytest_steps import test_steps
+
+from abrain.core.genome import Genome
 
 
 def _make_cppn(seed, mutations=0):

@@ -1,6 +1,6 @@
 [project]
 name = "abrain"
-version = "1.0rc-post3"
+version = "1.0rc-post5"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"
@@ -27,9 +27,9 @@ dependencies = [
   "pyrecord",
 ]
 
-[projects.urls]
-"Homepage" = "https://github.com/kgd-al/abrain"
-"Documentation" = "https://abrain.rtfd.io"
+[project.urls]
+Homepage = "https://github.com/kgd-al/abrain"
+Documentation = "https://abrain.rtfd.io"
 "Bug Tracker" = "https://github.com/kgd-al/abrain/issues"
 
 [build-system]
@@ -51,9 +51,13 @@ tests = [
 
 docs = [
   "sphinx",
-  "sphinx-pyproject",  # Auto-extract project version
-  "sphinx_design",  # for the nice flowing cards
-  "matplotlib"  # for the plot extension
+  "sphinx-pyproject",   # Auto-extract project version
+  "sphinx_design",      # for the nice flowing cards
+  "matplotlib",         # for the plot extension
+  "sphinx-copybutton",  # Easily copy code
+  "myst-parser",        # Better parser
+  "furo"                # Style
+
 ]
 
 kaleido = [ "kaleido" ]

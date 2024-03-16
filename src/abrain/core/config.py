@@ -4,8 +4,7 @@ import pprint
 from pathlib import Path
 from typing import Optional, Dict
 
-from .._cpp.config import Config as CPPConfig,\
-    Strings, MutationRates, FBounds
+from .._cpp.config import Config as CPPConfig
 from .._cpp.phenotype import CPPN
 
 logger = logging.getLogger(__name__)

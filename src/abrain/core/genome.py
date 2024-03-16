@@ -223,7 +223,7 @@ class Genome(_CPPNData):
 
         return copy
 
-    def update_lineage(self, id_manager: GIDManager, parents: list['Genome']):
+    def update_lineage(self, id_manager: GIDManager, parents: List['Genome']):
         """Update lineage fields
 
         :param id_manager: generator of unique identifiers
