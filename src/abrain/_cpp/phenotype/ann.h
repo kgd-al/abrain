@@ -67,8 +67,9 @@ public:
     uint depth;
     uint hidden;
     uint edges;
-    float axons;  // total length
+    float axons;    // total length
     float density;
+    float utility;
     uint iterations;
 #ifndef NDEBUG
     using duration = std::chrono::duration<double>;
@@ -110,6 +111,15 @@ public:
   void computeStats (void);
   const auto& stats (void) const {
     return _stats;
+  }
+
+  static uint max_hidden_neurons(void);
+
+  uint max_edges(void) {
+    if (_stats.hidden == 0)
+      return _inputs.size() * _outputs.size();
+    else
+      return (_inputs.size() * _stats.hidden + _stats.hidden * _outputs.size());
   }
 
   // Deepcopy for develop once / use many

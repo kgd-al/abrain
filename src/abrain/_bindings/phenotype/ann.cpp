@@ -90,6 +90,12 @@ Whether the ANN contains neurons/connections
 .. seealso:: `Config::allowPerceptrons`
               )", py::arg("strict") = false)
       .def ID(perceptron, "Whether this ANN is a perceptron")
+      .def ID(max_hidden_neurons, "How many hidden neurons an ANN could have"
+                                  " based on the value of"
+                                  " :attr:`~abrain.Config.iterations`")
+      .def ID(max_edges, "How many connections this ANN could have based on "
+                         " the number of inputs/outputs and hidden nodes"
+                         " (if any)")
       .def ID(stats, "Return associated stats (connections, depth...)")
       .def ID(reset, "Resets internal state to null (0)")
       .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
@@ -219,6 +225,7 @@ hidden neurons locations
       .def_readonly ID(edges, "Number of connections")
       .def_readonly ID(axons, "Total length of the connections")
       .def_readonly ID(density, "Ratio of expressed connections")
+      .def_readonly ID(utility, "Ratio of used input/output neurons")
       .def_readonly ID(iterations, "H -> H iterations before convergence")
       .def("dict", [] (const CLASS &stats) {
         return py::dict (
@@ -226,7 +233,7 @@ hidden neurons locations
           PAIR(depth), PAIR(iterations),
           PAIR(hidden),
           PAIR(edges), PAIR(axons),
-          PAIR(density)
+          PAIR(density), PAIR(utility)
 #undef PAIR
 #ifndef NDEBUG
           , "time"_a=py::dict(

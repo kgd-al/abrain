@@ -109,6 +109,30 @@ def test_invalid_duplicates(inputs, outputs):
 #     original.cop
 
 
+def test_stats(mutations, seed):
+    rng = Random(seed)
+    print("a")
+    ann, _, _ = _make_ann(mutations, rng)
+    print("b")
+
+    stats = ann.stats()
+
+    assert isinstance(stats.dict(), dict), f"{type(stats)=}"
+    assert all([k in stats.dict().keys() for k in
+                "depth hidden edges axons density utility iterations".split()])
+    assert 0 <= stats.depth <= Config.iterations
+    assert ANN.max_hidden_neurons() == 8**Config.iterations
+    assert 0 <= stats.hidden <= ANN.max_hidden_neurons()
+    assert ((ann.max_edges() == (len(ann.ibuffer()) * len(ann.obuffer()))) or
+            (ann.max_edges() == (len(ann.ibuffer()) * stats.hidden
+                                 + len(ann.obuffer()) * stats.hidden)))
+    assert 0 <= stats.edges <= ann.max_edges()
+    assert 0 <= stats.axons <= ann.max_edges() * math.sqrt(12)
+    assert 0 <= stats.density <= 1
+    assert 0 <= stats.utility <= 1
+    assert 1 <= stats.iterations <= Config.iterations
+
+
 def test_random_eval(mutations, seed):
     rng = Random(seed)
     ann, inputs, outputs = _make_ann(mutations, rng)

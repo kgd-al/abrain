@@ -61,6 +61,7 @@ class Individual:
             fitness=self.fitness
         ), file)
 
+
 def main():
     output_folder = example_path("evolution")
     shutil.rmtree(output_folder, ignore_errors=True)

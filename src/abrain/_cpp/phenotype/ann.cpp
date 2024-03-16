@@ -124,6 +124,10 @@ void ANN::reset(void) {
   for (auto &p: _neurons)   p->reset();
 }
 
+uint ANN::max_hidden_neurons(void) {
+  return std::pow(8, Config::iterations);
+}
+
 uint computeDepth (ANN &ann) {
   struct ReverseNeuron {
     ANN::Neuron &n;
@@ -180,24 +184,36 @@ uint computeDepth (ANN &ann) {
 void ANN::computeStats(void) {
   auto &e = _stats.edges = 0;
   float &l = _stats.axons = 0;
+
+  float &u = _stats.utility = 0;
+  std::set<Point> connected_inputs;
+
   for (const Neuron::ptr &n: _neurons) {
     e += uint(n->links().size());
-    for (const Neuron::Link &link: n->links())
-      l += (n->pos - link.in.lock()->pos).length();
+    for (const Neuron::Link &link: n->links()) {
+      const auto &_n = link.in.lock();
+      l += (n->pos - _n->pos).length();
+
+      if (_n->type == Neuron::I)
+        connected_inputs.insert(_n->pos);
+    }
+
+    if (n->type == Neuron::O && n->links().size() > 0) u ++;
   }
 
+  u /= (_inputs.size() + _outputs.size());
+
   _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
-  _stats.density = _stats.edges;
+  _stats.density = _stats.edges / max_edges();
+  
   if (_stats.hidden == 0) {
     for (Neuron::ptr &n: _inputs)   n->depth = 0;
     for (Neuron::ptr &n: _outputs)  n->depth = 1;
     _stats.depth = 1;
-    _stats.density /= _inputs.size() * _outputs.size();
 
-  } else {
+  } else
     _stats.depth = computeDepth(*this);
-    _stats.density /= (_inputs.size() * _stats.hidden + _stats.hidden * _outputs.size());
-  }
+  std::cerr << "Computed stats" << std::endl;
 }
 
 ANN::Neuron::ptr ANN::addNeuron(const Point &p, Neuron::Type t, float bias) {
