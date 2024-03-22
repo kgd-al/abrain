@@ -11,16 +11,22 @@ from .._cpp.phenotype import ANN, Point
 logger = logging.getLogger(__name__)
 
 
-def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
+def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None,
+                  edges_alpha=1.0) \
         -> go.Figure:
     """
     Produce a 3D figure from an artificial neural network
 
     The returned figure can be used to save an interactive html session or a
     (probably poorly) rendering to e.g. a png file
+
+    :param ann: The neural network to render
+    :param labels: The names to use for the neurons
+    :param edges_alpha: The alpha value to use for the edges
     """
 
-    return _figure(data=[_edges(ann), _neurons(ann, labels)])
+    return _figure(data=[_edges(ann, alpha=edges_alpha),
+                         _neurons(ann, labels)])
 
 
 def _iter_neurons(ann: ANN):
@@ -246,6 +252,7 @@ def _neurons(ann: ANN, labels: Dict[Point, str],
 
 
 def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
+           alpha=1.0,
            **kwargs) -> go.Scatter3d:
 
     if ann.stats().edges == 0:
@@ -262,7 +269,7 @@ def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
 
     lines = dict(width=1)
     if data is None:
-        lines['color'] = "black"
+        lines['color'] = f"rgba(0, 0, 0, {alpha})"
     else:
         # for (link, src, dst), v in zip(_iter_axons(ann), data):
         #     x0, y0, z0 = src.pos.tuple()

@@ -92,7 +92,7 @@ Whether the ANN contains neurons/connections
       .def ID(perceptron, "Whether this ANN is a perceptron")
       .def ID(max_hidden_neurons, "How many hidden neurons an ANN could have"
                                   " based on the value of"
-                                  " :attr:`~abrain.Config.iterations`")
+                                  " :attr:`~abrain.Config.maxDepth`")
       .def ID(max_edges, "How many connections this ANN could have based on "
                          " the number of inputs/outputs and hidden nodes"
                          " (if any)")

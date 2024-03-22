@@ -125,7 +125,7 @@ void ANN::reset(void) {
 }
 
 uint ANN::max_hidden_neurons(void) {
-  return std::pow(8, Config::iterations);
+  return std::pow(8, Config::maxDepth);
 }
 
 uint computeDepth (ANN &ann) {
@@ -198,14 +198,15 @@ void ANN::computeStats(void) {
         connected_inputs.insert(_n->pos);
     }
 
-    if (n->type == Neuron::O && n->links().size() > 0) u ++;
+    if (n->type == Neuron::O && n->links().size() > 0) u++;
   }
 
-  u /= (_inputs.size() + _outputs.size());
+  u += connected_inputs.size();
+  u /= float(_inputs.size() + _outputs.size());
 
   _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
-  _stats.density = _stats.edges / max_edges();
-  
+  _stats.density = _stats.edges / float(max_edges());
+
   if (_stats.hidden == 0) {
     for (Neuron::ptr &n: _inputs)   n->depth = 0;
     for (Neuron::ptr &n: _outputs)  n->depth = 1;
@@ -213,7 +214,6 @@ void ANN::computeStats(void) {
 
   } else
     _stats.depth = computeDepth(*this);
-  std::cerr << "Computed stats" << std::endl;
 }
 
 ANN::Neuron::ptr ANN::addNeuron(const Point &p, Neuron::Type t, float bias) {
