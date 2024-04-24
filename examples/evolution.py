@@ -6,10 +6,9 @@ from random import Random
 from abrain import Config, Genome, ANN, Point
 from abrain.core.config import Strings
 from abrain.core.genome import GIDManager
-from common import example_path
-
-
 # /- abrain imports -/
+
+from common import example_path
 
 
 class MyGenome:
@@ -89,6 +88,7 @@ def main():
             pop = population
         return pop[max(range(len(pop)), key=lambda r: pop[r].fitness)]
 
+    gen_champion = None
     for g in range(100):
         for p in population:
             p.evaluate()

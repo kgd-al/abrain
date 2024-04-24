@@ -1,6 +1,7 @@
 .*/
 *build/
 *dist/
+*tmp/
 __pycache__/
 tests-results/
 *.egg-info
