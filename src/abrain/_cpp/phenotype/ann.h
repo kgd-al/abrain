@@ -13,10 +13,12 @@
 namespace kgd::eshn::phenotype {
 namespace es = evolvable_substrate;
 
-class ANN {
+template <uint DI>
+class ANN_t {
 public:
-  using Point = es::Point;
-  static constexpr auto DIMENSIONS = CPPN::DIMENSIONS;
+  using CPPN = CPPN_ND<DI>;
+  using Point = typename CPPN::Point;
+  static constexpr auto DIMENSIONS = DI;
 
   struct Neuron {// : public std::enable_shared_from_this<Neuron> {
     const Point pos;
@@ -35,11 +37,11 @@ public:
     Neuron (const Point &p, Type t, float b)
       : pos(p), type(t), bias(b), value(0), flags(0) {}
 
-    bool isInput (void) const {   return type == I;  }
-    bool isOutput (void) const {  return type == O; }
-    bool isHidden (void) const {  return type == H; }
+    [[nodiscard]] bool isInput () const {   return type == I;  }
+    [[nodiscard]] bool isOutput () const {  return type == O; }
+    [[nodiscard]] bool isHidden () const {  return type == H; }
 
-    void reset (void) { value = 0;  }
+    void reset () { value = 0;  }
 
     using ptr = std::shared_ptr<Neuron>;
     using wptr = std::weak_ptr<Neuron>;
@@ -49,15 +51,15 @@ public:
     };
     using Links = std::vector<Link>;
 
-    const Links& links (void) const {   return _ilinks; }
-    Links& links (void) {               return _ilinks; }
+    const Links& links () const {   return _ilinks; }
+    Links& links () {               return _ilinks; }
 
     void addLink (float w, wptr n) {    _ilinks.push_back({w,n});  }
 
-    friend void assertEqual (const Neuron &lhs, const Neuron &rhs,
+    static void assertEqual (const Neuron &lhs, const Neuron &rhs,
                              bool deepcopy);
 
-    friend void assertEqual (const Link &lhs, const Link &rhs, bool deepcopy);
+    static void assertEqual (const Link &lhs, const Link &rhs, bool deepcopy);
 
   private:
     Links _ilinks;
@@ -79,13 +81,14 @@ public:
     } time;
 #endif
   };
+  using NeuronPtr = typename Neuron::ptr;
 
-  ANN(void) = default;
+  ANN_t() = default;
 
-  const auto& neurons (void) const {  return _neurons;  }
-  auto& neurons (void) {  return _neurons;  }
+  const auto& neurons () const {  return _neurons;  }
+  auto& neurons () {  return _neurons;  }
 
-  const Neuron::ptr& neuronAt (const Point &p) const {
+  const NeuronPtr& neuronAt (const Point &p) const {
     auto it = _neurons.find(p);
     if (it == _neurons.end())
       throw std::invalid_argument("No neuron there");
@@ -93,22 +96,22 @@ public:
   }
 
   struct IBuffer : std::vector<float> {};
-  auto& ibuffer (void) { return _ibuffer; }
+  auto& ibuffer () { return _ibuffer; }
 
   struct OBuffer : std::vector<float> {};
-  auto& obuffer (void) { return _obuffer; }
+  auto& obuffer () { return _obuffer; }
 
-  void reset (void);
+  void reset ();
 
   /// TODO Modify with buffer-based eval. Maybe
   /// .. todo:: Modify with buffer-based eval. Maybe
   void operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps = 1);
 
-  bool empty (bool strict = false) const;
-  bool perceptron (void) const;
+  [[nodiscard]] bool empty (bool strict = false) const;
+  [[nodiscard]] bool perceptron () const;
 
-  void computeStats (void);
-  const auto& stats (void) const {
+  void computeStats ();
+  const auto& stats () const {
     return _stats;
   }
 
@@ -116,8 +119,8 @@ public:
   // Not useful yet.
 //  void copyInto (ANN &that) const;
 
-  using Coordinates = es::Coordinates;
-  static ANN build (const Coordinates &inputs,
+  using Coordinates = es::Coordinates_t<CPPN>;
+  static ANN_t build (const Coordinates &inputs,
                     const Coordinates &outputs,
                     const genotype::CPPNData &genome);
 
@@ -132,31 +135,34 @@ private:
       return lhs.x() < rhs.x();
     }
 
-    bool operator() (const Neuron::ptr &lhs, const Point &rhs) const {
+    bool operator() (const NeuronPtr &lhs, const Point &rhs) const {
       return operator()(lhs->pos, rhs);
     }
 
-    bool operator() (const Point &lhs, const Neuron::ptr &rhs) const {
+    bool operator() (const Point &lhs, const NeuronPtr &rhs) const {
       return operator()(lhs, rhs->pos);
     }
 
-    bool operator() (const Neuron::ptr &lhs, const Neuron::ptr &rhs) const {
+    bool operator() (const NeuronPtr &lhs, const NeuronPtr &rhs) const {
       return operator()(lhs->pos, rhs->pos);
     }
   };
 public:
-  using NeuronsMap = std::set<Neuron::ptr, NeuronCMP>;
+  using NeuronsMap = std::set<NeuronPtr, NeuronCMP>;
 private:
   NeuronsMap _neurons;
 
-  std::vector<Neuron::ptr> _inputs, _outputs;
+  std::vector<NeuronPtr> _inputs, _outputs;
   IBuffer _ibuffer;
   OBuffer _obuffer;
 
   Stats _stats;
 
-  Neuron::ptr addNeuron (const Point &p, Neuron::Type t, float bias);
+  NeuronPtr addNeuron (const Point &p, typename Neuron::Type t, float bias);
 };
+
+using ANN2D = ANN_t<2>;
+using ANN3D = ANN_t<3>;
 
 } // end of namespace kgd::eshn::phenotype
 

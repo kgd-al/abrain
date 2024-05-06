@@ -2,7 +2,6 @@
 #define KGD_GENOTYPE_CONFIG_H
 
 #include <vector>
-#include <set>
 #include <map>
 
 #include "genotype.h"

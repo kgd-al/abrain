@@ -13,7 +13,8 @@ using namespace pybind11::literals;
 
 using namespace kgd::eshn::phenotype;
 //PYBIND11_MAKE_OPAQUE(ANN::Inputs)
-PYBIND11_MAKE_OPAQUE(ANN::NeuronsMap)
+PYBIND11_MAKE_OPAQUE(ANN2D::NeuronsMap)
+PYBIND11_MAKE_OPAQUE(ANN3D::NeuronsMap)
 //PYBIND11_MAKE_OPAQUE(ANN::Neuron::Links)
 //PYBIND11_MAKE_OPAQUE(ANN::Neuron::ptr)
 // OPAQUE_TYPES?
@@ -21,11 +22,11 @@ PYBIND11_MAKE_OPAQUE(ANN::NeuronsMap)
 namespace kgd::eshn::pybind {
 
 #ifndef NDEBUG
-py::tuple tuple(const std::vector<float> &v) { return py::tuple(py::cast(v)); }
-void set_to_nan(std::vector<float> &v) { std::fill(v.begin(), v.end(), NAN); }
+py::tuple tuple(const std::vector<float> &v) { return {py::cast(v)}; }
+void set_to_nan(std::vector<float> &v) { std::ranges::fill(v.begin(), v.end(), NAN); }
 bool valid(const std::vector<float> &v) {
-  return std::none_of(v.begin(), v.end(),
-                      static_cast<bool(*)(float)>(std::isnan));
+  return std::ranges::none_of(v.begin(), v.end(),
+                              static_cast<bool(*)(float)>(std::isnan));
 }
 
 static constexpr auto doc_tuple = "Debug helper to convert to Python tuple";
@@ -33,19 +34,23 @@ static constexpr auto doc_set_to_nan = "Debug helper to set all values to NaN";
 static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
 #endif
 
-void init_ann_phenotype (py::module_ &m) {
-  using IBuffer = ANN::IBuffer;
-  using OBuffer = ANN::OBuffer;
-  using Neuron = ANN::Neuron;
-  using Link = Neuron::Link;
-  using Type = Neuron::Type;
+template <typename ANN>
+void init_ann_phenotype (py::module_ &m, const char *name) {
+  using IBuffer = typename ANN::IBuffer;
+  using OBuffer = typename ANN::OBuffer;
+  using Neuron = typename ANN::Neuron;
+  using Link = typename Neuron::Link;
+  using Type = typename Neuron::Type;
 
-  auto cann = py::class_<ANN>(m, "ANN");
+  auto cann = py::class_<ANN>(m, name);
   auto nern = py::class_<Neuron, std::shared_ptr<Neuron>>(cann, "Neuron");
   auto link = py::class_<Link>(nern, "Link");
-  auto stts = py::class_<ANN::Stats>(cann, "Stats");
 
-  auto nmap = py::class_<ANN::NeuronsMap>(cann, "Neurons");
+  using Stats = typename ANN::Stats;
+  auto stts = py::class_<Stats>(cann, "Stats");
+
+  using NeuronsMap = typename ANN::NeuronsMap;
+  auto nmap = py::class_<NeuronsMap>(cann, "Neurons");
   auto type = py::enum_<Type>(nern, "Type");
 
   auto ibuf = py::class_<IBuffer, std::shared_ptr<IBuffer>>(cann, "IBuffer");
@@ -135,7 +140,7 @@ hidden neurons locations
                start += step;
            }
        })
-      .def("__len__", [] (const ANN::IBuffer &buf) { return buf.size(); },
+      .def("__len__", [] (const typename ANN::IBuffer &buf) { return buf.size(); },
            "Return the number of expected inputs")
 #ifndef NDEBUG
       .def("tuple", [] (const IBuffer &buf) { return tuple(buf); }, doc_tuple)
@@ -164,7 +169,7 @@ hidden neurons locations
       })
       .def("__len__", [] (const OBuffer &buf) { return buf.size(); },
            "Return the number of expected outputs")
-      .def_property_readonly("__iter__", [] (py::object) { return py::none(); },
+      .def_property_readonly("__iter__", [] (const py::object&) { return py::none(); },
            "Cannot be iterated. Use direct access instead.")
 #ifndef NDEBUG
       .def("tuple", [] (const OBuffer &buf) { return tuple(buf); }, doc_tuple)
@@ -174,10 +179,10 @@ hidden neurons locations
       ;
 
   nmap.doc() = "Wrapper for the C++ neurons container";
-  nmap.def("__iter__", [] (ANN::NeuronsMap &m) {
-        return py::make_iterator(m.begin(), m.end());
+  nmap.def("__iter__", [] (NeuronsMap &_m) {
+        return py::make_iterator(_m.begin(), _m.end());
       }, py::keep_alive<0, 1>())
-      .def("__len__", [] (const ANN::NeuronsMap &m) { return m.size(); })
+      .def("__len__", [] (const NeuronsMap &_m) { return _m.size(); })
       ;
 
 #undef CLASS

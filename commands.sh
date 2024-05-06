@@ -38,7 +38,12 @@ do_manual-install(){
     || exit 2
   fi
 #   pip install -e .[$depends] # Should work but fails on various levels
+
   python setup.py develop # deprecated but functional. Go Python...
+
+#  # Still not working as well as develop
+#  pip wheel -e . --no-build-isolation --no-deps \
+#  && pip install --no-deps --force-reinstall abrain*.whl
 }
 
 cmd_pretty-tree(){  # Just a regular tree but without .git folder
@@ -65,8 +70,11 @@ cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   rm -rf _venv*
   rm -f src/abrain/_cpp.*.so
   rm -rf doc/_build doc/src/_autogen/errors.rst doc/src/logo/logo.{pdf,svg}
+  rm -rf *build*/
+  rm -rf tmp
+  rm -rf *.whl
   find . -name 'abrain.egg-info' | xargs rm -rf
-  find src -name "__init__.pyi" | xargs rm -rf
+  find src -name "*.pyi" | xargs rm -rf
   find src -empty -type d -delete
   rm -f sample_*
   
@@ -94,6 +102,27 @@ cmd_install-cached(){ # Editable install (without pip and cached build folder)
   type=${1:-'dev-test-doc'}
   echo "Building for type '$type'"
   do_manual-install $type
+}
+
+cmd_clion-setup(){ # Print out configuration options for CLion
+  log=.log
+  config=clion_config
+  export CLION_CONFIG=$config
+  cmd_install-cached >$log 2>&1
+  ok=$?
+  if [ $ok -eq 0 ]
+  then
+    printf "\033[32mLocal build successful.\033[0m\n"
+    echo "CLion setup instructions (from $config)"
+    echo "-----------------"
+    cat $config
+    echo "-----------------"
+    rm $log
+  else
+    printf "\033[31mLocal build Failed. Solve this first.\033[0m\n"
+    echo "Details in $log"
+    rm $config
+  fi
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)
@@ -223,13 +252,27 @@ help(){
   sed -n 's/^cmd_\(.*\)(){ *\(#\? *\)\(.*\)/\1|\3/p' $0 | column -s '|' -t
 }
 
-if [ -z $VIRTUAL_ENV ]
+if [ $# -eq 0 ]
 then
-  echo "Refusing to work outside of a virtual environment"
+  echo "No commands/arguments provided"
+  help
   exit 1
 fi
 
-if [ $1 == "-h" ]
+if [ "$1" == "--venv" ]
+then
+  source $2/bin/activate
+  shift 2
+fi
+
+if [ -z $VIRTUAL_ENV ]
+then
+  echo "Refusing to work outside of a virtual environment."
+  echo "Activate it beforehand or provide it with the --venv <path/to/venv> option."
+  exit 1
+fi
+
+if [ "$1" == "-h" ]
 then
   help
   exit 0

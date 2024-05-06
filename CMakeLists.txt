@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 
 ################################################################################
 ## General settings
@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project("abrain")
 message("\n####################################################################"
-    "############\n## CMakeFile for ${PROJECT_NAME}")
+    "############\n## CMakeFile for ${PROJECT_NAME} ${VERSION_INFO}")
 
 # set(CMAKE_CXX_FLAGS "")
 if(LINUX)
@@ -16,9 +16,25 @@ if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+
+################################################################################
+## Dependencies
+################################################################################
+
+if (Python3_EXECUTABLE)
+    get_filename_component(PYTHON_BIN ${Python3_EXECUTABLE} DIRECTORY)
+    set(ENV{PATH} "$ENV{PATH}:${PYTHON_BIN}")
+    message("Provided python: ${Python3_EXECUTABLE} (added to path)")
+endif()
+
+find_package (Python3 COMPONENTS Interpreter Development)
+message("Using python* ${Python_EXECUTABLE} ${PYTHON_EXECUTABLE}")
+message("Using python3 ${Python3_EXECUTABLE}")
+
+find_package(pybind11 REQUIRED)
 
 ################################################################################
 ## Source files
@@ -35,7 +51,7 @@ ENDFUNCTION(PREPEND)
 set(CPP_SRC
     "config.cpp"
 
-    "misc/constants.h"
+#    "misc/constants.h"
     "misc/point.hpp"
 
     "genotype.h"
@@ -58,8 +74,6 @@ set(PYBIND_SRC
 PREPEND(PYBIND_SRC "src/abrain/_bindings")
 
 set(LIB_CPP _cpp)
-#add_subdirectory(extern/pybind11)
-find_package(pybind11 REQUIRED)
 pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 target_compile_definitions(${LIB_CPP}
                            PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
@@ -97,6 +111,9 @@ message("> On n cores: ${CMAKE_BUILD_PARALLEL_LEVEL}")
 
 option(MAKE_STUBS "Sets whether to generate pyi files from module" ON)
 message("> Generate stubs " ${MAKE_STUBS})
+
+option(AUTO_INSTALL "Sets whether to copy compiled library to source folder during build" OFF)
+message("> Auto install " ${AUTO_INSTALL})
 
 option(WITH_DEBUG_INFO "Sets whether to maximize debug data collection" OFF)
 message("> With debug info " ${WITH_DEBUG_INFO})
@@ -151,46 +168,46 @@ add_definitions(-DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
 
 set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/src/abrain/_cpp/misc/constants)
 
-## CPPN Inputs (depends on arguments)
-set(CPPN_INPUTS_LIST "")
-set(CPPN_INPUT_NAMES "")
-foreach(i RANGE 0 1)
-    string(APPEND CPPN_INPUTS_LIST "X${i} Y${i} ")
-    string(APPEND CPPN_INPUT_NAMES "x_${i} y_${i} ")
-    if (${ESHN_SUBSTRATE_DIMENSION} EQUAL 3)
-        string(APPEND CPPN_INPUTS_LIST "Z${i} ")
-        string(APPEND CPPN_INPUT_NAMES "z_${i} ")
-    endif()
-endforeach()
-if(ESHN_WITH_DISTANCE)
-    string(APPEND CPPN_INPUTS_LIST "Length ")
-    string(APPEND CPPN_INPUT_NAMES "l ")
-endif()
-string(APPEND CPPN_INPUTS_LIST "Bias")
-string(APPEND CPPN_INPUT_NAMES "b")
-string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_INPUT_NAMES ${CPPN_INPUT_NAMES})
-string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_INPUTS_LIST})
-list(LENGTH tokens CPPN_INPUTS_COUNT)
-message("> CPPN inputs: ${CPPN_INPUTS_LIST}")
-
-## CPPN Outputs (constant for now)
-set(CPPN_OUTPUTS_LIST "Weight LEO Bias")
-set(CPPN_OUTPUT_NAMES "w l b")
-string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_OUTPUTS_LIST})
-string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_OUTPUT_NAMES ${CPPN_OUTPUT_NAMES})
-list(LENGTH tokens CPPN_OUTPUTS_COUNT)
-
-string(REPLACE " " ", " CPPN_INPUTS_LIST ${CPPN_INPUTS_LIST})
-string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
-    CPPN_INPUT_ENUM_NAMES ${CPPN_INPUTS_LIST})
-string(REPLACE " " ", " CPPN_OUTPUTS_LIST ${CPPN_OUTPUTS_LIST})
-string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
-    CPPN_OUTPUT_ENUM_NAMES ${CPPN_OUTPUTS_LIST})
-string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"    
-    CPPN_QUALIFIED_OUTPUTS ${CPPN_OUTPUTS_LIST})
-
-configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
-message("-+ Generated cppn constants config '${CPPN_CONSTANTS}.h'")
+### CPPN Inputs (depends on arguments)
+#set(CPPN_INPUTS_LIST "")
+#set(CPPN_INPUT_NAMES "")
+#foreach(i RANGE 0 1)
+#    string(APPEND CPPN_INPUTS_LIST "X${i} Y${i} ")
+#    string(APPEND CPPN_INPUT_NAMES "x_${i} y_${i} ")
+#    if (${ESHN_SUBSTRATE_DIMENSION} EQUAL 3)
+#        string(APPEND CPPN_INPUTS_LIST "Z${i} ")
+#        string(APPEND CPPN_INPUT_NAMES "z_${i} ")
+#    endif()
+#endforeach()
+#if(ESHN_WITH_DISTANCE)
+#    string(APPEND CPPN_INPUTS_LIST "Length ")
+#    string(APPEND CPPN_INPUT_NAMES "l ")
+#endif()
+#string(APPEND CPPN_INPUTS_LIST "Bias")
+#string(APPEND CPPN_INPUT_NAMES "b")
+#string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_INPUT_NAMES ${CPPN_INPUT_NAMES})
+#string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_INPUTS_LIST})
+#list(LENGTH tokens CPPN_INPUTS_COUNT)
+#message("> CPPN inputs: ${CPPN_INPUTS_LIST}")
+#
+### CPPN Outputs (constant for now)
+#set(CPPN_OUTPUTS_LIST "Weight LEO Bias")
+#set(CPPN_OUTPUT_NAMES "w l b")
+#string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_OUTPUTS_LIST})
+#string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_OUTPUT_NAMES ${CPPN_OUTPUT_NAMES})
+#list(LENGTH tokens CPPN_OUTPUTS_COUNT)
+#
+#string(REPLACE " " ", " CPPN_INPUTS_LIST ${CPPN_INPUTS_LIST})
+#string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
+#    CPPN_INPUT_ENUM_NAMES ${CPPN_INPUTS_LIST})
+#string(REPLACE " " ", " CPPN_OUTPUTS_LIST ${CPPN_OUTPUTS_LIST})
+#string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
+#    CPPN_OUTPUT_ENUM_NAMES ${CPPN_OUTPUTS_LIST})
+#string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"
+#    CPPN_QUALIFIED_OUTPUTS ${CPPN_OUTPUTS_LIST})
+#
+#configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
+#message("-+ Generated cppn constants config '${CPPN_CONSTANTS}.h'")
 
 message("> Compile with: ${CMAKE_CXX_FLAGS}")
 
@@ -204,18 +221,22 @@ if (MAKE_STUBS)
     if (WIN32)
       set(PATH_SEP ";")
     endif()
+    find_program(STUBGEN pybind11-stubgen REQUIRED)
+    message("Generating stubs with ${STUBGEN}")
     add_custom_command(
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
         COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
-        COMMAND echo "             PATH: '$ENV{PATH}'"
-        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
-        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
+#        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+#        COMMAND echo "             PATH: '$ENV{PATH}'"
+#        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+#        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
+#        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
+#        COMMAND which ${STUBGEN}
         COMMAND ${CMAKE_COMMAND} -E
-            env "PATH=${BUILD_TIME_PATH}"
+#            env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"
-            pybind11-stubgen -o ${PROJECT_BINARY_DIR}/
+            ${STUBGEN} -o ${PROJECT_BINARY_DIR}/
                 #--skip-signature-downgrade --no-setup-py --log-level DEBUG
                 --exit-code
                 ${LIB_CPP}
@@ -224,6 +245,16 @@ if (MAKE_STUBS)
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMENT "-+ Generating python stubs from c++ bindings"
     )
+endif()
+
+if (AUTO_INSTALL)
+    set(LIB_DEST "${PROJECT_SOURCE_DIR}/src/abrain/")
+    add_custom_command(
+        TARGET ${LIB_CPP} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${LIB_CPP}> ${LIB_DEST}
+            COMMAND ${CMAKE_COMMAND} -E echo "Copied $<TARGET_FILE:${LIB_CPP}> to ${LIB_DEST}"
+    )
+    message(">> Library ${LIB_CPP} will be automatically copied to ${LIB_DEST}")
 endif()
 
 #################################################################################

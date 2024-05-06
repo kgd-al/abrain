@@ -11,37 +11,33 @@
 namespace kgd::eshn::phenotype {
 
 class CPPN {
+  // Generic CPPN
 public:
-  using Point = kgd::eshn::misc::Point;
-  static constexpr auto DIMENSIONS = Point::DIMENSIONS;
-  static constexpr auto INPUTS =  genotype::CPPNData::INPUTS;
-  static constexpr auto OUTPUTS = genotype::CPPNData::OUTPUTS;
-
-  using Genotype = kgd::eshn::genotype::CPPNData;
+  using Genotype = genotype::CPPNData;
 
   using FuncID = Genotype::Node::FuncID;
   using Function = float (*) (float);
   using Functions = std::map<FuncID, Function>;
   static const Functions functions;
-  using FunctionNames = std::map<CPPN::Function, FuncID>;
+  using FunctionNames = std::map<Function, FuncID>;
   static const FunctionNames functionToName;
 
   struct Range { float min, max; };
   static const std::map<FuncID, Range> functionRanges;
 
-private:
+protected:
   struct Node_base {
-    float data;
+    float data {};
     
-    virtual ~Node_base(void) = default; // LCOVR_EXCL_LINE
+    virtual ~Node_base() = default; // LCOVR_EXCL_LINE
 
-    virtual float value (void) = 0;
+    virtual float value () = 0;
   };
   using Node_ptr = std::shared_ptr<Node_base>;
   using Node_wptr = std::weak_ptr<Node_base>;
 
-  struct INode final : public Node_base {
-    float value (void) override;
+  struct INode final : Node_base {
+    float value () override;
   };
 
   struct Link {
@@ -50,26 +46,40 @@ private:
   };
 
   struct FNode final : public Node_base {
-    float value (void) override;
+    float value () override;
 
     const Function func;
 
     std::vector<Link> links;
 
-    FNode (Function f) : func(f) {}
+    explicit FNode (const Function f) : func(f) {}
   };
 
   std::vector<Node_ptr> _inputs, _hidden, _outputs;
 
 public:
-  CPPN(const Genotype &genotype);
+  explicit CPPN(const Genotype &genotype);
 
-  static constexpr auto &OUTPUTS_LIST = cppn::CPPN_OUTPUT_LIST;
-  using Outputs = std::array<float, OUTPUTS>;
+  using Outputs = std::vector<float>;
+  // void operator() (Outputs &outputs, float inputs...);
+
+  using Output = uint;
+};
+
+template <uint DI>
+class CPPN_ND : public CPPN {
+public:
+  // Specific CPPN for ES-HyperNEAT
+  static constexpr auto DIMENSIONS = DI;
+
+  using Point = kgd::eshn::misc::Point_t<DIMENSIONS>;
+
+  enum Output {
+    WEIGHT, LEO, BIAS
+  };
 
   void operator() (const Point &src, const Point &dst, Outputs &outputs);
 
-  using Output = Genotype::Output;
   float operator() (const Point &src, const Point &dst, Output o);
 
   using OutputSubset = std::set<Output>;
@@ -79,6 +89,8 @@ public:
 private:
   void pre_evaluation (const Point &src, const Point &dst);
 };
+using CPPN2D = CPPN_ND<2>;
+using CPPN3D = CPPN_ND<3>;
 
 } // end of namespace kgd::eshn::phenotype
 

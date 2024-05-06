@@ -5,29 +5,21 @@
 #include <sstream>
 #include <array>
 
-#include "constants.h"
-
 namespace kgd::eshn::misc {
 
-template <uint DI, uint DE>
+template <uint DI>
 class Point_t {
-  static_assert(DI > 0, "Null points do not make sense");
-  static_assert(DI > 1, "1D ANNs do not make much sense, right?");
-  static_assert(DI < 4, "n-D ANNs are really not a good idea");
+  using int_t = std::int16_t;
 
-  static constexpr uint MAX_DECIMALS = std::numeric_limits<int>::digits10-1;
-  static_assert(DE <= MAX_DECIMALS,
-                "Cannot represent such precision in fixed point type");
-
-  std::array<int, DI> _data;
+  std::array<int_t, DI> _data;
 
 public:
+  static constexpr auto DECIMALS = std::numeric_limits<int_t>::digits10 - 1;
   static constexpr auto DIMENSIONS = DI;
-  static constexpr auto DECIMALS = DE;
-//   static constexpr int RATIO = std::pow(10, DE);
+
   static constexpr int RATIO = [] {
     int r = 1;
-    for (uint i=0; i<DE; i++) r *= 10;
+    for (uint i=0; i<DECIMALS; i++) r *= 10;
     return r;
   }();
 
@@ -39,39 +31,38 @@ public:
 
   Point_t(std::initializer_list<float> &&flist) {
     uint i=0;
-    for (float f: flist) set(i++, f);
+    for (const float f: flist) set(i++, f);
     for (; i<DIMENSIONS; i++) set(i, 0);
   }
 
-  Point_t(void) { set(0); }
+  Point_t() { set(0); }
 
-  static Point_t null (void) { return Point_t(); }
+  static Point_t null () { return Point_t(); }
 
-  float x (void) const {  return get(0); }
+  [[nodiscard]] float x () const {  return get(0); }
 
-  template <uint DI_ = DI>
-  std::enable_if_t<DI_ >= 2, float> y (void) const {
+  [[nodiscard]] float y () const {
     return get(1);
   }
 
-  template <uint DI_ = DI>
-  std::enable_if_t<DI_ >= 3, float> z (void) const {
+  template <uint DI_ = DIMENSIONS>
+  std::enable_if_t<DI_ >= 3, float> z () const {
     return get(2);
   }
 
-  float get (uint i) const {
-    return _data[i] / float(RATIO);
+  [[nodiscard]] float get (uint i) const {
+    return _data[i] / static_cast<float>(RATIO);
   }
 
-  void set (uint i, float v) {
-    _data[i] = int(std::round(RATIO * v));
+  void set (uint i, const float v) {
+    _data[i] = static_cast<int>(std::round(RATIO * v));
   }
 
-  void set (float v) {
+  void set (const float v) {
     for (uint i=0; i<DIMENSIONS; i++) set(i, v);
   }
 
-  const auto& data (void) const {
+  const auto& data () const {
     return _data;
   }
 
@@ -90,7 +81,7 @@ public:
     return *this;
   }
 
-  float length (void) const {
+  [[nodiscard]] float length () const {
     float sum = 0;
     for (uint i=0; i<DIMENSIONS; i++) sum += get(i)*get(i);
     return std::sqrt(sum);
@@ -138,9 +129,9 @@ public:
     return is;
   }
 };
-using Point2D = Point_t<2, 3>;
-using Point3D = Point_t<3, 3>;
-using Point = Point_t<ESHN_SUBSTRATE_DIMENSION, 3>;
+using Point2D = Point_t<2>;
+using Point3D = Point_t<3>;
+// using Point = Point_t<ESHN_SUBSTRATE_DIMENSION, 3>;
 
 } // end of namespace kgd::eshn::misc
 

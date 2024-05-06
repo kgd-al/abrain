@@ -107,7 +107,7 @@ void init_config (py::module_ &m) {
   auto strs = py::bind_vector<Strings>(m, "Strings");
   strs.doc() = "C++ list of strings";
 
-  if (!std::is_same<Strings, Config::Functions>::value)
+  if constexpr (!std::is_same_v<Strings, Config::Functions>)
     py::bind_vector<Config::Functions>(m, "Functions");
 
   auto mutr = py::bind_map<Config::MutationRates>(m, "MutationRates");
@@ -120,19 +120,7 @@ void init_config (py::module_ &m) {
 
 #define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
 #define CLASS Config
-  cnfg.def_property_readonly_static("cppnInputNames", [] (py::object){
-        Strings names;
-        for (uint i=0; i<cppn::CPPN_INPUTS; i++)
-          names.push_back(std::string(cppn::CPPN_INPUT_NAMES[i]));
-        return names;
-      })
-      .def_property_readonly_static("cppnOutputNames", [] (py::object){
-        Strings names;
-        for (uint i=0; i<cppn::CPPN_OUTPUTS; i++)
-          names.push_back(std::string(cppn::CPPN_OUTPUT_NAMES[i]));
-        return names;
-      })
-      .def_readwrite_static ID(outputFunctions)
+  cnfg.def_readwrite_static ID(outputFunctions)
 
       .def_readwrite_static ID(functionSet)
       .def_readwrite_static ID(cppnWeightBounds)
