@@ -101,28 +101,28 @@ cmd_install-dev(){  # Editable install (with pip)
 cmd_install-cached(){ # Editable install (without pip and cached build folder)
   type=${1:-'dev-test-doc'}
   echo "Building for type '$type'"
-  do_manual-install $type
+  do_manual-install "$type"
 }
 
 cmd_clion-setup(){ # Print out configuration options for CLion
   log=.log
   config=clion_config
   export CLION_CONFIG=$config
-  cmd_install-cached >$log 2>&1
+  cmd_install-cached "" >$log 2>&1
   ok=$?
   if [ $ok -eq 0 ]
   then
     printf "\033[32mLocal build successful.\033[0m\n"
-    echo "CLion setup instructions (from $config)"
-    echo "-----------------"
-    cat $config
-    echo "-----------------"
-    rm $log
+    rm -f $log
   else
-    printf "\033[31mLocal build Failed. Solve this first.\033[0m\n"
+    printf "\033[31mLocal build Failed.\033[0m\n"
     echo "Details in $log"
-    rm $config
   fi
+
+  echo "CLion setup instructions (from $config)"
+  echo "-----------------"
+  cat $config
+  echo "-----------------"
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)

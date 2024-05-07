@@ -78,6 +78,8 @@ public:
     WEIGHT, LEO, BIAS
   };
 
+  explicit CPPN_ND(const Genotype &genotype);
+
   void operator() (const Point &src, const Point &dst, Outputs &outputs);
 
   float operator() (const Point &src, const Point &dst, Output o);

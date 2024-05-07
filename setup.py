@@ -72,7 +72,7 @@ class CMakeBuild(build_ext):
                            if item]
 
         # Pass the version to C++ (why not?)
-        cmake_args +=\
+        cmake_args += \
             [f"-DVERSION_INFO={self.distribution.get_version()}"] \
             # type: ignore[attr-defined]
 
@@ -152,17 +152,10 @@ class CMakeBuild(build_ext):
             cmake_args += ["-DDEV_BUILD=ON"]
 
         # ===================== #
-
-        subprocess.run(
-            ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
-        )
-        subprocess.run(
-            ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
-        )
-
+        # Write clion configuration (if requested)
         if (path := os.environ.get("CLION_CONFIG")) is not None:
             with open(path, "w") as cc:
-                cc.write("Replace the ninja builder with default (Makefile)")
+                cc.write("Replace the ninja builder with default (Makefile)\n")
                 cc.write("Replace the default build folder with:\n")
                 cc.write(f"\t{build_temp}\n")
                 cc.write("Give the following arguments for cmake:\n")
@@ -171,6 +164,14 @@ class CMakeBuild(build_ext):
                 cc.write("Ensure the build command looks like:\n")
                 build_str = ' '.join(['cmake', '--build', '.'] + build_args)
                 cc.write(f"       build: {build_str}\n")
+        # ===================== #
+
+        subprocess.run(
+            ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True
+        )
+        subprocess.run(
+            ["cmake", "--build", "."] + build_args, cwd=build_temp, check=True
+        )
 
 
 class BuildData(Command):

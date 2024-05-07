@@ -57,6 +57,7 @@ set(CPP_SRC
     "genotype.h"
 
     "phenotype/cppn.cpp"
+    "phenotype/cppn.h"
     "phenotype/ann.cpp"
     "phenotype/eshn.cpp"
 )

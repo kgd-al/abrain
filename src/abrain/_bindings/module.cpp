@@ -31,8 +31,8 @@ PYBIND11_MODULE(_cpp, main) {
   init_generic_cppn_phenotype(phenotype);
   init_eshn_cppn_phenotype<phenotype::CPPN2D>(phenotype, "CPPN2D");
   init_eshn_cppn_phenotype<phenotype::CPPN3D>(phenotype, "CPPN3D");
-  // init_ann_phenotype<phenotype::ANN2D>(phenotype, "ANN2D");
-  // init_ann_phenotype<phenotype::ANN3D>(phenotype, "ANN3D");
+  init_ann_phenotype<phenotype::ANN2D>(phenotype, "ANN2D");
+  init_ann_phenotype<phenotype::ANN3D>(phenotype, "ANN3D");
 
   auto config = main.def_submodule(
         "config",

@@ -60,7 +60,7 @@ const auto start_time = timing_clock::now();
   const auto add = [&cppn, &ann] (auto p, auto t) {
     float bias = 0;
     if (t != Neuron::I)
-      bias = cppn(p, Point::null(), CPPN::Output::Bias);
+      bias = cppn(p, Point::null(), CPPN::Output::BIAS);
     return ann.addNeuron(p, t, bias);
   };
 
@@ -87,7 +87,7 @@ const auto start_time = timing_clock::now();
   ann.computeStats();
 
 #ifndef NDEBUG
-  ann._stats.time.build = typename ANN::t_diff(start_time);
+  ann._stats.time.build = t_diff<ANN>(start_time);
   ann._stats.time.eval = typename ANN::Stats::rep{0};
 #endif
 
@@ -280,5 +280,8 @@ void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint subste
 #endif
 
 }
+
+template class ANN_t<2>;
+template class ANN_t<3>;
 
 } // end of namespace kgd::eshn::genotype

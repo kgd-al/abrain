@@ -109,7 +109,7 @@ struct ESHN {
     q.push(root.get());
 
     const auto weight = [&cppn] (const Point &p0, const Point &p1) {
-      return cppn(p0, p1, Output::Weight);
+      return cppn(p0, p1, Output::WEIGHT);
     };
 
 #if DEBUG_QUADTREE_DIVISION
@@ -209,7 +209,7 @@ struct ESHN {
           Point src = out ? p : Point{coords...},
                 dst = out ? Point{coords...} : p;
           return std::fabs(c->weight
-                           - cppn(src, dst, Output::Weight));
+                           - cppn(src, dst, Output::WEIGHT));
         };
 
 
@@ -384,14 +384,14 @@ struct ESHN {
                           const Coordinates &inputs, const Coordinates &outputs,
                           Connections &connections) {
 
-    typename CPPN::OutputSubset wl {{ Output::Weight, Output::LEO }};
+    typename CPPN::OutputSubset wl {{ Output::WEIGHT, Output::LEO }};
     typename CPPN::Outputs res;
 
     for (const Point &i: inputs) {
       for (const Point &o: outputs) {
         cppn(i, o, res, wl);
         if (res[static_cast<uint>(Output::LEO)])
-          connections.insert({i, o, res[static_cast<uint>(Output::Weight)]});
+          connections.insert({i, o, res[static_cast<uint>(Output::WEIGHT)]});
       }
     }
   }
@@ -413,6 +413,7 @@ bool connect (CPPN &cppn,
   for (const auto &vec: {inputs, outputs}) {
     for (Point p: vec) {
       if (const auto r = sio.insert(p); !r.second) {
+        using ESHN<CPPN>::operator<<;
         std::cerr << "inputs: " << inputs << "\noutputs: " << outputs
                   << std::endl;
         throw std::invalid_argument("Unable to insert duplicate coordinate ");
@@ -536,5 +537,23 @@ bool connect (CPPN &cppn,
 
   return true;
 }
+
+using namespace phenotype;
+template struct ESHN<CPPN2D>;
+template struct ESHN<CPPN3D>;
+
+template bool connect<CPPN2D>(
+        phenotype::CPPN2D &cppn,
+        const Coordinates_t<CPPN2D> &inputs,
+        const Coordinates_t<CPPN2D> &outputs,
+        Coordinates_t<CPPN2D> &hidden,
+        Connections_t<CPPN2D> &connections, uint &iterations);
+
+template bool connect<CPPN3D>(
+        phenotype::CPPN3D &cppn,
+        const Coordinates_t<CPPN3D> &inputs,
+        const Coordinates_t<CPPN3D> &outputs,
+        Coordinates_t<CPPN3D> &hidden,
+        Connections_t<CPPN3D> &connections, uint &iterations);
 
 } // end of namespace evolvable substrate

@@ -129,9 +129,8 @@ private:
     using is_transparent = void;
     bool operator() (const Point &lhs, const Point &rhs) const {
       if (lhs.y() != rhs.y()) return lhs.y() < rhs.y();
-#if ESHN_SUBSTRATE_DIMENSION == 3
-      if (lhs.z() != rhs.z()) return lhs.z() < rhs.z();
-#endif
+      if constexpr (DIMENSIONS == 3)
+        if (lhs.z() != rhs.z()) return lhs.z() < rhs.z();
       return lhs.x() < rhs.x();
     }
 

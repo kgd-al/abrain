@@ -68,22 +68,6 @@ void init_point_type (py::module &m, const char *name) {
 template void init_point_type<2>(py::module_ &m, const char *name);
 template void init_point_type<3>(py::module_ &m, const char *name);
 
-template <typename CPPN>
-void init_output_buffer(py::class_<CPPN> &m) {
-  using Outputs = typename CPPN::Outputs;
-  auto outp = py::class_<Outputs>(m, "Outputs");
-  outp.doc() = "Output communication buffer for the CPPN";
-  outp.def(py::init<>())
-      .def("__len__", [] (const Outputs &o) { return o.size(); })
-//      .def("__iter__", [] (Outputs &o) {
-//        return py::make_iterator(o.begin(), o.end());
-//      }, py::keep_alive<0, 1>())
-      .def_property_readonly("__iter__", [] (const py::object&) { return py::none(); },
-           "Cannot be iterated. Use direct access instead.")
-      .def("__getitem__", [] (const Outputs &o, const size_t i) -> float { return o[i]; })
-      ;
-}
-
 void init_generic_cppn_phenotype (py::module_ &m) {
   using Outputs = CPPN::Outputs;
   // using OutputSubset = typename CPPN::OutputSubset;
@@ -93,7 +77,18 @@ void init_generic_cppn_phenotype (py::module_ &m) {
   // using OutputsList = std::vector<Output>;
 //  py::bind_vector<OutputsList>(cppn, "OutputsList");
 
-  init_output_buffer<CPPN>(cppn);
+  using Outputs = typename CPPN::Outputs;
+  auto outp = py::class_<Outputs>(m, "Outputs");
+  outp.doc() = "Output communication buffer for the CPPN";
+  outp.def(py::init<>())
+          .def("__len__", [] (const Outputs &o) { return o.size(); })
+//      .def("__iter__", [] (Outputs &o) {
+//        return py::make_iterator(o.begin(), o.end());
+//      }, py::keep_alive<0, 1>())
+          .def_property_readonly("__iter__", [] (const py::object&) { return py::none(); },
+                                 "Cannot be iterated. Use direct access instead.")
+          .def("__getitem__", [] (const Outputs &o, const size_t i) -> float { return o[i]; })
+          ;
 
   // for (uint i=0; i<CPPN::OUTPUTS; i++)
   //   o_enum.value(cppn::CPPN_OUTPUT_ENUM_NAMES[i], CPPN::OUTPUTS_LIST[i]);
@@ -143,7 +138,6 @@ void init_eshn_cppn_phenotype (py::module_ &m, const char *name) {
   // for (uint i=0; i<CPPN::OUTPUTS; i++)
   //   o_enum.value(cppn::CPPN_OUTPUT_ENUM_NAMES[i], CPPN::OUTPUTS_LIST[i]);
 
-  init_output_buffer<CPPN>(cppn);
 //  py::class_<OutputSubset>(m, "OutputSubset");
 
 #define CLASS CPPN

@@ -251,6 +251,13 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 }
 #endif
 
+// =============================================================================
+
+template <uint DI>
+CPPN_ND<DI>::CPPN_ND(const Genotype &genotype) : CPPN(genotype) {}
+template CPPN_ND<2>::CPPN_ND(const Genotype &genotype);
+template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
+
 template <uint DI>
 void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
   static constexpr auto N = DIMENSIONS;
@@ -288,6 +295,8 @@ void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, Outputs &outpu
   std::cout << outputs << "\n" << std::endl;
 #endif
 }
+template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, Outputs &outputs);
+template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, Outputs &outputs);
 
 template <uint DI>
 void CPPN_ND<DI>::operator() (
@@ -305,6 +314,9 @@ void CPPN_ND<DI>::operator() (
   std::cout << outputs << "\n" << std::endl;
 #endif
 }
+template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, Outputs &outputs, const OutputSubset &oset);
+template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, Outputs &outputs, const OutputSubset &oset);
+
 
 // Hopefully will get rid of i686 float c++ -> python transfer errors
 #if __i386__
@@ -317,6 +329,8 @@ float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output 
     
   return _outputs[o]->value();
 }
+template float CPPN_ND<2>::operator() (const Point &src, const Point &dst, Output o);
+template float CPPN_ND<3>::operator() (const Point &src, const Point &dst, Output o);
 #if __i386__
 #pragma GCC pop_options
 #endif

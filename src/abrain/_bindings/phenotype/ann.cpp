@@ -36,6 +36,8 @@ static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
 
 template <typename ANN>
 void init_ann_phenotype (py::module_ &m, const char *name) {
+  std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
+
   using IBuffer = typename ANN::IBuffer;
   using OBuffer = typename ANN::OBuffer;
   using Neuron = typename ANN::Neuron;
@@ -52,6 +54,8 @@ void init_ann_phenotype (py::module_ &m, const char *name) {
   using NeuronsMap = typename ANN::NeuronsMap;
   auto nmap = py::class_<NeuronsMap>(cann, "Neurons");
   auto type = py::enum_<Type>(nern, "Type");
+
+  std::cerr << "\n== Registering IBuffer for " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
 
   auto ibuf = py::class_<IBuffer, std::shared_ptr<IBuffer>>(cann, "IBuffer");
   auto obuf = py::class_<OBuffer, std::shared_ptr<OBuffer>>(cann, "OBuffer");
@@ -97,8 +101,10 @@ Whether the ANN contains neurons/connections
       .def ID(perceptron, "Whether this ANN is a perceptron")
       .def ID(stats, "Return associated stats (connections, depth...)")
       .def ID(reset, "Resets internal state to null (0)")
-      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
+      .def("neurons", static_cast<const NeuronsMap& (ANN::*)() const>(&ANN::neurons),
            "Provide read-only access to the underlying neurons")
+//      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
+//           "Provide read-only access to the underlying neurons")
       .def ID(neuronAt, "Query an individual neuron", "pos"_a)
 
       .def_static("build", &ANN::build, R"(
@@ -243,5 +249,9 @@ hidden neurons locations
       }, "Return the stats as Python dictionary")
       ;
 }
+
+template void init_ann_phenotype<ANN2D> (py::module_ &m, const char *name);
+template void init_ann_phenotype<ANN3D> (py::module_ &m, const char *name);
+
 
 } // namespace kgd::eshn::pybind
