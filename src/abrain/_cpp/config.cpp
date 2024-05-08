@@ -1,4 +1,5 @@
 #include "config.h"
+#include "phenotype/cppn.h"
 
 namespace kgd::eshn {
 
@@ -9,8 +10,12 @@ Config::FunctionSet Config::functionSet {
   "abs", "gaus", "id", "bsgm", "sin", "step"
 };
 
-Config::OutputFunctions Config::outputFunctions {
-  "bsgm", "step", "id"
+Config::FID Config::defaultOutputFunction = "id";
+
+Config::OutputFunctions Config::eshnOutputFunctions {
+  {WEIGHT, "bsgm"},
+  {LEO, "step"},
+  {BIAS, "id"}
 };
 
 template<typename K, typename V>

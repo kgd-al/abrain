@@ -3,7 +3,7 @@ import shutil
 from random import Random
 
 # /- abrain imports -/
-from abrain import Config, Genome, ANN, Point
+from abrain import Config, Genome, ANN3D as ANN, Point3D as Point
 from abrain.core.config import Strings
 from abrain.core.genome import GIDManager
 # /- abrain imports -/
@@ -18,7 +18,7 @@ class MyGenome:
 
     @staticmethod
     def random(rng: Random, id_m: GIDManager):
-        return MyGenome(Genome.random(rng, id_manager=id_m),
+        return MyGenome(Genome.eshn_random(rng, 3, id_manager=id_m),
                         rng.uniform(-1, 1))
 
     def mutate(self, rng: Random):

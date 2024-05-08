@@ -2,17 +2,27 @@ import logging
 import math
 from random import Random
 from time import perf_counter
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 
 import pytest
 
-from abrain import Point, Config, Genome, ANN, plotly_render
+from abrain import Config, Genome, Point2D, Point3D, ANN2D, ANN3D
 from abrain.core.ann import ANNMonitor
 from abrain.core.genome import logger as genome_logger
 
 
-def test_default_is_empty():
-    ann = ANN()
+ANN = Union[ANN2D, ANN3D]
+Point = Union[Point2D, Point3D]
+
+
+def _ann_type(dimension):
+    match dimension:
+        case 2: return ANN2D
+        case 3: return ANN3D
+
+
+def test_default_is_empty(dimension):
+    ann = _ann_type(dimension)()
     assert ann.empty()
     assert len(ann.ibuffer()) == 0
     assert len(ann.obuffer()) == 0
@@ -23,24 +33,31 @@ def test_default_is_empty():
     assert stats.axons == 0
 
     with pytest.raises(ValueError):
-        p0 = Point(0, 0, 0)
+        p0 = ann.Point.null()
         print("Testing no point at", p0)
         ann.neuronAt(p0)
 
 
-def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> \
+def _make_ann(dimension, mutations, rng, other_inputs=None, other_outputs=None) -> \
         Tuple[ANN, List[Point], List[Point]]:
-    genome = Genome.random(rng)
+
+    genome = Genome.eshn_random(rng, dimension)
     for _ in range(mutations):
         genome.mutate(rng)
 
+    ann_t = _ann_type(dimension)
+
     def d(): return rng.randint(10, 20)
     def c(): return rng.uniform(-1, 1)
-    def p(y): return Point(c(), y, c())
+
+    if dimension == 2:
+        def p(y): return ann_t.Point(c(), rng.uniform(.8*y, y))
+    else:
+        def p(y): return ann_t.Point(c(), y, c())
 
     def append(lhs, rhs):
         if rhs is not None:
-            lhs += [Point(x, y, z) for x, y, z in rhs]
+            lhs.extend(rhs)
 
     inputs = [p(-1) for _ in range(d())]
     append(inputs, other_inputs)
@@ -48,17 +65,17 @@ def _make_ann(mutations, rng, other_inputs=None, other_outputs=None) -> \
     outputs = [p(1) for _ in range(d())]
     append(outputs, other_outputs)
 
-    return ANN.build(inputs, outputs, genome), inputs, outputs
+    return ann_t.build(inputs, outputs, genome), inputs, outputs
 
 
-def test_empty_perceptrons(mutations, seed):
+def test_empty_perceptrons(dimension, mutations, seed):
     n = 10
 
     def generate_stats():
         rng = Random(seed)
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
-            ann, _, _ = _make_ann(mutations, rng)
+            ann, _, _ = _make_ann(dimension, mutations, rng)
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
@@ -92,16 +109,20 @@ def test_empty_perceptrons(mutations, seed):
 
 
 @pytest.mark.parametrize(
-    'inputs, outputs',
+    'i, o',
     [
-        pytest.param([(0, 0, 0), (0, 0, 0)], [(1, 1, 1)], id="in"),
-        pytest.param([(1, 1, 1)], [(0, 0, 0), (0, 0, 0)], id="out"),
-        pytest.param([(0, 0, 0)], [(0, 0, 0)], id="io"),
+        pytest.param([0, 0], [1], id="in"),
+        pytest.param([1], [0, 0], id="out"),
+        pytest.param([0], [0], id="io"),
     ])
-def test_invalid_duplicates(inputs, outputs):
+def test_invalid_duplicates(dimension, i, o):
+    p_t = _ann_type(dimension).Point
+    def p(c): return p_t(*[c for _ in range(dimension)])
+    inputs = [p(c) for c in i]
+    outputs = [p(c) for c in o]
     with pytest.raises(ValueError):
         print(f"ANN.build({inputs}, {outputs}, genome)")
-        _make_ann(0, Random(0), inputs, outputs)
+        _make_ann(dimension, 0, Random(0), inputs, outputs)
 
 
 # .. todo:: implement (code exists in ann.cpp)
@@ -110,9 +131,9 @@ def test_invalid_duplicates(inputs, outputs):
 #     original.cop
 
 
-def test_random_eval(mutations, seed):
+def test_random_eval(dimension, mutations, seed):
     rng = Random(seed)
-    ann, inputs, outputs = _make_ann(mutations, rng)
+    ann, inputs, outputs = _make_ann(dimension, mutations, rng)
 
     assert len(ann.ibuffer()) == len(inputs)
     assert len(ann.obuffer()) == len(outputs)
@@ -151,9 +172,9 @@ def _random_step(ann: ANN, rng: Random):
     return outputs
 
 
-def test_reset(mutations, seed):
+def test_reset(dimension, mutations, seed):
     rng = Random(seed)
-    ann, _, _ = _make_ann(mutations, rng)
+    ann, _, _ = _make_ann(dimension, mutations, rng)
 
     n = 1000
     all_outputs = [[], []]
@@ -172,10 +193,10 @@ def test_reset(mutations, seed):
 
 def test_view_neurons_png(mutations, seed, tmp_path):
     rng = Random(seed)
-    ann, _, _ = _make_ann(mutations, rng)
+    ann, _, _ = _make_ann(3, mutations, rng)
 
     file = f"{tmp_path}/ann.png"
-    fig = plotly_render(ann)
+    fig = ann.render3D()
 
     try:
         fig.write_image(file)
@@ -198,7 +219,7 @@ def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
     _, start = _time()
 
     rng = Random(seed)
-    ann, inputs, _ = _make_ann(mutations, rng)
+    ann, inputs, _ = _make_ann(3, mutations, rng)
     duration, start = _time(start)
     print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
 
@@ -208,7 +229,7 @@ def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
         for i in inputs:
             labels[i] = f"Input{len(labels)}"
 
-    fig = plotly_render(ann, labels)
+    fig = ann.render3D(labels)
     duration, start = _time(start)
     print(f"Preparing rendering: {duration}s")
 
@@ -236,7 +257,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
     _, start = _time()
 
     rng = Random(seed)
-    ann, inputs, _ = _make_ann(mutations, rng)
+    ann, inputs, _ = _make_ann(3, mutations, rng)
     duration, start = _time(start)
     print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
 
@@ -263,7 +284,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 
     ann_monitor.close()
 
-    fig = plotly_render(ann, labels)
+    fig = ann.render3D(labels)
     duration, start = _time(start)
     print(f"Preparing rendering: {duration}s")
 

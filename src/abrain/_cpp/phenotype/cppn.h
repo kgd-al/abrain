@@ -5,6 +5,7 @@
 #include <set>
 #include <memory>
 
+#include "../config.h"
 #include "../genotype.h"
 #include "../misc/point.hpp"
 
@@ -45,7 +46,7 @@ protected:
     Node_wptr node;
   };
 
-  struct FNode final : public Node_base {
+  struct FNode final : Node_base {
     float value () override;
 
     const Function func;
@@ -61,9 +62,10 @@ public:
   explicit CPPN(const Genotype &genotype);
 
   using Outputs = std::vector<float>;
-  // void operator() (Outputs &outputs, float inputs...);
 
-  using Output = uint;
+  [[nodiscard]] auto obuffer () const { return Outputs(_outputs.size()); }
+
+  // void operator() (Outputs &outputs, float inputs...);
 };
 
 template <uint DI>
@@ -74,14 +76,11 @@ public:
 
   using Point = kgd::eshn::misc::Point_t<DIMENSIONS>;
 
-  enum Output {
-    WEIGHT, LEO, BIAS
-  };
-
   explicit CPPN_ND(const Genotype &genotype);
 
   void operator() (const Point &src, const Point &dst, Outputs &outputs);
 
+  using Output = Config::ESHNOutputs;
   float operator() (const Point &src, const Point &dst, Output o);
 
   using OutputSubset = std::set<Output>;

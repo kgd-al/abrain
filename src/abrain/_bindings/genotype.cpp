@@ -26,9 +26,8 @@ py::dict to_json (const CPPNData &d) {
   for (const auto &[id, src, dst, weight]: d.links)
     links.append(py::make_tuple(id, src, dst, weight));
   dict["inputs"] = d.inputs;
-  dict["inputLabels"] = d.inputLabels;
   dict["outputs"] = d.outputs;
-  dict["outputLabels"] = d.outputLabels;
+  dict["labels"] = d.labels;
   dict["nodes"] = nodes;
   dict["links"] = links;
   dict["nextNodeID"] = d.nextNodeID;
@@ -42,9 +41,8 @@ using Link = CPPNData::Link;
 CPPNData from_json (const py::dict& dict) {
   CPPNData d;
   d.inputs = dict["inputs"].cast<int>();
-  d.inputLabels = dict["inputLabels"].cast<std::string>();
   d.outputs = dict["inputs"].cast<int>();
-  d.outputLabels = dict["outputLabels"].cast<std::string>();
+  d.labels = dict["labels"].cast<std::string>();
   d.nextNodeID = dict["nextNodeID"].cast<int>();
   d.nextLinkID = dict["nextLinkID"].cast<int>();
   for (const py::handle &h: dict["nodes"]) {
@@ -75,8 +73,7 @@ void init_genotype (py::module_ &m) {
       .def_readonly_static("_docstrings", &_cppn_doc)
       .def_readwrite ID(inputs, "Number of inputs")
       .def_readwrite ID(outputs, "Number of outputs")
-      .def_readwrite ID(inputLabels, "(optional) label for the inputs")
-      .def_readwrite ID(outputLabels, "(optional) label for the outputs")
+      .def_readwrite ID(labels, "(optional) label for the inputs/outputs")
       .def_readwrite ID(nodes, "The collection of computing nodes")
       .def_readwrite ID(links, "The collection of inter-node relationships")
       .def_readwrite ID(nextNodeID, "ID for the next random node (monotonic)")

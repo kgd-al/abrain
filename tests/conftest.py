@@ -3,6 +3,8 @@ from typing import Dict, Any
 
 import pytest
 
+from abrain import CPPN, CPPN2D, CPPN3D
+
 
 class TestSize(IntFlag):
     SMALL = 2
@@ -76,7 +78,11 @@ kgd_config: Dict[str, Dict[TestSize, Any]] = dict(
         TestSize.NORMAL: [1],
         TestSize.LARGE: [2, .5]
     },
-
+    dimension={
+        TestSize.SMALL: [3],
+        TestSize.NORMAL: [2, 3],
+        TestSize.LARGE: [2, 3],
+    },
 )
 
 
@@ -126,6 +132,8 @@ def pytest_generate_tests(metafunc):
     maybe_parametrize("mutations", "m")
     maybe_parametrize("seed", "s")
     maybe_parametrize("ad_rate", "ar")
+    maybe_parametrize("dimension", "d")
+    maybe_parametrize("cppn_type", "ct", [CPPN, CPPN2D, CPPN3D])
 
     if can_parametrize("evo_config"):
         evo_config = metafunc.config.getoption('evolution')

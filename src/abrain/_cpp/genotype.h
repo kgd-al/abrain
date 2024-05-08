@@ -22,10 +22,8 @@ struct CPPNData {
   };
 
   uint inputs;
-  std::string inputLabels;
-
   uint outputs;
-  std::string outputLabels;
+  std::string labels;
 
   std::vector<Node> nodes;
   std::vector<Link> links;

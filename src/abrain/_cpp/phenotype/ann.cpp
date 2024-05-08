@@ -25,8 +25,6 @@ static typename ANN::Stats::rep t_diff(const time_point start) {
 }
 #endif
 
-using Output = CPPN::Output;
-
 template <uint DI>
 bool ANN_t<DI>::empty(bool strict) const {
   return strict ? (stats().hidden == 0) : (stats().edges == 0);

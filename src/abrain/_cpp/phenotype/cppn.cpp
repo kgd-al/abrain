@@ -1,6 +1,8 @@
 #include <cmath>
 #include <cassert>
 
+#include <iostream>
+
 #include "cppn.h"
 #include "../config.h"
 
@@ -143,18 +145,16 @@ CPPN::CPPN (const CPPNData &genotype) {
   const auto NI = genotype.inputs;
   const auto NO = genotype.outputs;
 
-  const auto &ofuncs = [] (const uint index) {
-    return Config::outputFunctions[index];
-  };
-
   auto fnode = [] (const CPPNData::Node::FuncID &fid) {
     return std::make_shared<FNode>(functions.at(fid));
   };
 
   std::map<NID, Node_ptr> nodes;
 
-  // uint off = 0; // Inputs are first
   _inputs.resize(NI);
+  _outputs.resize(NO);
+  _hidden.resize(genotype.nodes.size() - NO);
+
   for (NID i=0; i<NI; i++) {
 #ifdef DEBUG_CPPN
     std::cerr << "(I) " << NID(i) << " " << i << std::endl;
@@ -162,23 +162,20 @@ CPPN::CPPN (const CPPNData &genotype) {
     nodes[i] = _inputs[i] = std::make_shared<INode>();
   }
 
-  uint off = NI; // Outputs are after inputs
-  _outputs.resize(NO);
   for (NID i=0; i<NO; i++) {
+    const auto [id, func] = genotype.nodes[i];
 #ifdef DEBUG_CPPN
     std::cerr << "(O) " << i+off << " " << i << " " << ofuncs(i) << std::endl;
 #endif
-    nodes[i+off] = _outputs[i] = fnode(ofuncs(i));
+    nodes[id] = _outputs[i] = fnode(func);
   }
 
-  uint i=0;
-  _hidden.resize(genotype.nodes.size());
-  for (const CPPNData::Node &n_g: genotype.nodes) {
+  for (NID i=NO; i<genotype.nodes.size(); i++) {
+    const auto [id, func] = genotype.nodes[i];
 #ifdef DEBUG_CPPN
     std::cerr << "(H) " << n_g.id << " " << i << " " << n_g.func << std::endl;
 #endif
-    nodes[n_g.id] = _hidden[i] = fnode(n_g.func);
-    i++;
+    nodes[id] = _hidden[i] = fnode(func);
   }
 
   for (const auto &l_g: genotype.links) {

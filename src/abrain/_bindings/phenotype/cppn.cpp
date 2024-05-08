@@ -41,6 +41,7 @@ void init_point_type (py::module &m, const char *name) {
         for (const int i: p.data()) sum += i;
         return sum;
       })
+      .def("null", Point::null, "Return the null vector")
       ;
 
   if constexpr (Di == 2) {
@@ -125,7 +126,7 @@ void init_eshn_cppn_phenotype (py::module_ &m, const char *name) {
 
   auto cppn = py::class_<CPPN>(m, name);
   auto o_enum = py::enum_<Output>(cppn, "Output");
-  auto outp = py::class_<Outputs>(cppn, "Outputs");
+  // auto outp = py::class_<Outputs>(cppn, "Outputs");
 
   using OutputsList = std::vector<Output>;
 //  py::bind_vector<OutputsList>(cppn, "OutputsList");
@@ -142,6 +143,7 @@ void init_eshn_cppn_phenotype (py::module_ &m, const char *name) {
 
 #define CLASS CPPN
   cppn.def(py::init<const typename CPPN::Genotype&>())
+      .def_readonly_static ID(DIMENSIONS)
       .def("__call__", py::overload_cast<const Point&,
                                          const Point&,
                                          Outputs&>(

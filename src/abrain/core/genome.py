@@ -7,7 +7,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
 from shutil import which
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Union, Collection
 
 from graphviz import Digraph
 from importlib_resources import files
@@ -56,6 +56,8 @@ class Genome(_CPPNData):
     """Name of the private field in which to store the optional genealogy
     """
 
+    __labels_sep = ","
+
     def __init__(self, key=None):
         _CPPNData.__init__(self)
         assert (key == Genome.__private_key), \
@@ -63,7 +65,7 @@ class Genome(_CPPNData):
             " reproduction methods"
 
     def __repr__(self):
-        return f"CPPN:{Genome.INPUTS}:{Genome.OUTPUTS}([{len(self.nodes)}," \
+        return f"CPPN:{self.inputs}:{self.outputs}([{len(self.nodes)}," \
                f" {self.nextNodeID}], [{len(self.links)},{self.nextLinkID}])"
 
     def id(self) -> Optional[int]:
@@ -88,19 +90,19 @@ class Genome(_CPPNData):
         N = namedtuple('Node', 'id type')
         offset = 0
         all_nodes: List[N] = []
-        for i in range(self.INPUTS):
+        for i in range(self.inputs):
             all_nodes.append(N(i + offset, "I"))
-        offset += self.INPUTS
-        for i in range(self.OUTPUTS):
+        offset += self.inputs
+        for i in range(self.outputs):
             all_nodes.append(N(i + offset, "O"))
-        offset += self.OUTPUTS
+        offset += self.outputs
         for i, n in enumerate(self.nodes):
             all_nodes.append(N(n.id, "H"))
 
-        depths = Genome._compute_node_depths(self.links)
+        depths = self._compute_node_depths(self.links)
 
         # For now assume that all valid links can be created.
-        # Existing ones are pruned afterwards
+        # Existing ones are pruned afterward
         L = namedtuple('Link', 'src dst')
         potential_links = set()
         for l_id, l_type in all_nodes:
@@ -127,8 +129,8 @@ class Genome(_CPPNData):
         # (except for I/O nodes, obviously)
         non_essential_links: List[int] = []
         for i, link in enumerate(self.links):
-            if (Genome._is_input(link.src)
-                and Genome._is_output(link.dst)) \
+            if (self._is_input(link.src)
+                and self._is_output(link.dst)) \
                     or (node_degrees[link.src].o > 1
                         and node_degrees[link.dst].i > 1):
                 non_essential_links.append(i)
@@ -185,21 +187,40 @@ class Genome(_CPPNData):
         return copy
 
     @staticmethod
-    def random(rng: Random, id_manager: Optional[GIDManager] = None) \
+    def random(rng: Random,
+               inputs: int,
+               outputs: Union[int, Collection[str]],
+               labels: Optional[Union[str, Collection[str]]] = None,
+               id_manager: Optional[GIDManager] = None) \
             -> 'Genome':
         """Create a random CPPN with boolean initialization
 
         :param rng: The source of randomness
+        :param inputs: Number of inputs
+        :param outputs: Number of outputs or specific functions
+        :param labels: Labels for the inputs/outputs (in that order, single characters)
         :param id_manager: an optional manager providing unique identifiers
 
         :return: A random CPPN genome
         """
         g = Genome(Genome.__private_key)
+        g.inputs = inputs
+        g.outputs = outputs if isinstance(outputs, int) else len(outputs)
 
-        for i in range(_CPPNData.INPUTS):
-            for j in range(_CPPNData.OUTPUTS):
+        if labels is not None:
+            if isinstance(labels, Collection):
+                tokens = labels
+            else:
+                tokens = "".split(labels)
+            if len(tokens) != inputs + outputs:
+                raise ValueError(f"Wrong number of labels. Expected {inputs}+{outputs}"
+                                 f" got {len(tokens)}")
+            g.labels = Genome.__labels_sep.join(tokens)
+
+        for i in range(inputs):
+            for j in range(outputs):
                 if rng.random() < .5:
-                    g._add_link(i, j + _CPPNData.INPUTS,
+                    g._add_link(i, j + inputs,
                                 Genome.__random_link_weight(rng))
 
         if id_manager is not None:
@@ -208,10 +229,44 @@ class Genome(_CPPNData):
 
         return g
 
+    @staticmethod
+    def eshn_random(rng: Random,
+                    dimension: int,
+                    with_input_length: Optional[bool] = True,
+                    with_input_bias: Optional[bool] = True,
+                    with_leo: Optional[bool] = True,
+                    with_output_bias: Optional[bool] = True,
+                    id_manager: Optional[GIDManager] = None):
+        if dimension not in [2, 3]:
+            raise ValueError("This ES-HyperNEAT implementation only works with 2D or 3D ANNs")
+        coordinates = "xy" if dimension == 2 else "xyz"
+        inputs = 2*dimension
+        labels = [f"{c}_{i}" for c in coordinates for i in range(2)]
+        if with_input_bias:
+            inputs += 1
+            labels.append("b")
+        if with_input_length:
+            inputs += 1
+            labels.append("l")
+
+        outputs = [Config.eshnOutputFunctions[Weight]]
+        labels.append("W")
+        if with_leo:
+            outputs.append("step")
+            labels.append("L")
+        if with_output_bias:
+            outputs.append("id")
+            labels.append("B")
+
+        return Genome.random(rng, inputs, outputs, labels, id_manager)
+
     def copy(self) -> 'Genome':
         """Return a perfect (deep)copy of this genome"""
         copy = Genome(Genome.__private_key)
 
+        copy.inputs = self.inputs
+        copy.outputs = self.outputs
+        copy.labels = self.labels
         copy.nodes = self.nodes
         copy.links = self.links
         copy.nextNodeID = self.nextNodeID
@@ -282,6 +337,9 @@ class Genome(_CPPNData):
     def to_json(self) -> Dict[Any, Any]:
         """Return a json (dict) representation of this object"""
         dct = dict(
+            inputs=self.inputs,
+            outputs=self.outputs,
+            labels=self.labels,
             nodes=[(n.id, n.func) for n in self.nodes],
             links=[(l_.id, l_.src, l_.dst, l_.weight) for l_ in self.links],
             NID=self.nextNodeID,
@@ -297,6 +355,9 @@ class Genome(_CPPNData):
         """Recreate a Genome from a string json representation
         """
         g = Genome(Genome.__private_key)
+        g.inputs = data["inputs"]
+        g.outputs = data["outputs"]
+        g.labels = data["labels"]
         g.nodes = _CPPNData.Nodes([
             _CPPNData.Node(n[0], n[1]) for n in data["nodes"]
         ])
@@ -392,7 +453,7 @@ class Genome(_CPPNData):
 
         # input nodes
         i_labels = Config.cppnInputNames
-        for i in range(self.INPUTS):
+        for i in range(self.inputs):
             label = i_labels[i]
             name = "I" + label.upper().replace("_", "")
             ix_to_name[i] = name
@@ -409,16 +470,16 @@ class Genome(_CPPNData):
             return str(p.resolve())
 
         o_labels = Config.cppnOutputNames
-        for i in range(self.OUTPUTS):
+        for i in range(self.outputs):
             label = o_labels[i]
             name = "O" + label.upper().replace("_", "")
-            ix_to_name[i + self.INPUTS] = name
+            ix_to_name[i + self.inputs] = name
             f = Config.outputFunctions[i]
             g_o.node(name, "",
                      width="0.5in", height="0.5in", margin="0",
                      fixedsize="shape",
                      image=img_file(f),
-                     xlabel=node_x_label(i + self.INPUTS))
+                     xlabel=node_x_label(i + self.inputs))
             g_ol.node(name + "_l", shape="plaintext", label=label)
             dot.edge(name, name + "_l")
 
@@ -445,9 +506,9 @@ class Genome(_CPPNData):
                          else None))
 
         # enforce i/o order
-        for i in range(self.INPUTS - 1):
+        for i in range(self.inputs - 1):
             dot.edge(ix_to_name[i], ix_to_name[i + 1], style="invis")
-        for i in range(self.INPUTS, self.INPUTS + self.OUTPUTS - 1):
+        for i in range(self.inputs, self.inputs + self.outputs - 1):
             dot.edge(ix_to_name[i], ix_to_name[i + 1], style="invis")
 
         # Register sub-graphs
@@ -462,24 +523,21 @@ class Genome(_CPPNData):
     # Private mutation interface
     ###########################################################################
 
-    @staticmethod
-    def _is_input(nid: int):
-        return nid < Genome.INPUTS
+    def _is_input(self, nid: int):
+        return nid < self.inputs
 
-    @staticmethod
-    def _is_output(nid: int):
-        return Genome.INPUTS <= nid < Genome.INPUTS + Genome.OUTPUTS
+    def _is_output(self, nid: int):
+        return self.inputs <= nid < self.inputs + self.outputs
 
-    @staticmethod
-    def _is_hidden(nid: int):
-        return Genome.INPUTS + Genome.OUTPUTS <= nid
+    def _is_hidden(self, nid: int):
+        return self.inputs + self.outputs <= nid
 
     @staticmethod
     def __random_node_function(rng: Random):
         return rng.choice(Config.functionSet)
 
     def _add_node(self, func: str) -> int:
-        nid = self.nextNodeID + self.INPUTS + self.OUTPUTS
+        nid = self.nextNodeID + self.inputs + self.outputs
         self.nodes.append(_CPPNData.Node(nid, func))
         self.nextNodeID += 1
         return nid
@@ -573,13 +631,12 @@ class Genome(_CPPNData):
         logger.debug(f"[mut_f] N({n.id}, {n.func}) -> {f}")
         n.func = f
 
-    @staticmethod
-    def _compute_node_depths(links_original):
+    def _compute_node_depths(self, links_original):
         depths = {}
         links = [l_ for l_ in links_original]
 
         def recurse(nid: int, depth: int):
-            if nid < Genome.INPUTS:
+            if nid < self.inputs:
                 depths[nid] = 0
                 return 0
 
@@ -600,10 +657,10 @@ class Genome(_CPPNData):
 
             return current_depth
 
-        for i in range(Genome.OUTPUTS):
-            recurse(i + Genome.INPUTS, 0)
+        for i in range(self.outputs):
+            recurse(i + self.inputs, 0)
 
-        for i in range(Genome.INPUTS):
+        for i in range(self.inputs):
             depths.setdefault(i, 0)
 
         return depths

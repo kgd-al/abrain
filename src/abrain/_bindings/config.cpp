@@ -116,11 +116,14 @@ void init_config (py::module_ &m) {
   auto fbnd = py::class_<Config::FBounds>(m, "FBounds");
   fbnd.doc() = "C++ encapsulation for mutation bounds";
 
+  auto eshn = py::enum_<Config::ESHNOutputs>(m, "ESHNOutputs");
+
   auto cnfg = py::class_<Config>(m, "Config");
 
 #define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
 #define CLASS Config
-  cnfg.def_readwrite_static ID(outputFunctions)
+  cnfg.def_readwrite_static ID(eshnOutputFunctions)
+      .def_readwrite_static ID(defaultOutputFunction)
 
       .def_readwrite_static ID(functionSet)
       .def_readwrite_static ID(cppnWeightBounds)
@@ -152,6 +155,9 @@ void init_config (py::module_ &m) {
 
   cnfg.doc() = R"(C++/Python configuration values for the ABrain library)";
 
+  eshn.value("Weight", Config::ESHNOutputs::WEIGHT)
+      .value("LEO", Config::ESHNOutputs::LEO)
+      .value("Bias", Config::ESHNOutputs::BIAS);
 
 #undef CLASS
 #define CLASS Config::FBounds

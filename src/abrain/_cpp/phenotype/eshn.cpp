@@ -163,8 +163,8 @@ struct ESHN {
 
     static const auto &varThr = Config::varThr;
     static const auto &bndThr = Config::bndThr;
-    static const auto leo = [&cppn] (auto i, auto o) {
-      return static_cast<bool>(cppn(i, o, Output::LEO));
+    static const auto leo = [] (auto &_cppn, auto i, auto o) {
+      return static_cast<bool>(_cppn(i, o, Output::LEO));
     };
 
 #if DEBUG_QUADTREE_PRUNING
@@ -203,7 +203,6 @@ struct ESHN {
                            - cppn(src, dst, Output::WEIGHT));
         };
 
-
         if constexpr (D == 2) {
           bnd = std::max(
             std::min(dweight(cx-r, cy), dweight(cx+r, cy)),
@@ -230,7 +229,7 @@ struct ESHN {
 #endif
 
         if (bnd > bndThr
-            && leo(out ? p : c->center, out ? c->center : p)
+            && leo(cppn, out ? p : c->center, out ? c->center : p)
             && c->weight != 0) {
           con.insert({
             out ? p : c->center, out ? c->center : p, c->weight
@@ -239,7 +238,7 @@ struct ESHN {
           std::cout << " < created " << (out ? p : c->center) << " -> "
                     << (out ? c->center : p) << " [" << c->weight << "]\n";
 #endif
-            }
+        }
       }
     }
 
@@ -375,7 +374,7 @@ struct ESHN {
                                  Connections &connections) {
 
     typename CPPN::OutputSubset wl {{ Output::WEIGHT, Output::LEO }};
-    typename CPPN::Outputs res;
+    auto res = cppn.obuffer();
 
     for (const Point &i: inputs) {
       for (const Point &o: outputs) {

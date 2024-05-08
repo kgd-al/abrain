@@ -2,9 +2,11 @@
 
 import importlib.metadata
 
-from ._cpp.phenotype import ANN, CPPN, Point
+from ._cpp.phenotype import (CPPN,
+                             Point2D, CPPN2D, ANN2D,
+                             Point3D, CPPN3D, ANN3D)
 
-from .core.ann import plotly_render
+# from .core.ann import plotly_render
 from .core.config import Config
 from .core.genome import Genome, GIDManager
 
@@ -15,5 +17,9 @@ except importlib.metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 
-__all__ = ['Genome', 'ANN', 'Config', 'Point', 'GIDManager', 'CPPN',
-           'plotly_render']
+__all__ = ['Genome', 'GIDManager',
+           'CPPN',
+           'Point2D', 'CPPN2D', 'ANN2D',
+           'Point3D', 'CPPN3D', 'ANN3D',
+           'Config']#,
+           # 'plotly_render']

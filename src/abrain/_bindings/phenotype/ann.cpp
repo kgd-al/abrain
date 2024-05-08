@@ -1,10 +1,6 @@
 #include "../../_cpp/phenotype/ann.h"
 #include "../utils.hpp"
 
-
-#include <iostream>
-
-
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
@@ -36,7 +32,7 @@ static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
 
 template <typename ANN>
 void init_ann_phenotype (py::module_ &m, const char *name) {
-  std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
+  // std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
 
   using IBuffer = typename ANN::IBuffer;
   using OBuffer = typename ANN::OBuffer;
@@ -54,8 +50,6 @@ void init_ann_phenotype (py::module_ &m, const char *name) {
   using NeuronsMap = typename ANN::NeuronsMap;
   auto nmap = py::class_<NeuronsMap>(cann, "Neurons");
   auto type = py::enum_<Type>(nern, "Type");
-
-  std::cerr << "\n== Registering IBuffer for " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
 
   auto ibuf = py::class_<IBuffer, std::shared_ptr<IBuffer>>(cann, "IBuffer");
   auto obuf = py::class_<OBuffer, std::shared_ptr<OBuffer>>(cann, "OBuffer");

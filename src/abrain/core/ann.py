@@ -6,12 +6,23 @@ from typing import Optional, Dict, List, Iterable, Union
 
 import plotly.graph_objects as go
 
-from .._cpp.phenotype import ANN, Point
+from .._cpp.phenotype import (ANN2D, Point2D, CPPN2D,
+                              ANN3D, Point3D, CPPN3D)
 
 logger = logging.getLogger(__name__)
 
 
-def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
+ANN = Union[ANN2D, ANN3D]
+Point = Union[Point2D, Point3D]
+
+
+ANN2D.Point = Point2D
+ANN2D.CPPN = CPPN2D
+ANN3D.Point = Point3D
+ANN3D.CPPN = CPPN3D
+
+
+def plotly_render(ann: ANN3D, labels: Optional[Dict[Point3D, str]] = None) \
         -> go.Figure:
     """
     Produce a 3D figure from an artificial neural network
@@ -21,6 +32,9 @@ def plotly_render(ann: ANN, labels: Optional[Dict[Point, str]] = None) \
     """
 
     return _figure(data=[_edges(ann), _neurons(ann, labels)])
+
+
+ANN3D.render3D = plotly_render
 
 
 def _iter_neurons(ann: ANN):
@@ -192,7 +206,7 @@ def _neurons(ann: ANN, labels: Dict[Point, str],
              data: Optional[Iterable[float]] = None,
              **kwargs) -> go.Scatter3d:
     # noinspection PyPep8Naming
-    NT = ANN.Neuron.Type
+    NT = ann.Neuron.Type
 
     x, y, z = zip(*[n.pos.tuple() for n in _iter_neurons(ann)])
     names = []

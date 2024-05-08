@@ -23,8 +23,14 @@ struct Config {
   using FunctionSet = Functions;
   static FunctionSet functionSet;
 
-  using OutputFunctions = Functions;
-  static OutputFunctions outputFunctions;
+  static FID defaultOutputFunction;
+
+  enum ESHNOutputs {
+    WEIGHT, LEO, BIAS
+  };
+
+  using OutputFunctions = std::map<ESHNOutputs, FID>;
+  static OutputFunctions eshnOutputFunctions;
 
   using MutationRates = std::map<std::string, float>;
   static MutationRates mutationRates;
