@@ -9,18 +9,17 @@
 
 namespace kgd::eshn::evolvable_substrate {
 
-template <typename CPPN>
+template <uint D>
 struct ESHN {
-  using Point = typename CPPN::Point;
-  static constexpr auto D = Point::DIMENSIONS;
-
+  using Point = misc::Point_t<D>;
+  using CPPN = phenotype::CPPN_ND<D>;
   using ANN = phenotype::ANN_t<D>;
 
   using Coordinates = typename ANN::Coordinates;
   using Coordinates_s = std::set<typename Coordinates::value_type>;
 
-  using Connection = Connection_t<CPPN>;
-  using Connections = Connections_t<CPPN>;
+  using Connection = Connection_t<D>;
+  using Connections = Connections_t<D>;
 
   using Output = typename CPPN::Output;
 
@@ -84,22 +83,14 @@ struct ESHN {
   }
 #endif
 
-  // Triggered by duplicate coordinates
-  friend std::ostream& operator<< (std::ostream &os, const Coordinates &c) {
-    os << "[";
-    if (c.size() >= 1) os << " " << c[0] << " ";
-    for (uint i=1; i<c.size(); i++) os << c[i] << " ";
-    return os << "]";
-  }
-
   // =============================================================================
 
   template <typename... ARGS>
-  QOTree node (ARGS... args) {
+  static QOTree node (ARGS... args) {
     return std::make_shared<QOTreeNode>(args...);
   }
 
-  QOTree divisionAndInitialisation(CPPN &cppn, const Point &p, bool out) {
+  static QOTree divisionAndInitialisation(CPPN &cppn, const Point &p, bool out) {
     static const auto &initialDepth = Config::initialDepth;
     static const auto &maxDepth = Config::maxDepth;
     static const auto &divThr = Config::divThr;
@@ -167,7 +158,7 @@ struct ESHN {
     return root;
   }
 
-  void pruneAndExtract (CPPN &cppn, const Point &p, Connections &con,
+  static void pruneAndExtract (CPPN &cppn, const Point &p, Connections &con,
                         const QOTree &t, bool out) {
 
     static const auto &varThr = Config::varThr;
@@ -257,10 +248,9 @@ struct ESHN {
 #endif
   }
 
-  void removeUnconnectedNeurons (const Coordinates &inputs,
-                                 const Coordinates &outputs,
-                                 Coordinates_s &shidden,
-                                 Connections &connections) {
+  static void removeUnconnectedNeurons (
+      const Coordinates &inputs, const Coordinates &outputs,
+      Coordinates_s &shidden, Connections &connections) {
     using Type = typename ANN::Neuron::Type;
     struct L;
     struct N {
@@ -370,8 +360,8 @@ struct ESHN {
   }
 
   /// Collect new hidden nodes and connections
-  void collect (const Connections &newConnections, Connections &connections,
-                Coordinates_s &hiddens, Coordinates_s &newHiddens) {
+  static void collect (const Connections &newConnections, Connections &connections,
+                       Coordinates_s &hiddens, Coordinates_s &newHiddens) {
     for (auto &c: newConnections) {
       auto r = hiddens.insert(c.to);
       if (r.second) newHiddens.insert(c.to);
@@ -380,9 +370,9 @@ struct ESHN {
   }
 
   /// Query for direct input-output connections
-  void generatePerceptron(CPPN &cppn,
-                          const Coordinates &inputs, const Coordinates &outputs,
-                          Connections &connections) {
+  static void generatePerceptron(CPPN &cppn,
+                                 const Coordinates &inputs, const Coordinates &outputs,
+                                 Connections &connections) {
 
     typename CPPN::OutputSubset wl {{ Output::WEIGHT, Output::LEO }};
     typename CPPN::Outputs res;
@@ -397,12 +387,21 @@ struct ESHN {
   }
 };
 
-template <typename CPPN>
-bool connect (CPPN &cppn,
-              const Coordinates_t<CPPN> &inputs, const Coordinates_t<CPPN> &outputs,
-              Coordinates_t<CPPN> &hidden, Connections_t<CPPN> &connections, uint &iterations) {
+// Triggered by duplicate coordinates
+template <uint D>
+std::ostream& operator<< (std::ostream &os, const Coordinates_t<D> &c) {
+  os << "[";
+  if (!c.empty()) os << " " << c[0] << " ";
+  for (uint i=1; i<c.size(); i++) os << c[i] << " ";
+  return os << "]";
+}
 
-  using E = ESHN<CPPN>;
+template <uint D>
+bool connect (phenotype::CPPN_ND<D> &cppn,
+              const Coordinates_t<D> &inputs, const Coordinates_t<D> &outputs,
+              Coordinates_t<D> &hidden, Connections_t<D> &connections, uint &iterations) {
+
+  using E = ESHN<D>;
   using Coordinates_s = typename E::Coordinates_s;
   using Connections = typename E::Connections;
   using Point = typename E::Point;
@@ -413,7 +412,6 @@ bool connect (CPPN &cppn,
   for (const auto &vec: {inputs, outputs}) {
     for (Point p: vec) {
       if (const auto r = sio.insert(p); !r.second) {
-        using ESHN<CPPN>::operator<<;
         std::cerr << "inputs: " << inputs << "\noutputs: " << outputs
                   << std::endl;
         throw std::invalid_argument("Unable to insert duplicate coordinate ");
@@ -431,11 +429,11 @@ bool connect (CPPN &cppn,
 
   for (const Point &p: inputs) {
     Connections tmpConnections;
-    auto t = divisionAndInitialisation(cppn, p, true);
-    pruneAndExtract(cppn, p, tmpConnections, t, true);
+    auto t = E::divisionAndInitialisation(cppn, p, true);
+    E::pruneAndExtract(cppn, p, tmpConnections, t, true);
 
     Coordinates_s newHiddens;
-    collect(tmpConnections, connections, shidden, newHiddens);
+    E::collect(tmpConnections, connections, shidden, newHiddens);
   }
 
 #if DEBUG_ES
@@ -461,9 +459,9 @@ bool connect (CPPN &cppn,
     Coordinates_s newHiddens;
     for (const Point &p: unexploredHidden) {
       Connections tmpConnections;
-      auto t = divisionAndInitialisation(cppn, p, true);
-      pruneAndExtract(cppn, p, tmpConnections, t, true);
-      collect(tmpConnections, connections, shidden, newHiddens);
+      auto t = E::divisionAndInitialisation(cppn, p, true);
+      E::pruneAndExtract(cppn, p, tmpConnections, t, true);
+      E::collect(tmpConnections, connections, shidden, newHiddens);
     }
 
     unexploredHidden = newHiddens;
@@ -494,8 +492,8 @@ bool connect (CPPN &cppn,
 
   for (const Point &p: outputs) {
     Connections tmpConnections;
-    auto t = divisionAndInitialisation(cppn, p, false);
-    pruneAndExtract(cppn, p, tmpConnections, t, false);
+    auto t = E::divisionAndInitialisation(cppn, p, false);
+    E::pruneAndExtract(cppn, p, tmpConnections, t, false);
     connections.insert(tmpConnections.begin(), tmpConnections.end());
   }
 
@@ -511,7 +509,7 @@ bool connect (CPPN &cppn,
 #endif
 
   Coordinates_s shidden2;
-  removeUnconnectedNeurons(inputs, outputs, shidden2, connections);
+  E::removeUnconnectedNeurons(inputs, outputs, shidden2, connections);
 
 #if DEBUG_ES
   oss << "[Filtrd] total " << shidden2.size() << " hidden neurons";
@@ -529,7 +527,7 @@ bool connect (CPPN &cppn,
   std::copy(shidden2.begin(), shidden2.end(), std::back_inserter(hidden));
 
   if (hidden.empty() && Config::allowPerceptrons)
-    generatePerceptron(cppn, inputs, outputs, connections);
+    E::generatePerceptron(cppn, inputs, outputs, connections);
 
 #if DEBUG_ES
   std::cerr << oss.str() << std::endl;
@@ -539,21 +537,21 @@ bool connect (CPPN &cppn,
 }
 
 using namespace phenotype;
-template struct ESHN<CPPN2D>;
-template struct ESHN<CPPN3D>;
+template struct ESHN<2>;
+template struct ESHN<3>;
 
-template bool connect<CPPN2D>(
+template bool connect<2>(
         phenotype::CPPN2D &cppn,
-        const Coordinates_t<CPPN2D> &inputs,
-        const Coordinates_t<CPPN2D> &outputs,
-        Coordinates_t<CPPN2D> &hidden,
-        Connections_t<CPPN2D> &connections, uint &iterations);
+        const Coordinates_t<2> &inputs,
+        const Coordinates_t<2> &outputs,
+        Coordinates_t<2> &hidden,
+        Connections_t<2> &connections, uint &iterations);
 
-template bool connect<CPPN3D>(
+template bool connect<3>(
         phenotype::CPPN3D &cppn,
-        const Coordinates_t<CPPN3D> &inputs,
-        const Coordinates_t<CPPN3D> &outputs,
-        Coordinates_t<CPPN3D> &hidden,
-        Connections_t<CPPN3D> &connections, uint &iterations);
+        const Coordinates_t<3> &inputs,
+        const Coordinates_t<3> &outputs,
+        Coordinates_t<3> &hidden,
+        Connections_t<3> &connections, uint &iterations);
 
 } // end of namespace evolvable substrate

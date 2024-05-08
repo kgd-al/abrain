@@ -119,7 +119,7 @@ public:
   // Not useful yet.
 //  void copyInto (ANN &that) const;
 
-  using Coordinates = es::Coordinates_t<CPPN>;
+  using Coordinates = es::Coordinates_t<DI>;
   static ANN_t build (const Coordinates &inputs,
                     const Coordinates &outputs,
                     const genotype::CPPNData &genome);

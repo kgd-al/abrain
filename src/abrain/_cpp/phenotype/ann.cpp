@@ -75,7 +75,7 @@ const auto start_time = timing_clock::now();
   for (auto &p: outputs) neurons.insert(ann._outputs[i++] = add(p, Neuron::O));
 
   Coordinates hidden;
-  evolvable_substrate::Connections_t<CPPN> connections;
+  evolvable_substrate::Connections_t<DI> connections;
   if (evolvable_substrate::connect(cppn, inputs, outputs,
                                    hidden, connections,
                                    ann._stats.iterations)) {
