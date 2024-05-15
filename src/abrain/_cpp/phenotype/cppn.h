@@ -5,43 +5,40 @@
 #include <set>
 #include <memory>
 
+#include "../config.h"
 #include "../genotype.h"
 #include "../misc/point.hpp"
 
 namespace kgd::eshn::phenotype {
 
 class CPPN {
+  // Generic CPPN
 public:
-  using Point = kgd::eshn::misc::Point;
-  static constexpr auto DIMENSIONS = Point::DIMENSIONS;
-  static constexpr auto INPUTS =  genotype::CPPNData::INPUTS;
-  static constexpr auto OUTPUTS = genotype::CPPNData::OUTPUTS;
-
-  using Genotype = kgd::eshn::genotype::CPPNData;
+  using Genotype = genotype::CPPNData;
 
   using FuncID = Genotype::Node::FuncID;
   using Function = float (*) (float);
   using Functions = std::map<FuncID, Function>;
   static const Functions functions;
-  using FunctionNames = std::map<CPPN::Function, FuncID>;
+  using FunctionNames = std::map<Function, FuncID>;
   static const FunctionNames functionToName;
 
   struct Range { float min, max; };
   static const std::map<FuncID, Range> functionRanges;
 
-private:
+protected:
   struct Node_base {
-    float data;
+    float data {};
     
-    virtual ~Node_base(void) = default; // LCOVR_EXCL_LINE
+    virtual ~Node_base() = default; // LCOVR_EXCL_LINE
 
-    virtual float value (void) = 0;
+    virtual float value () = 0;
   };
   using Node_ptr = std::shared_ptr<Node_base>;
   using Node_wptr = std::weak_ptr<Node_base>;
 
-  struct INode final : public Node_base {
-    float value (void) override;
+  struct INode final : Node_base {
+    float value () override;
   };
 
   struct Link {
@@ -49,36 +46,78 @@ private:
     Node_wptr node;
   };
 
-  struct FNode final : public Node_base {
-    float value (void) override;
+  struct FNode final : Node_base {
+    float value () override;
 
     const Function func;
 
     std::vector<Link> links;
 
-    FNode (Function f) : func(f) {}
+    explicit FNode (const Function f) : func(f) {}
   };
 
+  bool _has_input_bias;
   std::vector<Node_ptr> _inputs, _hidden, _outputs;
 
 public:
-  CPPN(const Genotype &genotype);
+  explicit CPPN(const Genotype &genotype);
 
-  static constexpr auto &OUTPUTS_LIST = cppn::CPPN_OUTPUT_LIST;
-  using Outputs = std::array<float, OUTPUTS>;
+  struct Buffer : std::vector<float> {
+      Buffer () : std::vector<float>() {};
+      explicit Buffer (size_t size) : std::vector<float>(size) {};
+  };
+  struct IBuffer : Buffer {
+      IBuffer () : Buffer() {};
+      explicit IBuffer (size_t size) : Buffer(size) {};
+  };
+  struct OBuffer : Buffer {
+      OBuffer () : Buffer() {};
+      explicit OBuffer (size_t size) : Buffer(size) {};
+  };
 
-  void operator() (const Point &src, const Point &dst, Outputs &outputs);
+  [[nodiscard]] auto n_inputs() const { return  _inputs.size(); }
+  [[nodiscard]] auto n_outputs() const { return _outputs.size(); }
+  [[nodiscard]] auto n_hidden() const { return  _hidden.size(); }
 
-  using Output = Genotype::Output;
+  [[nodiscard]] const auto& ibuffer () const { return _ibuffer; }
+  [[nodiscard]] const auto& obuffer () const { return _obuffer; }
+
+  void operator() (OBuffer &outputs, const IBuffer &inputs);
+  float operator() (uint o, const IBuffer &inputs);
+
+private:
+    void pre_evaluation(const IBuffer &inputs);
+protected:
+    void common_pre_evaluation();
+
+    IBuffer _ibuffer;
+    OBuffer _obuffer;
+};
+
+template <uint DI>
+class CPPN_ND : public CPPN {
+public:
+  // Specific CPPN for ES-HyperNEAT
+  static constexpr auto DIMENSIONS = DI;
+
+  using Point = kgd::eshn::misc::Point_t<DIMENSIONS>;
+
+  explicit CPPN_ND(const Genotype &genotype);
+
+  void operator() (const Point &src, const Point &dst, OBuffer &outputs);
+
+  using Output = Config::ESHNOutputs;
   float operator() (const Point &src, const Point &dst, Output o);
 
   using OutputSubset = std::set<Output>;
-  void operator() (const Point &src, const Point &dst, Outputs &outputs,
+  void operator() (const Point &src, const Point &dst, OBuffer &outputs,
                    const OutputSubset &oset);
 
 private:
   void pre_evaluation (const Point &src, const Point &dst);
 };
+using CPPN2D = CPPN_ND<2>;
+using CPPN3D = CPPN_ND<3>;
 
 } // end of namespace kgd::eshn::phenotype
 

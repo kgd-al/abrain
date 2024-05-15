@@ -70,11 +70,10 @@ class CMakeBuild(build_ext):
         if "CMAKE_ARGS" in os.environ:
             cmake_args += [item for item in os.environ["CMAKE_ARGS"].split(" ")
                            if item]
-        print('[kgd-debug]', cmake_args)
 
         # Pass the version to C++ (why not?)
-        cmake_args +=\
-            [f"-DEXAMPLE_VERSION_INFO={self.distribution.get_version()}"] \
+        cmake_args += \
+            [f"-DVERSION_INFO={self.distribution.get_version()}"] \
             # type: ignore[attr-defined]
 
         if self.compiler.compiler_type != "msvc":
@@ -143,15 +142,28 @@ class CMakeBuild(build_ext):
 
         # == kgd - Additions == #
         # Allow discovering packages in build site-packages (overlay?)
-        cmake_args += [f"-DCMAKE_PREFIX_PATH={';'.join(sys.path)}"]
+        # cmake_args += [f"-DCMAKE_PREFIX_PATH={';'.join(sys.path)}"]
         if with_tests:
             cmake_args += ["-DWITH_COVERAGE=ON"]
         # Ensure discovery of executables (pybind11-stubgen for instance)
-        cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
+        # cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
         # Forward if we need develop-level info (notably the stubs)
         if dev_build:
             cmake_args += ["-DDEV_BUILD=ON"]
 
+        # ===================== #
+        # Write clion configuration (if requested)
+        if (path := os.environ.get("CLION_CONFIG")) is not None:
+            with open(path, "w") as cc:
+                cc.write("Replace the ninja builder with default (Makefile)\n")
+                cc.write("Replace the default build folder with:\n")
+                cc.write(f"\t{build_temp}\n")
+                cc.write("Give the following arguments for cmake:\n")
+                config_str = ' '.join(['-DAUTO_INSTALL=ON'] + cmake_args)
+                cc.write(f"\t{config_str}\n")
+                cc.write("Ensure the build command looks like:\n")
+                build_str = ' '.join(['cmake', '--build', '.'] + build_args)
+                cc.write(f"       build: {build_str}\n")
         # ===================== #
 
         subprocess.run(

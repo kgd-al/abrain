@@ -28,28 +28,32 @@ const stdfs::path& debugFilePrefix (const stdfs::path &path = "");
 }
 #endif
 
-struct Connection {
-  kgd::eshn::phenotype::CPPN::Point from, to;
-  float weight;
+template <uint D>
+struct Connection_t {
+  using Point = typename misc::Point_t<D>;
+  Point from{}, to{};
+  float weight{};
 #if DEBUG_ES
   friend std::ostream& operator<< (std::ostream &os, const Connection &c) {
     return os << "{ " << c.from << " -> " << c.to << " [" << c.weight << "]}";
   }
 #endif
-  friend bool operator< (const Connection &lhs, const Connection &rhs) {
+  friend bool operator< (const Connection_t &lhs, const Connection_t &rhs) {
     if (lhs.from != rhs.from) return lhs.from < rhs.from;
     return lhs.to < rhs.to;
   }
 };
-using Connections = std::set<Connection>;
 
-using CPPN = kgd::eshn::phenotype::CPPN;
-using Point = CPPN::Point;
-using Coordinates = std::vector<Point>;
+template <uint D>
+using Connections_t = std::set<Connection_t<D>>;
 
-bool connect (CPPN &cppn,
-              const Coordinates &inputs, const Coordinates &outputs,
-              Coordinates &hidden, Connections &connections,
+template <uint D>
+using Coordinates_t = std::vector<misc::Point_t<D>>;
+
+template <uint D>
+bool connect (phenotype::CPPN_ND<D> &cppn,
+              const Coordinates_t<D> &inputs, const Coordinates_t<D> &outputs,
+              Coordinates_t<D> &hidden, Connections_t<D> &connections,
               uint &iterations);
 
 } // end of namespace kgd::eshn::evolvable_substrate

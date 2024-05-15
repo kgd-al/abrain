@@ -5,8 +5,7 @@ from pathlib import Path
 from random import Random
 
 from _utils import assert_equal
-from abrain.core.ann import ANN, Point
-from abrain.core.genome import Genome, GIDManager
+from abrain import Genome, GIDManager, ANN3D as ANN, Point3D as Point
 
 
 class Robot:
@@ -84,7 +83,8 @@ def test_evolution(evo_config, capsys, tmp_path):
             print(f"\t{k}: {v}")
         print()
 
-        population = [Robot(Genome.random(rng, id_manager))
+        population = [Robot(Genome.eshn_random(rng, 3,
+                                               id_manager=id_manager))
                       for _ in range(pop_size)]
         print("== Initialized population")
 

@@ -14,17 +14,16 @@ PYBIND11_MAKE_OPAQUE(std::vector<kgd::eshn::genotype::CPPNData::Link>)
 using namespace kgd::eshn::genotype;
 namespace kgd::eshn::pybind {
 
-static const utils::DocMap _cppn_doc {
-  { "INPUTS",  "Number of inputs for the CPPN"  },
-  { "OUTPUTS", "Number of outputs for the CPPN" },
-};
-
 py::dict to_json (const CPPNData &d) {
   py::dict dict;
   py::list nodes, links;
-  for (auto &n: d.nodes)  nodes.append(py::make_tuple(n.id, n.func));
-  for (auto &l: d.links)
-    links.append(py::make_tuple(l.id, l.src, l.dst, l.weight));
+  for (const auto &[id, func]: d.nodes)  nodes.append(py::make_tuple(id, func));
+  for (const auto &[id, src, dst, weight]: d.links)
+    links.append(py::make_tuple(id, src, dst, weight));
+  dict["inputs"] = d.inputs;
+  dict["outputs"] = d.outputs;
+  dict["bias"] = d.bias;
+  dict["labels"] = d.labels;
   dict["nodes"] = nodes;
   dict["links"] = links;
   dict["nextNodeID"] = d.nextNodeID;
@@ -35,16 +34,20 @@ py::dict to_json (const CPPNData &d) {
 using Node = CPPNData::Node;
 using Link = CPPNData::Link;
 
-CPPNData from_json (py::dict dict) {
+CPPNData from_json (const py::dict& dict) {
   CPPNData d;
+  d.inputs = dict["inputs"].cast<int>();
+  d.outputs = dict["inputs"].cast<int>();
+  d.bias = dict["bias"].cast<bool>();
+  d.labels = dict["labels"].cast<std::string>();
   d.nextNodeID = dict["nextNodeID"].cast<int>();
   d.nextLinkID = dict["nextLinkID"].cast<int>();
   for (const py::handle &h: dict["nodes"]) {
-    py::tuple t = h.cast<py::tuple>();
+    auto t = h.cast<py::tuple>();
     d.nodes.push_back(Node{t[0].cast<int>(), t[1].cast<std::string>()});
   }
   for (const py::handle &h: dict["links"]) {
-    py::tuple t = h.cast<py::tuple>();
+    auto t = h.cast<py::tuple>();
     d.links.push_back(Link{t[0].cast<int>(),
                             t[1].cast<uint>(), t[2].cast<uint>(),
                             t[3].cast<float>()});
@@ -64,9 +67,10 @@ void init_genotype (py::module_ &m) {
 #define CLASS CPPNData
   cppn.doc() = R"(C++ supporting type for genomic data)";
   cppn.def(py::init<>())
-      .def_readonly_static ID(INPUTS, "")
-      .def_readonly_static ID(OUTPUTS)
-      .def_readonly_static("_docstrings", &_cppn_doc)
+      .def_readwrite ID(inputs, "Number of inputs")
+      .def_readwrite ID(outputs, "Number of outputs")
+      .def_readwrite ID(bias, "Whether to use an input bias")
+      .def_readwrite ID(labels, "(optional) label for the inputs/outputs")
       .def_readwrite ID(nodes, "The collection of computing nodes")
       .def_readwrite ID(links, "The collection of inter-node relationships")
       .def_readwrite ID(nextNodeID, "ID for the next random node (monotonic)")
@@ -75,8 +79,8 @@ void init_genotype (py::module_ &m) {
       .def_static("from_json", from_json, "j"_a,
                   "Convert from the json-compliant Python dictionary `j`")
       .def(py::pickle(
-        [] (const CLASS &d) { return to_json(d); },
-        [](py::dict d) {      return from_json(d);  }
+        [](const CLASS &d) { return to_json(d); },
+        [](const py::dict &d) { return from_json(d);  }
       ))
       ;
 

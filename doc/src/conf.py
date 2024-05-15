@@ -35,13 +35,15 @@ release = config.version
 extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'matplotlib.sphinxext.plot_directive',
-    'sphinx_design',
     'sphinx.ext.autosectionlabel',
+    'sphinx_design',
     'sphinx_copybutton',
+    'sphinx_tabs.tabs',
+    'matplotlib.sphinxext.plot_directive',
     'myst_parser'
 ]
 # Add any paths that contain templates here, relative to this directory.
@@ -185,8 +187,13 @@ def process(what, name, obj, lines, multiline):
 
     # simplify("_cpp.genotype.", lines, multiline)
     simplify("_cpp.phenotype.", lines, multiline)
+    simplify("_cpp.config.", lines, multiline)
     simplify("plotly.graph_objs._figure.Figure", lines, multiline,
              "plotly.graph_objs.Figure")
+
+    if contains("*args", lines):
+        for i in range(len(lines)):
+            lines[i] = lines[i].replace("*args", "\\*args")
 
     if kgd_verbose:
         print(f"processing({what}, {name}, {obj}, {lines}, {multiline}")

@@ -16,3 +16,7 @@
     padding-top: var(--padding-top);
     padding-bottom: var(--padding-bottom);
 }
+
+p {
+    text-align: justify;
+}

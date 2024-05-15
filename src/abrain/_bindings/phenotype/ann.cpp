@@ -1,10 +1,6 @@
 #include "../../_cpp/phenotype/ann.h"
 #include "../utils.hpp"
 
-
-#include <iostream>
-
-
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
@@ -13,50 +9,44 @@ using namespace pybind11::literals;
 
 using namespace kgd::eshn::phenotype;
 //PYBIND11_MAKE_OPAQUE(ANN::Inputs)
-PYBIND11_MAKE_OPAQUE(ANN::NeuronsMap)
+PYBIND11_MAKE_OPAQUE(ANN2D::NeuronsMap)
+PYBIND11_MAKE_OPAQUE(ANN3D::NeuronsMap)
 //PYBIND11_MAKE_OPAQUE(ANN::Neuron::Links)
 //PYBIND11_MAKE_OPAQUE(ANN::Neuron::ptr)
 // OPAQUE_TYPES?
 
 namespace kgd::eshn::pybind {
 
-#ifndef NDEBUG
-py::tuple tuple(const std::vector<float> &v) { return py::tuple(py::cast(v)); }
-void set_to_nan(std::vector<float> &v) { std::fill(v.begin(), v.end(), NAN); }
-bool valid(const std::vector<float> &v) {
-  return std::none_of(v.begin(), v.end(),
-                      static_cast<bool(*)(float)>(std::isnan));
-}
+template <typename ANN>
+void init_ann_phenotype (py::module_ &m, const char *name) {
+  // std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
 
-static constexpr auto doc_tuple = "Debug helper to convert to Python tuple";
-static constexpr auto doc_set_to_nan = "Debug helper to set all values to NaN";
-static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
-#endif
+  using Point = typename ANN::Point;
+  static constexpr auto D = Point::DIMENSIONS;
 
-void init_ann_phenotype (py::module_ &m) {
-  using IBuffer = ANN::IBuffer;
-  using OBuffer = ANN::OBuffer;
-  using Neuron = ANN::Neuron;
-  using Link = Neuron::Link;
-  using Type = Neuron::Type;
+  using IBuffer = typename ANN::IBuffer;
+  using OBuffer = typename ANN::OBuffer;
+  using Neuron = typename ANN::Neuron;
+  using Link = typename Neuron::Link;
+  using Type = typename Neuron::Type;
 
-  auto cann = py::class_<ANN>(m, "ANN");
+  auto cann = py::class_<ANN>(m, name);
   auto nern = py::class_<Neuron, std::shared_ptr<Neuron>>(cann, "Neuron");
   auto link = py::class_<Link>(nern, "Link");
-  auto stts = py::class_<ANN::Stats>(cann, "Stats");
 
-  auto nmap = py::class_<ANN::NeuronsMap>(cann, "Neurons");
+  using Stats = typename ANN::Stats;
+  auto stts = py::class_<Stats>(cann, "Stats");
+
+  using NeuronsMap = typename ANN::NeuronsMap;
+  auto nmap = py::class_<NeuronsMap>(cann, "Neurons");
   auto type = py::enum_<Type>(nern, "Type");
 
-  auto ibuf = py::class_<IBuffer, std::shared_ptr<IBuffer>>(cann, "IBuffer");
-  auto obuf = py::class_<OBuffer, std::shared_ptr<OBuffer>>(cann, "OBuffer");
-//  py::bind_vector<ANN::Inputs>(cann, "Buffer");
+  utils::init_buffer<IBuffer>(cann, "IBuffer", "Input data buffer for an ANN");
+  utils::init_buffer<OBuffer>(cann, "OBuffer", "Output data buffer for an ANN");
 
-#define ID(X, ...) (#X, &CLASS::X, __VA_ARGS__)
+#define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
 #define CLASS ANN
-  cann.def(py::init<>())
-
-      .def ID(ibuffer, "Return a reference to the neural inputs buffer",
+  cann.def ID(ibuffer, "Return a reference to the neural inputs buffer",
               py::return_value_policy::reference)
       .def ID(obuffer, "Return a reference to the neural outputs buffer",
               py::return_value_policy::reference)
@@ -81,6 +71,9 @@ sequential execution in one call
 .. seealso:: :ref:`usage-basics-ann`
            )", "inputs"_a, "outputs"_a, "substeps"_a = 1)
 
+      .def_readonly_static ID(DIMENSIONS,
+                              "Specifies the underlying substrate dimension")
+
       .def ID(empty,
               R"(
 Whether the ANN contains neurons/connections
@@ -98,8 +91,10 @@ Whether the ANN contains neurons/connections
                          " (if any)")
       .def ID(stats, "Return associated stats (connections, depth...)")
       .def ID(reset, "Resets internal state to null (0)")
-      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
+      .def("neurons", static_cast<const NeuronsMap& (ANN::*)() const>(&ANN::neurons),
            "Provide read-only access to the underlying neurons")
+//      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
+//           "Provide read-only access to the underlying neurons")
       .def ID(neuronAt, "Query an individual neuron", "pos"_a)
 
       .def_static("build", &ANN::build, R"(
@@ -119,78 +114,23 @@ hidden neurons locations
                   )", "inputs"_a, "outputs"_a, "genome"_a)
   ;
 
-  cann.doc() = "3D Artificial Neural Network produced through "
-               "Evolvable Substrate Hyper-NEAT";
-
-  ibuf.doc() = "Specialized, fixed-size buffer for the neural inputs"
-               " (write-only)";
-  ibuf.def("__setitem__",
-           [] (IBuffer &buf, size_t i, float v) { buf[i] = v; },
-           "Assign an element")
-      .def("__setitem__",
-         [](IBuffer &buf, const py::slice &slice, const py::iterable &items) {
-           size_t start = 0, stop = 0, step = 0, slicelength = 0;
-           if (!slice.compute(buf.size(), &start, &stop, &step, &slicelength))
-               throw py::error_already_set();
-           if (slicelength != py::len(items))
-               throw std::runtime_error("Left and right hand size of slice"
-                                        " assignment have different sizes!");
-           for (py::handle h: items) {
-//           for (size_t i = 0; i < slicelength; ++i) {
-               buf[start] = h.cast<float>();
-               start += step;
-           }
-       })
-      .def("__len__", [] (const ANN::IBuffer &buf) { return buf.size(); },
-           "Return the number of expected inputs")
-#ifndef NDEBUG
-      .def("tuple", [] (const IBuffer &buf) { return tuple(buf); }, doc_tuple)
-      .def("set_to_nan", [] (IBuffer &buf) { return set_to_nan(buf); }, doc_set_to_nan)
-      .def("valid", [] (const IBuffer &buf) { return valid(buf); }, doc_valid)
-#endif
-  ;
-
-  obuf.doc() = "Specialized, fixed-size buffer for the neural outputs"
-               " (read-only)";
-  obuf.def("__getitem__",
-           [] (const OBuffer &buf, size_t i) { return buf[i]; },
-           "Access an element")
-      .def("__getitem__",
-        [](const OBuffer &buf, const py::slice &slice) -> py::list * {
-        size_t start = 0, stop = 0, step = 0, slicelength = 0;
-        if (!slice.compute(buf.size(), &start, &stop, &step, &slicelength))
-           throw py::error_already_set();
-
-        auto *list = new py::list(slicelength);
-        for (size_t i = 0; i < slicelength; ++i) {
-           (*list)[i] = buf[start];
-           start += step;
-        }
-        return list;
-      })
-      .def("__len__", [] (const OBuffer &buf) { return buf.size(); },
-           "Return the number of expected outputs")
-      .def_property_readonly("__iter__", [] (py::object) { return py::none(); },
-           "Cannot be iterated. Use direct access instead.")
-#ifndef NDEBUG
-      .def("tuple", [] (const OBuffer &buf) { return tuple(buf); }, doc_tuple)
-      .def("set_to_nan", [] (OBuffer &buf) { set_to_nan(buf); }, doc_set_to_nan)
-      .def("valid", [] (const OBuffer &buf) { return valid(buf); }, doc_valid)
-#endif
-      ;
+  cann.doc() = utils::mergeToString(
+          D,
+          "D Artificial Neural Network produced through "
+          "Evolvable Substrate Hyper-NEAT");
 
   nmap.doc() = "Wrapper for the C++ neurons container";
-  nmap.def("__iter__", [] (ANN::NeuronsMap &m) {
-        return py::make_iterator(m.begin(), m.end());
+  nmap.def("__iter__", [] (NeuronsMap &_m) {
+        return py::make_iterator(_m.begin(), _m.end());
       }, py::keep_alive<0, 1>())
-      .def("__len__", [] (const ANN::NeuronsMap &m) { return m.size(); })
+      .def("__len__", [] (const NeuronsMap &_m) { return _m.size(); })
       ;
 
 #undef CLASS
 #define CLASS Neuron
   nern.doc() = "Atomic computational unit of an ANN";
   nern.def_readonly ID(pos, utils::mergeToString(
-                         "Position in the ", ESHN_SUBSTRATE_DIMENSION,
+                         "Position in the ", ANN::Point::DIMENSIONS,
                          "D substrate").c_str())
       .def_readonly ID(type, "Neuron role (see :class:`Type`)")
       .def_readonly ID(bias, "Neural bias")
@@ -199,13 +139,19 @@ hidden neurons locations
       .def_readonly ID(flags, "Stimuli-dependent flags (for modularization)")
       .def("links", py::overload_cast<>(&Neuron::links, py::const_),
            "Return the list of inputs connections")
+      .def("is_input", &Neuron::isInput,
+           "Whether this neuron is used a an input")
+      .def("is_output", &Neuron::isOutput,
+           "Whether this neuron is used a an output")
+      .def("is_hidden", &Neuron::isHidden,
+           "Whether this neuron is used for internal computations")
   ;
 
 #undef CLASS
 #define CLASS Link
   link.doc() = "An incoming neural connection";
   link.def_readonly ID(weight, "Connection weight "
-                               "(see attr:`Config.annWeightScale`)")
+                               "(see :attr:`abrain.Config.annWeightsRange`)")
       .def("src", [] (const Link &l){ return l.in.lock(); },
            "Return a reference to the source neuron")
   ;
@@ -245,5 +191,9 @@ hidden neurons locations
       }, "Return the stats as Python dictionary")
       ;
 }
+
+template void init_ann_phenotype<ANN2D> (py::module_ &m, const char *name);
+template void init_ann_phenotype<ANN3D> (py::module_ &m, const char *name);
+
 
 } // namespace kgd::eshn::pybind

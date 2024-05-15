@@ -3,13 +3,12 @@ import shutil
 from random import Random
 
 # /- abrain imports -/
-from abrain import Config, Genome, ANN, Point
+from abrain import Config, Genome, ANN3D as ANN, Point3D as Point
 from abrain.core.config import Strings
 from abrain.core.genome import GIDManager
-from common import example_path
-
-
 # /- abrain imports -/
+
+from common import example_path
 
 
 class MyGenome:
@@ -19,7 +18,7 @@ class MyGenome:
 
     @staticmethod
     def random(rng: Random, id_m: GIDManager):
-        return MyGenome(Genome.random(rng, id_manager=id_m),
+        return MyGenome(Genome.eshn_random(rng, 3, id_manager=id_m),
                         rng.uniform(-1, 1))
 
     def mutate(self, rng: Random):
@@ -89,6 +88,7 @@ def main():
             pop = population
         return pop[max(range(len(pop)), key=lambda r: pop[r].fitness)]
 
+    gen_champion = None
     for g in range(100):
         for p in population:
             p.evaluate()

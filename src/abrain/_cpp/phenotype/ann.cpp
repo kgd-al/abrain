@@ -17,29 +17,33 @@ namespace kgd::eshn::phenotype {
 using timing_clock = std::chrono::high_resolution_clock;
 using time_point = std::chrono::time_point<timing_clock>;
 
-static time_point t_now(void) { return timing_clock::now(); }
-static ANN::Stats::rep t_diff(time_point start) {
-  return std::chrono::duration_cast<ANN::Stats::duration>(t_now() - start).count();
+static time_point t_now() { return timing_clock::now(); }
+
+template <typename ANN>
+static typename ANN::Stats::rep t_diff(const time_point start) {
+  return std::chrono::duration_cast<typename ANN::Stats::duration>(t_now() - start).count();
 }
 #endif
 
-using Output = CPPN::Output;
-using Point = es::Point;
-
-bool ANN::empty(bool strict) const {
+template <uint DI>
+bool ANN_t<DI>::empty(bool strict) const {
   return strict ? (stats().hidden == 0) : (stats().edges == 0);
 }
 
-bool ANN::perceptron(void) const {
+template <uint DI>
+bool ANN_t<DI>::perceptron() const {
   return (stats().hidden == 0) && stats().edges > 0;
 }
 
-ANN ANN::build (const Coordinates &inputs,
-                const Coordinates &outputs,
-                const genotype::CPPNData &genome) {
+template <uint DI>
+ANN_t<DI> ANN_t<DI>::build (
+    const Coordinates &inputs,
+    const Coordinates &outputs,
+    const genotype::CPPNData &genome) {
+
+  using ANN = ANN_t<DI>;
 
 #ifndef NDEBUG
-//  const auto start_time = t_now();
 const auto start_time = timing_clock::now();
 #endif
 
@@ -53,7 +57,7 @@ const auto start_time = timing_clock::now();
   const auto add = [&cppn, &ann] (auto p, auto t) {
     float bias = 0;
     if (t != Neuron::I)
-      bias = cppn(p, Point::null(), Output::Bias);
+      bias = cppn(p, Point::null(), CPPN::Output::BIAS);
     return ann.addNeuron(p, t, bias);
   };
 
@@ -68,7 +72,7 @@ const auto start_time = timing_clock::now();
   for (auto &p: outputs) neurons.insert(ann._outputs[i++] = add(p, Neuron::O));
 
   Coordinates hidden;
-  evolvable_substrate::Connections connections;
+  evolvable_substrate::Connections_t<DI> connections;
   if (evolvable_substrate::connect(cppn, inputs, outputs,
                                    hidden, connections,
                                    ann._stats.iterations)) {
@@ -80,8 +84,8 @@ const auto start_time = timing_clock::now();
   ann.computeStats();
 
 #ifndef NDEBUG
-  ann._stats.time.build = t_diff(start_time);
-  ann._stats.time.eval = Stats::rep{0};
+  ann._stats.time.build = t_diff<ANN>(start_time);
+  ann._stats.time.eval = typename ANN::Stats::rep{0};
 #endif
 
   return ann;
@@ -120,33 +124,39 @@ const auto start_time = timing_clock::now();
 //  that._stats = _stats;
 //}
 
-void ANN::reset(void) {
+template <uint DI>
+void ANN_t<DI>::reset() {
   for (auto &p: _neurons)   p->reset();
 }
 
-uint ANN::max_hidden_neurons(void) {
-  return std::pow(8, Config::maxDepth);
+template <uint DI>
+uint ANN_t<DI>::max_hidden_neurons(void) {
+  return std::pow(2, DI*Config::maxDepth);
 }
 
+template <typename ANN>
 uint computeDepth (ANN &ann) {
+  using Neuron = typename ANN::Neuron;
+  using NeuronPtr = typename ANN::NeuronPtr;
+  using Point = typename ANN::Point;
   struct ReverseNeuron {
-    ANN::Neuron &n;
+    Neuron &n;
     std::vector<ReverseNeuron*> o;
-    ReverseNeuron (ANN::Neuron &n) : n(n) {}
+    explicit ReverseNeuron (Neuron &n) : n(n) {}
   };
 
   std::map<Point, ReverseNeuron*> neurons;
   std::set<ReverseNeuron*> next;
 
   uint hcount = 0, hseen = 0;
-  for (const ANN::Neuron::ptr &n: ann.neurons()) {
+  for (const NeuronPtr &n: ann.neurons()) {
     auto p = neurons.emplace(std::make_pair(n->pos, new ReverseNeuron(*n)));
-    if (n->type == ANN::Neuron::I) next.insert(p.first->second);
-    else if (n->type == ANN::Neuron::H) hcount++;
+    if (n->type == Neuron::I) next.insert(p.first->second);
+    else if (n->type == Neuron::H) hcount++;
   }
 
-  for (const ANN::Neuron::ptr &n: ann.neurons())
-    for (phenotype::ANN::Neuron::Link &l: n->links())
+  for (const NeuronPtr &n: ann.neurons())
+    for (auto &l: n->links())
       neurons.at(l.in.lock()->pos)->o.push_back(neurons.at(n->pos));
 
   std::set<ReverseNeuron*> seen;
@@ -159,7 +169,7 @@ uint computeDepth (ANN &ann) {
       n->n.depth = depth;
 //      std::cerr << n->n.pos << ": " << depth << "\n";
       seen.insert(n);
-      if (n->n.type == ANN::Neuron::H)  hseen++;
+      if (n->n.type == Neuron::H)  hseen++;
       for (ReverseNeuron *o: n->o) next.insert(o);
     }
 
@@ -181,16 +191,18 @@ uint computeDepth (ANN &ann) {
   return d;
 }
 
-void ANN::computeStats(void) {
+template <uint DI>
+void ANN_t<DI>::computeStats() {
+  using Link = typename Neuron::Link;
   auto &e = _stats.edges = 0;
   float &l = _stats.axons = 0;
 
   float &u = _stats.utility = 0;
   std::set<Point> connected_inputs;
 
-  for (const Neuron::ptr &n: _neurons) {
+  for (const NeuronPtr &n: _neurons) {
     e += uint(n->links().size());
-    for (const Neuron::Link &link: n->links()) {
+    for (const Link &link: n->links()) {
       const auto &_n = link.in.lock();
       l += (n->pos - _n->pos).length();
 
@@ -204,23 +216,26 @@ void ANN::computeStats(void) {
   u += connected_inputs.size();
   u /= float(_inputs.size() + _outputs.size());
 
-  _stats.hidden = uint(_neurons.size() - _inputs.size() - _outputs.size());
+  _stats.hidden = static_cast<uint>(_neurons.size() - _inputs.size() - _outputs.size());
   _stats.density = _stats.edges / float(max_edges());
 
   if (_stats.hidden == 0) {
-    for (Neuron::ptr &n: _inputs)   n->depth = 0;
-    for (Neuron::ptr &n: _outputs)  n->depth = 1;
+    for (NeuronPtr &n: _inputs)   n->depth = 0;
+    for (NeuronPtr &n: _outputs)  n->depth = 1;
     _stats.depth = 1;
 
   } else
     _stats.depth = computeDepth(*this);
 }
 
-ANN::Neuron::ptr ANN::addNeuron(const Point &p, Neuron::Type t, float bias) {
+template <uint DI>
+typename ANN_t<DI>::NeuronPtr
+ANN_t<DI>::addNeuron(const Point &p, typename Neuron::Type t, float bias) {
   return std::make_shared<Neuron>(p, t, bias);
 }
 
-void ANN::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
+template <uint DI>
+void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
 #ifndef NDEBUG
   const auto start_time = t_now();
 #endif
@@ -275,9 +290,12 @@ void ANN::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
 #endif
 
 #ifndef NDEBUG
-  _stats.time.eval += t_diff(start_time);
+  _stats.time.eval += t_diff<ANN_t<DI>>(start_time);
 #endif
 
 }
+
+template class ANN_t<2>;
+template class ANN_t<3>;
 
 } // end of namespace kgd::eshn::genotype

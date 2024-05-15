@@ -3,6 +3,8 @@ from typing import Dict, Any
 
 import pytest
 
+from abrain import CPPN, CPPN2D, CPPN3D
+
 
 class TestSize(IntFlag):
     SMALL = 2
@@ -76,7 +78,11 @@ kgd_config: Dict[str, Dict[TestSize, Any]] = dict(
         TestSize.NORMAL: [1],
         TestSize.LARGE: [2, .5]
     },
-
+    dimension={
+        TestSize.SMALL: [3],
+        TestSize.NORMAL: [2, 3],
+        TestSize.LARGE: [2, 3],
+    },
 )
 
 
@@ -126,6 +132,11 @@ def pytest_generate_tests(metafunc):
     maybe_parametrize("mutations", "m")
     maybe_parametrize("seed", "s")
     maybe_parametrize("ad_rate", "ar")
+    maybe_parametrize("dimension", "d")
+    maybe_parametrize("cppn_type", "cg", [CPPN, CPPN2D, CPPN3D])
+    maybe_parametrize("cppn_nd_type", "cn", [CPPN2D, CPPN3D])
+    maybe_parametrize("eshn_genome", "eg", [True, False])
+    maybe_parametrize("verbose", "v", [metafunc.config.getoption("verbose")])
 
     if can_parametrize("evo_config"):
         evo_config = metafunc.config.getoption('evolution')
@@ -160,6 +171,27 @@ def pytest_collection_modifyitems(config, items):
             pytest.mark.skip(reason=f"Test scale ({s_.name}) is larger than"
                                     f" current target ({scale.name}). Use"
                                     f" {flag} to run")
+
+    file_order = ["config", "genome", "cppn", "ann", "evolution"]
+
+    def _key(_item): return _item.reportinfo()[0].stem.split("_")[1]
+
+    def index(_item):
+        try:
+            return file_order.index(_key(_item))
+        except ValueError:
+            return len(file_order)
+
+    def debug_print_order(prefix):
+        files = []
+        for i in items:
+            if (key := _key(i)) not in files:
+                files.append(key)
+        print("File order", prefix, "sort:", files)
+
+    debug_print_order("before")
+    items.sort(key=lambda _item: index(_item))
+    debug_print_order("after")
 
     for item in items:
         if not hasattr(item, 'callspec'):

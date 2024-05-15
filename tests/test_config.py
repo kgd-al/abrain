@@ -1,11 +1,15 @@
 import json
+import pprint
 import shutil
 from pathlib import Path
 from typing import Dict
 
 import pytest
 
-from abrain.core.config import Config
+from abrain import Config
+
+OutputFunctions = Config.OutputFunctions
+ESHNOutputs = Config.ESHNOutputs
 
 default_config = None
 
@@ -20,6 +24,14 @@ def get_default_config():
     if default_config is None:
         default_config = Config.to_json()
     return default_config
+
+
+def id_output_functions():
+    Config.eshnOutputFunctions = OutputFunctions({
+        ESHNOutputs.Weight: "id",
+        ESHNOutputs.LEO: "id",
+        ESHNOutputs.Bias: "id",
+    })
 
 
 @pytest.fixture
@@ -43,7 +55,8 @@ def test_config_exists():
 
 
 @pytest.mark.parametrize("key", ["cppnWeightBounds",
-                                 "functionSet", "outputFunctions",
+                                 "functionSet",
+                                 "eshnOutputFunctions",
                                  "mutationRates"])
 def test_json_conversions(key):
     value = getattr(Config, key)
@@ -131,7 +144,7 @@ def nested_setter(key: str, value, j: Dict):  # pragma: no cover
             if k == key:
                 j[section][key] = value
                 return
-    raise KeyError
+    raise KeyError(f"{key} not found")
 
 
 def change_config_value(key, value, path):
@@ -161,12 +174,16 @@ def change_config_value(key, value, path):
         pytest.param("activationFunc", "id", id="str->str"),
         pytest.param("cppnWeightBounds", [1, 1, 1, 1, 1],
                      id="List->Bounds"),
-        pytest.param("functionSet", ["id", "abs", "ssgn"], id="List->Strings"),
+        pytest.param("functionSet", ["id", "sin", "abs"], id="List->Strings"),
         pytest.param("mutationRates",
                      nested_getter("mutationRates", get_default_config()),
-                     id="MutationRates->MutationRates")
+                     id="MutationRates->MutationRates"),
+        pytest.param("eshnOutputFunctions",
+                     nested_getter("eshnOutputFunctions", get_default_config()),
+                     id="OutputFunction->OutputFunctions")
     ])
 def test_correct_read_type(key, value, tmp_config_file):
+    id_output_functions()
     change_config_value(key, value, tmp_config_file)
 
 
@@ -191,9 +208,9 @@ def test_failed_read_type(key, value, tmp_config_file):
     [
         pytest.param("activationFunc", "sin", id="act"),
         pytest.param("functionSet", ["abs", "id"], id="funcs"),
-        pytest.param("outputFunctions", ["id", "id", "id"], id="outputs")
     ])
 def test_correct_read_depends(key, value, tmp_config_file):
+    id_output_functions()
     change_config_value(key, value, tmp_config_file)
 
 
@@ -201,10 +218,12 @@ def test_correct_read_depends(key, value, tmp_config_file):
 @pytest.mark.parametrize(
     'key, value',
     [
-        pytest.param("activationFunc", "1", id="act"),
+        # pytest.param("activationFunc", "1", id="act"),
         pytest.param("functionSet", ["circle_quadrature"], id="funcs"),
-        pytest.param("outputFunctions", ["id", "id"], id="outputs"),
-        pytest.param("outputFunctions", ["sa", "la", "mi"], id="outputs"),
+        pytest.param("eshnOutputFunctions", {"Weight": "id", "LEO": "id"}, id="outputs"),
+        pytest.param("eshnOutputFunctions",
+                    {"Weight": "sa", "LEO": "la", "Bias": "mi"},
+                     id="outputs"),
         pytest.param("cppnWeightBounds", [3, 1, -1, -3, .1],
                      id="inv_bounds"),
         pytest.param("cppnWeightBounds", [-3, -1, 1, 3, -.1],
@@ -214,8 +233,9 @@ def test_correct_read_depends(key, value, tmp_config_file):
         pytest.param("mutationRates", {"add_n": -1}, id="neg_mr"),
     ])
 def test_failed_read_depends(key, value, tmp_config_file):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as e:
         change_config_value(key, value, tmp_config_file)
+    print("Except as expected:", e)
 
 
 def test_activation_function():

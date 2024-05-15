@@ -2,14 +2,20 @@
 Configuration
 =============
 
+.. module:: abrain.core.config
+
+    Contains the classes and functions related to abrain's configuration
+
 .. autoclass:: abrain.Config
     :inherited-members:
+    :exclude-members: OutputFunctions, Strings, MutationRates, ESHNOutputs, FBounds
     :member-order: groupwise
 
-.. class:: abrain.core.config.Strings(values: list[str])
-.. class:: abrain.core.config.MutationRates(values: dict[str,float])
+.. autoclass:: abrain.Config.ESHNOutputs
+.. class:: Config.Strings(values: list[str])
+.. class:: Config.MutationRates(values: dict[str,float])
 
-.. class:: abrain.core.config.FBounds(min: float, rndMin: float, rndMax: float, max: float, stddev: float)
+.. class:: FBounds(min: float, rndMin: float, rndMax: float, max: float, stddev: float)
 
     A wrapper for mutation bounds.
     Absolute range is `[min, max]`. Values produced through random initialization
@@ -21,6 +27,5 @@ Configuration
     `stddev` is the standard deviation for every point-mutation applied to the
     corresponding field.
 
-.. module:: abrain.core.config
-
-    Contains the classes and functions related to abrain's configuration
+Internals
+---------

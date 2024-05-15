@@ -31,14 +31,19 @@ do_manual-install(){
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
   do_set-env "$1"
   # Manually ensuring build/test dependencies
-  pip install pybind11 pybind11-stubgen || exit 2
+  pip install pybind11[global] pybind11-stubgen || exit 2
   if [[ "$1" =~ "test" ]]
   then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
     || exit 2
   fi
 #   pip install -e .[$depends] # Should work but fails on various levels
+
   python setup.py develop # deprecated but functional. Go Python...
+
+#  # Still not working as well as develop
+#  pip wheel -e . --no-build-isolation --no-deps \
+#  && pip install --no-deps --force-reinstall abrain*.whl
 }
 
 cmd_pretty-tree(){  # Just a regular tree but without .git folder
@@ -65,8 +70,11 @@ cmd_very-clean(){  # Remove all artifacts. Reset to a clean repository
   rm -rf _venv*
   rm -f src/abrain/_cpp.*.so
   rm -rf doc/_build doc/src/_autogen/errors.rst doc/src/logo/logo.{pdf,svg}
+  rm -rf *build*/
+  rm -rf tmp
+  rm -rf *.whl
   find . -name 'abrain.egg-info' | xargs rm -rf
-  find src -name "__init__.pyi" | xargs rm -rf
+  find src -name "*.pyi" | xargs rm -rf
   find src -empty -type d -delete
   rm -f sample_*
   
@@ -93,11 +101,32 @@ cmd_install-dev(){  # Editable install (with pip)
 cmd_install-cached(){ # Editable install (without pip and cached build folder)
   type=${1:-'dev-test-doc'}
   echo "Building for type '$type'"
-  do_manual-install $type
+  do_manual-install "$type"
+}
+
+cmd_clion-setup(){ # Print out configuration options for CLion
+  log=.log
+  config=clion_config
+  export CLION_CONFIG=$config
+  cmd_install-cached "" >$log 2>&1
+  ok=$?
+  if [ $ok -eq 0 ]
+  then
+    printf "\033[32mLocal build successful.\033[0m\n"
+    rm -f $log
+  else
+    printf "\033[31mLocal build Failed.\033[0m\n"
+    echo "Details in $log"
+  fi
+
+  echo "CLion setup instructions (from $config)"
+  echo "-----------------"
+  cat $config
+  echo "-----------------"
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)
-  out=tests-results
+  out=tmp/tests-results
   cout=$out/coverage
   rm -rf $out
   
@@ -186,13 +215,24 @@ cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP
   fi
 }
 
-cmd_doc(){  # Generate the documentation
-# also requires sphinx and sphinx-pyproject
+do_doc_prepare() {
   out=doc/_build
   mkdir -p $out
+}
+
+cmd_doc(){  # Generate the documentation
+# also requires sphinx and sphinx-pyproject
+  do_doc_prepare
   nitpick=-n
   sphinx-build doc/src/ $out/html -b html $nitpick -W $@ 2>&1 \
   | tee $out/log
+}
+
+cmd_autodoc(){  # Generate the documentation continuously
+  do_doc_prepare
+  sphinx-autobuild doc/src/ $out/html -aE --watch src \
+    --color -W --keep-going -w $out/errors --ignore '*_auto*' \
+    --pre-build 'bash -c "clear; date;"' $@
 }
 
 cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
@@ -223,13 +263,27 @@ help(){
   sed -n 's/^cmd_\(.*\)(){ *\(#\? *\)\(.*\)/\1|\3/p' $0 | column -s '|' -t
 }
 
-if [ -z $VIRTUAL_ENV ]
+if [ $# -eq 0 ]
 then
-  echo "Refusing to work outside of a virtual environment"
+  echo "No commands/arguments provided"
+  help
   exit 1
 fi
 
-if [ $1 == "-h" ]
+if [ "$1" == "--venv" ]
+then
+  source $2/bin/activate
+  shift 2
+fi
+
+if [ -z $VIRTUAL_ENV ]
+then
+  echo "Refusing to work outside of a virtual environment."
+  echo "Activate it beforehand or provide it with the --venv <path/to/venv> option."
+  exit 1
+fi
+
+if [ "$1" == "-h" ]
 then
   help
   exit 0
