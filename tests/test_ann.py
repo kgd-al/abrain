@@ -2,7 +2,7 @@ import logging
 import math
 from random import Random
 from time import perf_counter
-from typing import Tuple, List, Dict, Union
+from typing import Tuple, List, Dict, Union, Callable
 
 import pytest
 
@@ -22,20 +22,13 @@ def _ann_type(dimension):
 
 
 def test_default_is_empty(dimension):
-    ann = _ann_type(dimension)()
-    assert ann.empty()
-    assert len(ann.ibuffer()) == 0
-    assert len(ann.obuffer()) == 0
+    # No default constructor
+    with pytest.raises(TypeError):
+        _ann_type(dimension)()
 
-    stats = ann.stats()
-    assert stats.depth == 0
-    assert stats.edges == 0
-    assert stats.axons == 0
-
+    ann, _, _ = _make_ann(dimension, 0, Random(0))
     with pytest.raises(ValueError):
-        p0 = ann.Point.null()
-        print("Testing no point at", p0)
-        ann.neuronAt(p0)
+        ann.neuronAt(ann.Point.null())
 
 
 def _make_ann(dimension, mutations, rng, other_inputs=None, other_outputs=None) -> \
@@ -68,14 +61,16 @@ def _make_ann(dimension, mutations, rng, other_inputs=None, other_outputs=None) 
     return ann_t.build(inputs, outputs, genome), inputs, outputs
 
 
-def test_empty_perceptrons(dimension, mutations, seed):
+# Force both dimensions to be tested even with small scale test
+@pytest.mark.parametrize('_dimension', [2, 3])
+def test_empty_perceptrons(_dimension, mutations, seed):
     n = 10
 
     def generate_stats():
         rng = Random(seed)
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
-            ann, _, _ = _make_ann(dimension, mutations, rng)
+            ann, _, _ = _make_ann(_dimension, mutations, rng)
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
@@ -123,6 +118,29 @@ def test_invalid_duplicates(dimension, i, o):
     with pytest.raises(ValueError):
         print(f"ANN.build({inputs}, {outputs}, genome)")
         _make_ann(dimension, 0, Random(0), inputs, outputs)
+
+
+def test_inspect_neurons(dimension, mutations, seed):
+    ann, _, _ = _make_ann(dimension, mutations, Random(seed))
+    attrs = [k for k in ann.Neuron.__dict__.keys()
+             if k[0].islower() and k[0].isalpha() and k != "links"]
+    data = []
+    widths = [len(k) for k in attrs]
+    for i, n in enumerate(ann.neurons()):
+        n: ANN.Neuron
+        data.append([])
+        for j, k in enumerate(attrs):
+            attr = getattr(n, k)
+            if isinstance(attr, Callable):
+                s = str(attr())
+            else:
+                s = str(attr)
+            data[i].append(s)
+            widths[j] = max(widths[j], len(s))
+    fmts = " ".join(f"{{:{w}}}" for w in widths)
+    print(fmts.format(*attrs))
+    for i in range(len(data)):
+        print(fmts.format(*data[i]))
 
 
 # .. todo:: implement (code exists in ann.cpp)

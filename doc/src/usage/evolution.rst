@@ -18,11 +18,11 @@ First we import the relevant modules from the library (among others)
     :end-before: /- abrain imports -/
 
 As with the previous example, we need :class:`~abrain.Genome`,
-:class:`~abrain.ANN` and :class:`~abrain.Point` to encode/decode an Artificial
+:class:`~abrain.ANN3D` and :class:`~abrain.Point3D` to encode/decode a 3D Artificial
 Neural Network.
 :class:`~abrain.Config` is responsible for statically stored settings and
 persistent configuration files. In this specific case, we also need
-:class:`~abrain.core.config.Strings` for one particular value.
+:class:`~abrain.core.config.Config.Strings` for one particular value.
 
 Finally, the :class:`~abrain.GIDManager` is a tiny helper class
 to provide consecutive int-based id to the genome. It can be used as-is,

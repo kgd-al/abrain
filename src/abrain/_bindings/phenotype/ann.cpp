@@ -17,22 +17,12 @@ PYBIND11_MAKE_OPAQUE(ANN3D::NeuronsMap)
 
 namespace kgd::eshn::pybind {
 
-#ifndef NDEBUG
-py::tuple tuple(const std::vector<float> &v) { return {py::cast(v)}; }
-void set_to_nan(std::vector<float> &v) { std::ranges::fill(v.begin(), v.end(), NAN); }
-bool valid(const std::vector<float> &v) {
-  return std::ranges::none_of(v.begin(), v.end(),
-                              static_cast<bool(*)(float)>(std::isnan));
-}
-
-static constexpr auto doc_tuple = "Debug helper to convert to Python tuple";
-static constexpr auto doc_set_to_nan = "Debug helper to set all values to NaN";
-static constexpr auto doc_valid = "Debug tester to assert no values are NaN";
-#endif
-
 template <typename ANN>
 void init_ann_phenotype (py::module_ &m, const char *name) {
   // std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
+
+  using Point = typename ANN::Point;
+  static constexpr auto D = Point::DIMENSIONS;
 
   using IBuffer = typename ANN::IBuffer;
   using OBuffer = typename ANN::OBuffer;
@@ -51,15 +41,12 @@ void init_ann_phenotype (py::module_ &m, const char *name) {
   auto nmap = py::class_<NeuronsMap>(cann, "Neurons");
   auto type = py::enum_<Type>(nern, "Type");
 
-  auto ibuf = py::class_<IBuffer, std::shared_ptr<IBuffer>>(cann, "IBuffer");
-  auto obuf = py::class_<OBuffer, std::shared_ptr<OBuffer>>(cann, "OBuffer");
-//  py::bind_vector<ANN::Inputs>(cann, "Buffer");
+  utils::init_buffer<IBuffer>(cann, "IBuffer", "Input data buffer for an ANN");
+  utils::init_buffer<OBuffer>(cann, "OBuffer", "Output data buffer for an ANN");
 
 #define ID(X, ...) (#X, &CLASS::X, __VA_ARGS__)
 #define CLASS ANN
-  cann.def(py::init<>())
-
-      .def ID(ibuffer, "Return a reference to the neural inputs buffer",
+  cann.def ID(ibuffer, "Return a reference to the neural inputs buffer",
               py::return_value_policy::reference)
       .def ID(obuffer, "Return a reference to the neural outputs buffer",
               py::return_value_policy::reference)
@@ -118,65 +105,10 @@ hidden neurons locations
                   )", "inputs"_a, "outputs"_a, "genome"_a)
   ;
 
-  cann.doc() = "3D Artificial Neural Network produced through "
-               "Evolvable Substrate Hyper-NEAT";
-
-  ibuf.doc() = "Specialized, fixed-size buffer for the neural inputs"
-               " (write-only)";
-  ibuf.def("__setitem__",
-           [] (IBuffer &buf, size_t i, float v) { buf[i] = v; },
-           "Assign an element")
-      .def("__setitem__",
-         [](IBuffer &buf, const py::slice &slice, const py::iterable &items) {
-           size_t start = 0, stop = 0, step = 0, slicelength = 0;
-           if (!slice.compute(buf.size(), &start, &stop, &step, &slicelength))
-               throw py::error_already_set();
-           if (slicelength != py::len(items))
-               throw std::runtime_error("Left and right hand size of slice"
-                                        " assignment have different sizes!");
-           for (py::handle h: items) {
-//           for (size_t i = 0; i < slicelength; ++i) {
-               buf[start] = h.cast<float>();
-               start += step;
-           }
-       })
-      .def("__len__", [] (const typename ANN::IBuffer &buf) { return buf.size(); },
-           "Return the number of expected inputs")
-#ifndef NDEBUG
-      .def("tuple", [] (const IBuffer &buf) { return tuple(buf); }, doc_tuple)
-      .def("set_to_nan", [] (IBuffer &buf) { return set_to_nan(buf); }, doc_set_to_nan)
-      .def("valid", [] (const IBuffer &buf) { return valid(buf); }, doc_valid)
-#endif
-  ;
-
-  obuf.doc() = "Specialized, fixed-size buffer for the neural outputs"
-               " (read-only)";
-  obuf.def("__getitem__",
-           [] (const OBuffer &buf, size_t i) { return buf[i]; },
-           "Access an element")
-      .def("__getitem__",
-        [](const OBuffer &buf, const py::slice &slice) -> py::list * {
-        size_t start = 0, stop = 0, step = 0, slicelength = 0;
-        if (!slice.compute(buf.size(), &start, &stop, &step, &slicelength))
-           throw py::error_already_set();
-
-        auto *list = new py::list(slicelength);
-        for (size_t i = 0; i < slicelength; ++i) {
-           (*list)[i] = buf[start];
-           start += step;
-        }
-        return list;
-      })
-      .def("__len__", [] (const OBuffer &buf) { return buf.size(); },
-           "Return the number of expected outputs")
-      .def_property_readonly("__iter__", [] (const py::object&) { return py::none(); },
-           "Cannot be iterated. Use direct access instead.")
-#ifndef NDEBUG
-      .def("tuple", [] (const OBuffer &buf) { return tuple(buf); }, doc_tuple)
-      .def("set_to_nan", [] (OBuffer &buf) { set_to_nan(buf); }, doc_set_to_nan)
-      .def("valid", [] (const OBuffer &buf) { return valid(buf); }, doc_valid)
-#endif
-      ;
+  cann.doc() = utils::mergeToString(
+          D,
+          "D Artificial Neural Network produced through "
+          "Evolvable Substrate Hyper-NEAT");
 
   nmap.doc() = "Wrapper for the C++ neurons container";
   nmap.def("__iter__", [] (NeuronsMap &_m) {
@@ -189,7 +121,7 @@ hidden neurons locations
 #define CLASS Neuron
   nern.doc() = "Atomic computational unit of an ANN";
   nern.def_readonly ID(pos, utils::mergeToString(
-                         "Position in the ", ESHN_SUBSTRATE_DIMENSION,
+                         "Position in the ", ANN::Point::DIMENSIONS,
                          "D substrate").c_str())
       .def_readonly ID(type, "Neuron role (see :class:`Type`)")
       .def_readonly ID(bias, "Neural bias")
@@ -198,13 +130,19 @@ hidden neurons locations
       .def_readonly ID(flags, "Stimuli-dependent flags (for modularization)")
       .def("links", py::overload_cast<>(&Neuron::links, py::const_),
            "Return the list of inputs connections")
+      .def("is_input", &Neuron::isInput,
+           "Whether this neuron is used a an input")
+      .def("is_output", &Neuron::isOutput,
+           "Whether this neuron is used a an output")
+      .def("is_hidden", &Neuron::isHidden,
+           "Whether this neuron is used for internal computations")
   ;
 
 #undef CLASS
 #define CLASS Link
   link.doc() = "An incoming neural connection";
   link.def_readonly ID(weight, "Connection weight "
-                               "(see attr:`Config.annWeightScale`)")
+                               "(see :attr:`abrain.Config.annWeightsRange`)")
       .def("src", [] (const Link &l){ return l.in.lock(); },
            "Return a reference to the source neuron")
   ;

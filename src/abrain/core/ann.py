@@ -12,8 +12,8 @@ from .._cpp.phenotype import (ANN2D, Point2D, CPPN2D,
 logger = logging.getLogger(__name__)
 
 
-ANN = Union[ANN2D, ANN3D]
-Point = Union[Point2D, Point3D]
+_ANN = Union[ANN2D, ANN3D]
+_Point = Union[Point2D, Point3D]
 
 
 ANN2D.Point = Point2D
@@ -37,19 +37,19 @@ def plotly_render(ann: ANN3D, labels: Optional[Dict[Point3D, str]] = None) \
 ANN3D.render3D = plotly_render
 
 
-def _iter_neurons(ann: ANN):
+def _iter_neurons(ann: _ANN):
     for n in ann.neurons():
         yield n
 
 
-def _iter_axons(ann: ANN):
+def _iter_axons(ann: _ANN):
     for dst in ann.neurons():
         for link in dst.links():
             yield link, link.src(), dst
 
 
 class ANNMonitor:
-    def __init__(self, ann: ANN, labels: Optional[Dict[Point, str]],
+    def __init__(self, ann: _ANN, labels: Optional[Dict[_Point, str]],
                  folder: Path,
                  neurons_file: Optional[Union[Path, str]],
                  dynamics_file: Optional[Union[Path, str]],
@@ -202,7 +202,7 @@ class ANNMonitor:
             logger.info(f"Generated {interactive_plot_file}")
 
 
-def _neurons(ann: ANN, labels: Dict[Point, str],
+def _neurons(ann: _ANN, labels: Dict[_Point, str],
              data: Optional[Iterable[float]] = None,
              **kwargs) -> go.Scatter3d:
     # noinspection PyPep8Naming
@@ -259,10 +259,10 @@ def _neurons(ann: ANN, labels: Dict[Point, str],
         )
 
 
-def _edges(ann: ANN, data: Optional[Iterable[float]] = None,
+def _edges(ann: _ANN, data: Optional[Iterable[float]] = None,
            **kwargs) -> go.Scatter3d:
 
-    if ann.stats().edges == 0:
+    if ann.stats().edges == 0:  # pragma: no cover
         return go.Scatter3d()
 
     x, y, z = (

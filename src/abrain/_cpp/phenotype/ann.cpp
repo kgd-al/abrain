@@ -44,7 +44,6 @@ ANN_t<DI> ANN_t<DI>::build (
   using ANN = ANN_t<DI>;
 
 #ifndef NDEBUG
-//  const auto start_time = t_now();
 const auto start_time = timing_clock::now();
 #endif
 

@@ -31,7 +31,7 @@ do_manual-install(){
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
   do_set-env "$1"
   # Manually ensuring build/test dependencies
-  pip install pybind11 pybind11-stubgen || exit 2
+  pip install pybind11[global] pybind11-stubgen || exit 2
   if [[ "$1" =~ "test" ]]
   then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
@@ -126,7 +126,7 @@ cmd_clion-setup(){ # Print out configuration options for CLion
 }
 
 cmd_pytest(){  # Perform the test suite (small scale with evolution)
-  out=tests-results
+  out=tmp/tests-results
   cout=$out/coverage
   rm -rf $out
   
@@ -215,13 +215,24 @@ cmd_test_installs(){ # Attempt at ensuring that everything works fine. WIP
   fi
 }
 
-cmd_doc(){  # Generate the documentation
-# also requires sphinx and sphinx-pyproject
+do_doc_prepare() {
   out=doc/_build
   mkdir -p $out
+}
+
+cmd_doc(){  # Generate the documentation
+# also requires sphinx and sphinx-pyproject
+  do_doc_prepare
   nitpick=-n
   sphinx-build doc/src/ $out/html -b html $nitpick -W $@ 2>&1 \
   | tee $out/log
+}
+
+cmd_autodoc(){  # Generate the documentation continuously
+  do_doc_prepare
+  sphinx-autobuild doc/src/ $out/html -aE --watch src \
+    --color -W --keep-going -w $out/errors --ignore '*_auto*' \
+    --pre-build 'bash -c "clear; date;"' $@
 }
 
 cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean

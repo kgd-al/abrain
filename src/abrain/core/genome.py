@@ -3,6 +3,7 @@ Test documentation for genome file (module?)
 """
 import logging
 import pathlib
+import pprint
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
@@ -16,9 +17,26 @@ from pyrecord import Record
 from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData
 
+ESHNOutputs = Config.ESHNOutputs
+
 logger = logging.getLogger(__name__ + ".mutations")
 
 dot_found = (which("dot") is not None)
+
+
+def _string_to_labels(string: str):
+    label = ""
+    labels = []
+    for c in string:
+        if c == '_' or c.isalnum():
+            label += c
+        else:
+            if label:
+                labels.append(label)
+            label = ""
+    if label:
+        labels.append(label)
+    return labels
 
 
 class GIDManager:
@@ -38,7 +56,7 @@ class GIDManager:
 
 
 class Genome(_CPPNData):
-    """Genome class for ES-HyperNEAT.
+    """Genome class encoding a CPPN either for ES-HyperNEAT or for direct use.
 
     A simple collection of Node/Link.
     Can only be created via random init or copy
@@ -80,6 +98,113 @@ class Genome(_CPPNData):
     # Public manipulation interface
     ###########################################################################
 
+    @staticmethod
+    def random(rng: Random,
+               inputs: int,
+               outputs: Union[int, Collection[str]],
+               with_input_bias: bool = True,
+               labels: Optional[Union[str, Collection[str]]] = None,
+               id_manager: Optional[GIDManager] = None) \
+            -> 'Genome':
+        """Create a random CPPN with boolean initialization
+
+        :param rng: The source of randomness
+        :param inputs: Number of inputs
+        :param outputs: Number of outputs or specific functions
+        :param with_input_bias: Whether to use an input bias
+        :param labels: Labels for the inputs/outputs (in that order, single characters)
+        :param id_manager: an optional manager providing unique identifiers
+
+        :return: A random CPPN genome
+        """
+        g = Genome(Genome.__private_key)
+        inputs += int(with_input_bias)
+        g.inputs = inputs
+        g.outputs = outputs if isinstance(outputs, int) else len(outputs)
+        g.bias = with_input_bias
+
+        if labels is not None:
+            if not isinstance(labels, str) and isinstance(labels, Collection):
+                tokens = labels
+            else:
+                tokens = _string_to_labels(labels)
+            if with_input_bias:
+                tokens = tokens[:g.inputs-1] + ["b"] + tokens[g.inputs-1:]
+            if len(tokens) != g.inputs + g.outputs:
+                raise ValueError(f"Wrong number of labels. Expected {g.inputs+g.outputs}"
+                                 f" got {len(tokens)}")
+            g.labels = Genome.__labels_sep.join(tokens)
+
+        def output_func(_i):
+            if isinstance(outputs, Iterable):
+                return outputs[_i]
+            else:
+                return Config.defaultOutputFunction
+
+        for j in range(g.outputs):
+            g._add_node(output_func(j))
+
+        for i in range(g.inputs):
+            for j in range(g.outputs):
+                if rng.random() < .5:
+                    g._add_link(i, j + inputs,
+                                Genome.__random_link_weight(rng))
+
+        if id_manager is not None:
+            setattr(g, g.__id_field, id_manager())
+            setattr(g, g.__parents_field, [])
+
+        return g
+
+    @staticmethod
+    def eshn_random(rng: Random,
+                    dimension: int,
+                    with_input_bias: Optional[bool] = True,
+                    with_input_length: Optional[bool] = True,
+                    with_leo: Optional[bool] = True,
+                    with_output_bias: Optional[bool] = True,
+                    id_manager: Optional[GIDManager] = None):
+        """Create a random CPPN with boolean initialization for use with ES-HyperNEAT
+
+        :param rng: The source of randomness
+        :param dimension: The substrate dimension (2- or 3-D)
+        :param with_input_bias: Whether to use an input bias
+        :param with_input_length: Whether to directly provide the distance between points
+        :param with_leo: Whether to use a Level of Expression Output
+        :param with_output_bias: Whether to use the CPPN to generate per-neuron biases
+        :param id_manager: an optional manager providing unique identifiers
+
+        :return: A random CPPN genome for use with ES-HyperNEAT
+        """
+
+        if __debug__:  # pragma: no branch
+            if dimension not in [2, 3]:
+                raise ValueError("This ES-HyperNEAT implementation only works with 2D or 3D ANNs")
+            for i in [with_input_bias, with_input_length, with_leo, with_output_bias]:
+                if not isinstance(i, bool):
+                    raise ValueError("Wrong argument type")
+
+        coordinates = "xy" if dimension == 2 else "xyz"
+        inputs = 2*dimension
+        labels = [f"{c}_{i}" for c in coordinates for i in range(2)]
+        if with_input_length:
+            inputs += 1
+            labels.append("l")
+
+        outputs = [Config.eshnOutputFunctions[ESHNOutputs.Weight]]
+        labels.append("W")
+        if with_leo:
+            outputs.append(Config.eshnOutputFunctions[ESHNOutputs.LEO])
+            labels.append("L")
+        if with_output_bias:
+            outputs.append(Config.eshnOutputFunctions[ESHNOutputs.Bias])
+            labels.append("B")
+
+        return Genome.random(rng, inputs, outputs,
+                             with_input_bias=with_input_bias,
+                             labels=labels,
+                             id_manager=id_manager)
+
     def mutate(self, rng: Random) -> None:
         """Mutate (in-place) this genome
 
@@ -96,7 +221,7 @@ class Genome(_CPPNData):
         for i in range(self.outputs):
             all_nodes.append(N(i + offset, "O"))
         offset += self.outputs
-        for i, n in enumerate(self.nodes):
+        for i, n in enumerate(self.nodes[self.outputs:]):
             all_nodes.append(N(n.id, "H"))
 
         depths = self._compute_node_depths(self.links)
@@ -123,7 +248,7 @@ class Genome(_CPPNData):
 
         # Get inputs/outputs for each node.
         # Refine strict definition to detect loops
-        node_degrees = Genome._compute_node_degrees(self.links)
+        node_degrees = self._compute_node_degrees()
 
         # Ensure that link removal does not produce in-/output less nodes
         # (except for I/O nodes, obviously)
@@ -139,7 +264,7 @@ class Genome(_CPPNData):
         # A -> X -> B which can be replaced by A -> B
         simples_nodes: List[int] = []
         for nid, d in node_degrees.items():
-            if d.i == 1 and d.o == 1:
+            if not self._is_output(nid) and d.i == 1 and d.o == 1:
                 simples_nodes.append(nid)
 
         # Copy the rates and update based on possible mutations
@@ -179,86 +304,19 @@ class Genome(_CPPNData):
         """
         copy = self.copy()
         copy.mutate(rng)
-        assert hasattr(self, self.__id_field) == (id_manager is not None), \
-            "Current genome has an id, but no ID manager provided for child"
+
+        if __debug__:  # pragma: no branch
+            should_have_id = hasattr(self, self.__id_field)
+            can_have_id = (id_manager is not None)
+            assert not should_have_id or can_have_id, \
+                "Current genome has an id, but no ID manager provided for child"
+            assert should_have_id or not can_have_id, \
+                "ID manager provided but parent has no id"
+
         if id_manager is not None:
             setattr(copy, self.__id_field, id_manager())
             setattr(copy, self.__parents_field, [self.id()])
         return copy
-
-    @staticmethod
-    def random(rng: Random,
-               inputs: int,
-               outputs: Union[int, Collection[str]],
-               labels: Optional[Union[str, Collection[str]]] = None,
-               id_manager: Optional[GIDManager] = None) \
-            -> 'Genome':
-        """Create a random CPPN with boolean initialization
-
-        :param rng: The source of randomness
-        :param inputs: Number of inputs
-        :param outputs: Number of outputs or specific functions
-        :param labels: Labels for the inputs/outputs (in that order, single characters)
-        :param id_manager: an optional manager providing unique identifiers
-
-        :return: A random CPPN genome
-        """
-        g = Genome(Genome.__private_key)
-        g.inputs = inputs
-        g.outputs = outputs if isinstance(outputs, int) else len(outputs)
-
-        if labels is not None:
-            if isinstance(labels, Collection):
-                tokens = labels
-            else:
-                tokens = "".split(labels)
-            if len(tokens) != inputs + outputs:
-                raise ValueError(f"Wrong number of labels. Expected {inputs}+{outputs}"
-                                 f" got {len(tokens)}")
-            g.labels = Genome.__labels_sep.join(tokens)
-
-        for i in range(inputs):
-            for j in range(outputs):
-                if rng.random() < .5:
-                    g._add_link(i, j + inputs,
-                                Genome.__random_link_weight(rng))
-
-        if id_manager is not None:
-            setattr(g, g.__id_field, id_manager())
-            setattr(g, g.__parents_field, [])
-
-        return g
-
-    @staticmethod
-    def eshn_random(rng: Random,
-                    dimension: int,
-                    with_input_length: Optional[bool] = True,
-                    with_input_bias: Optional[bool] = True,
-                    with_leo: Optional[bool] = True,
-                    with_output_bias: Optional[bool] = True,
-                    id_manager: Optional[GIDManager] = None):
-        if dimension not in [2, 3]:
-            raise ValueError("This ES-HyperNEAT implementation only works with 2D or 3D ANNs")
-        coordinates = "xy" if dimension == 2 else "xyz"
-        inputs = 2*dimension
-        labels = [f"{c}_{i}" for c in coordinates for i in range(2)]
-        if with_input_bias:
-            inputs += 1
-            labels.append("b")
-        if with_input_length:
-            inputs += 1
-            labels.append("l")
-
-        outputs = [Config.eshnOutputFunctions[Weight]]
-        labels.append("W")
-        if with_leo:
-            outputs.append("step")
-            labels.append("L")
-        if with_output_bias:
-            outputs.append("id")
-            labels.append("B")
-
-        return Genome.random(rng, inputs, outputs, labels, id_manager)
 
     def copy(self) -> 'Genome':
         """Return a perfect (deep)copy of this genome"""
@@ -266,6 +324,7 @@ class Genome(_CPPNData):
 
         copy.inputs = self.inputs
         copy.outputs = self.outputs
+        copy.bias = self.bias
         copy.labels = self.labels
         copy.nodes = self.nodes
         copy.links = self.links
@@ -339,6 +398,7 @@ class Genome(_CPPNData):
         dct = dict(
             inputs=self.inputs,
             outputs=self.outputs,
+            bias=self.bias,
             labels=self.labels,
             nodes=[(n.id, n.func) for n in self.nodes],
             links=[(l_.id, l_.src, l_.dst, l_.weight) for l_ in self.links],
@@ -357,6 +417,7 @@ class Genome(_CPPNData):
         g = Genome(Genome.__private_key)
         g.inputs = data["inputs"]
         g.outputs = data["outputs"]
+        g.bias = data["bias"]
         g.labels = data["labels"]
         g.nodes = _CPPNData.Nodes([
             _CPPNData.Node(n[0], n[1]) for n in data["nodes"]
@@ -391,7 +452,7 @@ class Genome(_CPPNData):
 
     def to_dot(self, path: str, ext: str = "pdf",
                title: Optional[str] = None,
-               debug=None) -> str:
+               debug: Optional[Union[str, Iterable]] = None) -> str:
         """Produce a graphical representation of this genome
 
         .. note:: Missing functions images in nodes and/or lots of
@@ -403,9 +464,11 @@ class Genome(_CPPNData):
             ext: The rendering format to use
             title: Optional title for the graph (e.g. for generational info)
             debug: Print more information on the graph.
-                Special values:
+                Special values (either as a single string or a list):
 
                 - 'depth' will display every nodes' depth
+                - 'links' will display every links' id
+                - 'keepdot' will keep the intermediate dot file
 
         Raises:
             OSError: if the `dot` program is not available (not installed, on
@@ -451,10 +514,15 @@ class Genome(_CPPNData):
         def node_x_label(nid):
             return x_label(depths[nid] if depths is not None else None)
 
+        if self.labels:
+            labels = self.labels.split(self.__labels_sep)
+        else:
+            labels = ([f"I{i}" for i in range(self.inputs)]
+                      + [f"I{i+self.inputs}" for i in range(self.outputs)])
+
         # input nodes
-        i_labels = Config.cppnInputNames
         for i in range(self.inputs):
-            label = i_labels[i]
+            label = labels[i]
             name = "I" + label.upper().replace("_", "")
             ix_to_name[i] = name
             if '_' in label:
@@ -465,33 +533,33 @@ class Genome(_CPPNData):
 
         img_format = "svg" if vectorial else "png"
 
-        def img_file(func):
-            p = (files('abrain') / f"core/functions/{func}.{img_format}")
+        def img_file(_func):
+            p = (files('abrain') / f"core/functions/{_func}.{img_format}")
             return str(p.resolve())
 
-        o_labels = Config.cppnOutputNames
-        for i in range(self.outputs):
-            label = o_labels[i]
-            name = "O" + label.upper().replace("_", "")
-            ix_to_name[i + self.inputs] = name
-            f = Config.outputFunctions[i]
-            g_o.node(name, "",
-                     width="0.5in", height="0.5in", margin="0",
-                     fixedsize="shape",
-                     image=img_file(f),
-                     xlabel=node_x_label(i + self.inputs))
-            g_ol.node(name + "_l", shape="plaintext", label=label)
-            dot.edge(name, name + "_l")
-
         for i, n in enumerate(self.nodes):
-            name = f"H{n.id}"
-            ix_to_name[n.id] = name
-            label = name if debug is not None else ""
-            g_h.node(name, label,
-                     width="0.5in", height="0.5in", margin="0",
-                     fixedsize="shape",
-                     image=img_file(n.func),
-                     xlabel=node_x_label(n.id))
+            nid, func = n.id, n.func
+            if self._is_output(nid):
+                label = labels[i+self.inputs]
+                name = "O" + label.upper().replace("_", "")
+                ix_to_name[i + self.inputs] = name
+                g_o.node(name, "",
+                         width="0.5in", height="0.5in", margin="0",
+                         fixedsize="shape",
+                         image=img_file(func),
+                         xlabel=node_x_label(i + self.inputs))
+                g_ol.node(name + "_l", shape="plaintext", label=label)
+                dot.edge(name, name + "_l")
+
+            else:
+                name = f"H{nid}"
+                ix_to_name[nid] = name
+                label = name if debug is not None else ""
+                g_h.node(name, label,
+                         width="0.5in", height="0.5in", margin="0",
+                         fixedsize="shape",
+                         image=img_file(func),
+                         xlabel=node_x_label(nid))
 
         for i, l in enumerate(self.links):
             if l.weight == 0:  # pragma: no cover
@@ -502,7 +570,7 @@ class Genome(_CPPNData):
                      color="red" if l.weight < 0 else "black",
                      penwidth=str(3.75 * w + .25),
                      xlabel=x_label(
-                         l.id if debug is not None and "links" in debug
+                         l.id if isinstance(debug, Iterable) and "links" in debug
                          else None))
 
         # enforce i/o order
@@ -515,7 +583,7 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        cleanup = False if debug is not None and "keepdot" in debug else True
+        cleanup = False if isinstance(debug, Iterable) and "keepdot" in debug else True
 
         return dot.render(path, format=ext, cleanup=cleanup)
 
@@ -537,7 +605,7 @@ class Genome(_CPPNData):
         return rng.choice(Config.functionSet)
 
     def _add_node(self, func: str) -> int:
-        nid = self.nextNodeID + self.inputs + self.outputs
+        nid = self.nextNodeID + self.inputs
         self.nodes.append(_CPPNData.Node(nid, func))
         self.nextNodeID += 1
         return nid
@@ -547,7 +615,7 @@ class Genome(_CPPNData):
         return rng.uniform(Config.cppnWeightBounds.rndMin,
                            Config.cppnWeightBounds.rndMax)
 
-    def _add_link(self, src: int, dst: int, weight: float) -> int:
+    def _add_link(self, src: int, dst: int, weight: float, spontaneous: bool = True) -> int:
         """Add a link to the genome
 
         :param src: index of the source node in [0,
@@ -559,6 +627,8 @@ class Genome(_CPPNData):
         lid = self.nextLinkID
         self.links.append(_CPPNData.Link(lid, src, dst, weight))
         self.nextLinkID += 1
+        if spontaneous:
+            logger.debug(f"[add_l] {src} -> {dst}")
         return lid
 
     def __random_add_node(self, rng: Random) -> None:
@@ -569,8 +639,8 @@ class Genome(_CPPNData):
         src, dst, weight = link.src, link.dst, link.weight
         logger.debug(f"[add_n] {src} -> {dst} >> {src} -> {nid} -> {dst}")
 
-        self._add_link(src, nid, 1)
-        self._add_link(nid, dst, weight)
+        self._add_link(src, nid, 1, spontaneous=False)
+        self._add_link(nid, dst, weight, spontaneous=False)
         self.links.pop(i)
 
     def __random_del_node(self, rng: Random, candidates) -> None:
@@ -592,7 +662,7 @@ class Genome(_CPPNData):
                self.links) == 0 \
                 and i_l.src != o_l.dst:
             # Link does not exist already and is not auto-recurrent -> add it
-            self._add_link(i_l.src, o_l.dst, o_l.weight)
+            self._add_link(i_l.src, o_l.dst, o_l.weight, spontaneous=False)
         self.nodes.pop(n_ix)
         self.links.pop(j_i)
         if j_i < j_o:  # index may have been made invalid
@@ -605,7 +675,7 @@ class Genome(_CPPNData):
 
         logger.debug(f"[add_l] {link.src} -({weight})-> {link.dst}")
 
-        self._add_link(link.src, link.dst, weight)
+        self._add_link(link.src, link.dst, weight, spontaneous=False)
 
     def __random_del_link(self, rng: Random, candidates) -> None:
         i = candidates[rng.randrange(0, len(candidates))]
@@ -657,20 +727,22 @@ class Genome(_CPPNData):
 
             return current_depth
 
+        for i in range(self.inputs + self.outputs):
+            depths.setdefault(i, 0)
+
         for i in range(self.outputs):
             recurse(i + self.inputs, 0)
 
-        for i in range(self.inputs):
-            depths.setdefault(i, 0)
-
         return depths
 
-    @staticmethod
-    def _compute_node_degrees(links):
+    def _compute_node_degrees(self):
         d = Record.create_type("D", "i", "o", i=0, o=0)
 
         node_degrees: Dict[int, d] = {}
-        for link in links:
+        for node in self.nodes:
+            node_degrees[node.id] = d(0, 0)
+
+        for link in self.links:
             node_degrees.setdefault(link.src, d()).o += 1
             node_degrees.setdefault(link.dst, d()).i += 1
 

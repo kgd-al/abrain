@@ -15,19 +15,27 @@ We start by importing the essential components, aliased directly under the main
 package:
 
 - :class:`~abrain.Genome` abstracts the evolvable part of the library
-- :class:`~abrain.ANN` is the callable object representing an Artificial
-  Neural Network of emergent topology
-- :class:`~abrain.Point` describes a coordinate in the substrate ("the brain")
-- :func:`~abrain.plotly_render` is a helper function for rendering
+- :class:`~abrain.ANN2D` is the callable object representing an Artificial
+  Neural Network of emergent topology in 2 dimensions
+- :class:`~abrain.Point3D` describes a coordinate in the substrate ("the brain")
+- :func:`~abrain.ANN3D.render3D` is a helper function for rendering
   ANN to a, potentially interactive, figure
 - :class:`random.Random` is used as the source of random numbers
+
+.. note::
+
+    While we illustrate here the use of a 3D ANN, everything (but the 3D rendering)
+    works identically for :class:`abrain.ANN2D`
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
     :lines: 12-15
 
 The first object we need is the Genome which can be created by providing the
-random number generator to its :func:`~abrain.Genome.random` function.
+random number generator to its :func:`~abrain.Genome.eshn_random` function.
+This function is dedicated to generating a genome for use with Es-HyperNEAT while
+:func:`~abrain.Genome.random` is meant for generic-purpose CPPNs.
+
 To simulate an evolutionary process, we subject this Genome `g` to a number of
 undirected mutations (see :ref:`usage-advanced-mutations`)
 
@@ -65,7 +73,7 @@ relationships (i.e. bilateral symmetry, front-back ...).
     :lines: 22-24
 
 Creating the ANN is then as trivial as calling the static
-:func:`~abrain.ANN.build` function with the set of inputs/outputs and the
+:func:`~abrain.ANN3D.build` function with the set of inputs/outputs and the
 evolved genome.
 Various statistics can be queried on the resulting object including whether the
 build procedure resulted in a functional network.
@@ -75,7 +83,7 @@ build procedure resulted in a functional network.
     :lines: 27
 
 Optionally, one can produce a 3D rendering of the network through the utility
-function :func:`~abrain.plotly_render`.
+function :func:`~abrain.ANN3D.render3D`.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:

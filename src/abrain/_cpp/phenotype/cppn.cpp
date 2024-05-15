@@ -8,9 +8,8 @@
 
 #ifndef NDEBUG
 //#define DEBUG_CPPN
+#include <iomanip>
 #endif
-
-#include <iomanip> /// TODO REMOVE
 
 #ifdef DEBUG_CPPN
 #include <iomanip>
@@ -22,7 +21,6 @@ std::ostream& operator<< (std::ostream &os,
   for (uint i=1; i<outputs.size(); i++) os << " " << outputs[i];
   return os << "]";
 }
-
 
 /// Manages indentation for provided ostream
 /// \author James Kanze @ https://stackoverflow.com/a/9600752
@@ -55,7 +53,6 @@ public:
   /// Returns control of the buffer to its owner
   virtual ~IndentingOStreambuf(void) { _owner->rdbuf(_buffer); }
 };
-
 
 } // end of namespace utils
 #endif
@@ -144,16 +141,26 @@ CPPN::CPPN (const CPPNData &genotype) {
   using NID = uint;//CPPNData::Node::ID;
   const auto NI = genotype.inputs;
   const auto NO = genotype.outputs;
+  const auto NH = genotype.nodes.size() - NO;
 
   auto fnode = [] (const CPPNData::Node::FuncID &fid) {
     return std::make_shared<FNode>(functions.at(fid));
   };
 
   std::map<NID, Node_ptr> nodes;
+#ifdef DEBUG_CPPN
+  std::cerr << "Building CPPN with " << NI << " inputs, " << NO << " outputs,"
+            << " and " << NH << " internal nodes" << std::endl;
+#endif
+
+  _has_input_bias = genotype.bias;
+
+  _ibuffer = IBuffer(NI);
+  _obuffer = OBuffer(NO);
 
   _inputs.resize(NI);
   _outputs.resize(NO);
-  _hidden.resize(genotype.nodes.size() - NO);
+  _hidden.resize(NH);
 
   for (NID i=0; i<NI; i++) {
 #ifdef DEBUG_CPPN
@@ -165,7 +172,7 @@ CPPN::CPPN (const CPPNData &genotype) {
   for (NID i=0; i<NO; i++) {
     const auto [id, func] = genotype.nodes[i];
 #ifdef DEBUG_CPPN
-    std::cerr << "(O) " << i+off << " " << i << " " << ofuncs(i) << std::endl;
+    std::cerr << "(O) " << i+NI << " " << i << " " << func << std::endl;
 #endif
     nodes[id] = _outputs[i] = fnode(func);
   }
@@ -173,9 +180,9 @@ CPPN::CPPN (const CPPNData &genotype) {
   for (NID i=NO; i<genotype.nodes.size(); i++) {
     const auto [id, func] = genotype.nodes[i];
 #ifdef DEBUG_CPPN
-    std::cerr << "(H) " << n_g.id << " " << i << " " << n_g.func << std::endl;
+    std::cerr << "(H) " << id << " " << i << " " << func << std::endl;
 #endif
-    nodes[id] = _hidden[i] = fnode(func);
+    nodes[id] = _hidden[i-NO] = fnode(func);
   }
 
   for (const auto &l_g: genotype.links) {
@@ -184,7 +191,7 @@ CPPN::CPPN (const CPPNData &genotype) {
   }
 
 #ifdef DEBUG_CPPN
-  i=0;
+  uint i=0;
   std::map<Node_ptr, uint> map;
   printf("Built CPPN:\n");
   for (const auto &v: {_inputs, _outputs, _hidden})
@@ -201,6 +208,7 @@ CPPN::CPPN (const CPPNData &genotype) {
         printf("\t\t[%d]\t%g %a\n", map.at(l.node.lock()), l.weight, l.weight);
     }
   }
+  printf("--\n");
 #endif
 }
 
@@ -248,25 +256,15 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 }
 #endif
 
-// =============================================================================
+void CPPN::pre_evaluation(const IBuffer &inputs) {
+  if (inputs.size() != n_inputs())  throw std::runtime_error("Invalid number of inputs");
+  for (uint i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
+  common_pre_evaluation();
+}
 
-template <uint DI>
-CPPN_ND<DI>::CPPN_ND(const Genotype &genotype) : CPPN(genotype) {}
-template CPPN_ND<2>::CPPN_ND(const Genotype &genotype);
-template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
-
-template <uint DI>
-void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
-  static constexpr auto N = DIMENSIONS;
-  for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
-  for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
-
-#if ESHN_WITH_DISTANCE
-  static const auto norm = static_cast<float>(2*std::sqrt(2));
-  _inputs[2*N]->data = (src - dst).length() / norm;
-#endif
-
-  _inputs.back()->data = 1;
+void CPPN::common_pre_evaluation() {
+  if (_has_input_bias)
+    _inputs.back()->data = 1;
 
   for (const auto &n: _hidden)  n->data = NAN;
   for (const auto &n: _outputs)  n->data = NAN;
@@ -280,8 +278,41 @@ void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI
 #endif
 }
 
+void CPPN::operator() (OBuffer &outputs, const IBuffer &inputs) {
+  pre_evaluation(inputs);
+  for (uint i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
+}
+
+float CPPN::operator() (uint o, const IBuffer &inputs) {
+  pre_evaluation(inputs);
+  return _outputs[o]->value();
+}
+
+
+// =============================================================================
+
 template <uint DI>
-void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, Outputs &outputs) {
+CPPN_ND<DI>::CPPN_ND(const Genotype &genotype) : CPPN(genotype) {}
+template CPPN_ND<2>::CPPN_ND(const Genotype &genotype);
+template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
+
+template <uint DI>
+void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
+  static constexpr auto N = DIMENSIONS;
+
+  const auto I = n_inputs();
+  for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
+  for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
+
+  static const auto norm = static_cast<float>(2*std::sqrt(2));
+  if (I - int(_has_input_bias) > 2*N)
+    _inputs[2*N]->data = (src - dst).length() / norm;
+
+  common_pre_evaluation();
+}
+
+template <uint DI>
+void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, OBuffer &outputs) {
   assert(outputs.size() == _outputs.size());
 
   pre_evaluation(src, dst);
@@ -292,13 +323,13 @@ void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, Outputs &outpu
   std::cout << outputs << "\n" << std::endl;
 #endif
 }
-template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, Outputs &outputs);
-template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, Outputs &outputs);
+template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, OBuffer &outputs);
+template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffer &outputs);
 
 template <uint DI>
 void CPPN_ND<DI>::operator() (
     const Point &src, const Point &dst,
-    Outputs &outputs,
+    OBuffer &outputs,
     const OutputSubset &oset) {
   assert(outputs.size() == _outputs.size());
   assert(oset.size() <= _outputs.size());
@@ -311,8 +342,8 @@ void CPPN_ND<DI>::operator() (
   std::cout << outputs << "\n" << std::endl;
 #endif
 }
-template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, Outputs &outputs, const OutputSubset &oset);
-template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, Outputs &outputs, const OutputSubset &oset);
+template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, OBuffer &outputs, const OutputSubset &oset);
+template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffer &outputs, const OutputSubset &oset);
 
 
 // Hopefully will get rid of i686 float c++ -> python transfer errors

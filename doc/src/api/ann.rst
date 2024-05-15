@@ -5,38 +5,70 @@ Artificial Neural Network
 .. todo:: Missing reference to plotly (hacked something in but fails with 404)
 .. todo:: Implement read-/write-through I/O Buffers
 
-Main object:
-^^^^^^^^^^^^
+.. tabs::
 
-.. autoclass:: abrain.ANN
-    :exclude-members: IBuffer, OBuffer, Neuron, Neurons, Stats
-    :special-members: __call__
+    .. group-tab:: 2D
 
-Rendering tool(s):
-^^^^^^^^^^^^^^^^^^
+        .. autoclass:: abrain.ANN2D
+            :exclude-members: IBuffer, OBuffer, Neuron, Neurons, Stats
+            :special-members: __call__
 
-.. autofunction:: abrain.plotly_render
+    .. group-tab:: 3D
 
+        .. autoclass:: abrain.ANN3D
+            :exclude-members: IBuffer, OBuffer, Neuron, Neurons, Stats
+            :special-members: __call__
 
 Supporting types:
 ^^^^^^^^^^^^^^^^^
 
-.. autoclass:: abrain.Point
-    :special-members: __init__
 
-.. autoclass:: abrain.ANN.IBuffer
-.. autoclass:: abrain.ANN.OBuffer
+.. tabs::
+
+    .. group-tab:: 2D
+
+        .. autoclass:: abrain.Point2D
+            :special-members: __init__
+
+        .. autoclass:: abrain.ANN2D.IBuffer
+        .. autoclass:: abrain.ANN2D.OBuffer
+
+    .. group-tab:: 3D
+
+        .. autoclass:: abrain.Point3D
+            :special-members: __init__
+
+        .. autoclass:: abrain.ANN3D.IBuffer
+        .. autoclass:: abrain.ANN3D.OBuffer
 
 Underlying types:
 ^^^^^^^^^^^^^^^^^
 
-.. autoclass:: abrain.ANN.Neuron
-    :exclude-members: Type
 
-    .. autoclass:: abrain.ANN.Neuron.Type
-        :no-undoc-members:
-        :no-inherited-members:
-        :exclude-members: name
+.. tabs::
 
-.. autoclass:: abrain.ANN.Neurons
-.. autoclass:: abrain.ANN.Stats
+    .. group-tab:: 2D
+
+        .. autoclass:: abrain.ANN2D.Neuron
+            :exclude-members: Type
+
+            .. autoclass:: abrain.ANN2D.Neuron.Type
+                :no-undoc-members:
+                :no-inherited-members:
+                :exclude-members: name
+
+        .. autoclass:: abrain.ANN2D.Neurons
+        .. autoclass:: abrain.ANN2D.Stats
+
+    .. group-tab:: 3D
+
+            .. autoclass:: abrain.ANN3D.Neuron
+                :exclude-members: Type
+
+                .. autoclass:: abrain.ANN3D.Neuron.Type
+                    :no-undoc-members:
+                    :no-inherited-members:
+                    :exclude-members: name
+
+            .. autoclass:: abrain.ANN3D.Neurons
+            .. autoclass:: abrain.ANN3D.Stats

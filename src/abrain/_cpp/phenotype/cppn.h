@@ -56,16 +56,42 @@ protected:
     explicit FNode (const Function f) : func(f) {}
   };
 
+  bool _has_input_bias;
   std::vector<Node_ptr> _inputs, _hidden, _outputs;
 
 public:
   explicit CPPN(const Genotype &genotype);
 
-  using Outputs = std::vector<float>;
+  struct Buffer : std::vector<float> {
+      Buffer () : std::vector<float>() {};
+      explicit Buffer (size_t size) : std::vector<float>(size) {};
+  };
+  struct IBuffer : Buffer {
+      IBuffer () : Buffer() {};
+      explicit IBuffer (size_t size) : Buffer(size) {};
+  };
+  struct OBuffer : Buffer {
+      OBuffer () : Buffer() {};
+      explicit OBuffer (size_t size) : Buffer(size) {};
+  };
 
-  [[nodiscard]] auto obuffer () const { return Outputs(_outputs.size()); }
+  [[nodiscard]] auto n_inputs() const { return  _inputs.size(); }
+  [[nodiscard]] auto n_outputs() const { return _outputs.size(); }
+  [[nodiscard]] auto n_hidden() const { return  _hidden.size(); }
 
-  // void operator() (Outputs &outputs, float inputs...);
+  [[nodiscard]] const auto& ibuffer () const { return _ibuffer; }
+  [[nodiscard]] const auto& obuffer () const { return _obuffer; }
+
+  void operator() (OBuffer &outputs, const IBuffer &inputs);
+  float operator() (uint o, const IBuffer &inputs);
+
+private:
+    void pre_evaluation(const IBuffer &inputs);
+protected:
+    void common_pre_evaluation();
+
+    IBuffer _ibuffer;
+    OBuffer _obuffer;
 };
 
 template <uint DI>
@@ -78,13 +104,13 @@ public:
 
   explicit CPPN_ND(const Genotype &genotype);
 
-  void operator() (const Point &src, const Point &dst, Outputs &outputs);
+  void operator() (const Point &src, const Point &dst, OBuffer &outputs);
 
   using Output = Config::ESHNOutputs;
   float operator() (const Point &src, const Point &dst, Output o);
 
   using OutputSubset = std::set<Output>;
-  void operator() (const Point &src, const Point &dst, Outputs &outputs,
+  void operator() (const Point &src, const Point &dst, OBuffer &outputs,
                    const OutputSubset &oset);
 
 private:

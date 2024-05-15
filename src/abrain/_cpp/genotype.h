@@ -24,6 +24,7 @@ struct CPPNData {
   uint inputs;
   uint outputs;
   std::string labels;
+  bool bias;
 
   std::vector<Node> nodes;
   std::vector<Link> links;

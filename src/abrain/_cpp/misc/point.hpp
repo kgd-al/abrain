@@ -131,7 +131,6 @@ public:
 };
 using Point2D = Point_t<2>;
 using Point3D = Point_t<3>;
-// using Point = Point_t<ESHN_SUBSTRATE_DIMENSION, 3>;
 
 } // end of namespace kgd::eshn::misc
 

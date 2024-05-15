@@ -14,11 +14,6 @@ PYBIND11_MAKE_OPAQUE(std::vector<kgd::eshn::genotype::CPPNData::Link>)
 using namespace kgd::eshn::genotype;
 namespace kgd::eshn::pybind {
 
-static const utils::DocMap _cppn_doc {
-  { "INPUTS",  "Number of inputs for the CPPN"  },
-  { "OUTPUTS", "Number of outputs for the CPPN" },
-};
-
 py::dict to_json (const CPPNData &d) {
   py::dict dict;
   py::list nodes, links;
@@ -27,6 +22,7 @@ py::dict to_json (const CPPNData &d) {
     links.append(py::make_tuple(id, src, dst, weight));
   dict["inputs"] = d.inputs;
   dict["outputs"] = d.outputs;
+  dict["bias"] = d.bias;
   dict["labels"] = d.labels;
   dict["nodes"] = nodes;
   dict["links"] = links;
@@ -42,6 +38,7 @@ CPPNData from_json (const py::dict& dict) {
   CPPNData d;
   d.inputs = dict["inputs"].cast<int>();
   d.outputs = dict["inputs"].cast<int>();
+  d.bias = dict["bias"].cast<bool>();
   d.labels = dict["labels"].cast<std::string>();
   d.nextNodeID = dict["nextNodeID"].cast<int>();
   d.nextLinkID = dict["nextLinkID"].cast<int>();
@@ -70,9 +67,9 @@ void init_genotype (py::module_ &m) {
 #define CLASS CPPNData
   cppn.doc() = R"(C++ supporting type for genomic data)";
   cppn.def(py::init<>())
-      .def_readonly_static("_docstrings", &_cppn_doc)
       .def_readwrite ID(inputs, "Number of inputs")
       .def_readwrite ID(outputs, "Number of outputs")
+      .def_readwrite ID(bias, "Whether to use an input bias")
       .def_readwrite ID(labels, "(optional) label for the inputs/outputs")
       .def_readwrite ID(nodes, "The collection of computing nodes")
       .def_readwrite ID(links, "The collection of inter-node relationships")

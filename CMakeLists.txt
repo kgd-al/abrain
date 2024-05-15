@@ -71,6 +71,8 @@ set(PYBIND_SRC
 
     "phenotype/cppn.cpp"
     "phenotype/ann.cpp"
+
+    "utils.hpp"
 )
 PREPEND(PYBIND_SRC "src/abrain/_bindings")
 
