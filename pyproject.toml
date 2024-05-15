@@ -36,7 +36,7 @@ Documentation = "https://abrain.rtfd.io"
 requires = [
   "setuptools>=65.0",
   "cmake>=3.12",
-  "pybind11",
+  "pybind11[global]",
   "pybind11-stubgen",
 ]
 build-backend = "setuptools.build_meta"
