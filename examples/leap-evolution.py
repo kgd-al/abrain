@@ -1,27 +1,25 @@
+"""
+Reasonable attempt at making abrain play nice with leap_ec.
+Provided as inspiration without any guarantee of functionality
+"""
+
 import itertools
 import math
-import pprint
 import shutil
-import seaborn as sns
 from pathlib import Path
 from random import Random
 
 import leap_ec
 import pandas as pd
-from leap_ec import Decoder, ops, context
+from leap_ec import Decoder, context
 from leap_ec.multiobjective.nsga2 import generalized_nsga_2
 from leap_ec.multiobjective.ops import rank_ordinal_sort
-from leap_ec.multiobjective.probe import ParetoPlotProbe2D
 from leap_ec.multiobjective.problems import MultiObjectiveProblem
 from leap_ec.ops import tournament_selection, clone, evaluate, pool
-from leap_ec.probe import PopulationMetricsPlotProbe
-from leap_ec.real_rep.ops import mutate_gaussian
-from leap_ec.util import get_step
 from matplotlib import pyplot as plt
 from rich.progress import Progress
-from tqdm import tqdm
 
-from abrain import Point, ANN
+from abrain import Point3D as Point, ANN3D as ANN
 from abrain.core.config import Config
 from abrain.core.genome import Genome, GIDManager
 
@@ -54,7 +52,8 @@ class Problem(MultiObjectiveProblem):
 class Representation(leap_ec.Representation):
     def __init__(self):
         super().__init__(
-            initialize=lambda: Genome.random(_rng, _id_manager),
+            initialize=lambda: Genome.eshn_random(_rng, 3,
+                                                  id_manager=_id_manager),
             decoder=ANNBuilder(),
 
         )
@@ -90,7 +89,7 @@ def main():
 
         _df = pd.DataFrame([_get(x) for x in population])
         _df.columns = ["ID", *Problem.fitness_names] \
-                    + (["Rank", "Distance"] if with_rank else [])
+            + (["Rank", "Distance"] if with_rank else [])
 
         return _df
 

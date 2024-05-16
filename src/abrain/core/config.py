@@ -121,7 +121,8 @@ class Config(CPPConfig):
             # Delegate relationship tests to the C++
             Config.test_valid()
         except ValueError as e:
-            raise ValueError("C++ layer exception when checking the provided configuration") \
+            raise ValueError("C++ layer exception when checking"
+                             " the provided configuration") \
                 from e
 
         return path

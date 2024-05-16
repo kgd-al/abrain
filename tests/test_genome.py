@@ -1,11 +1,8 @@
 import copy
-import itertools
 import logging
 import math
 import pickle
-import pprint
 import pydoc
-import string
 from pathlib import Path
 from random import Random
 from typing import Optional
@@ -92,6 +89,7 @@ def test_create_genome_create_with_labels(seed, with_bias, shape_l):
     assert g.outputs == o
     assert g.nextNodeID == o
 
+
 @pytest.mark.parametrize('with_bias', [True, False])
 @pytest.mark.parametrize('shape_l', [
     (2, 2, ""),
@@ -175,7 +173,8 @@ def save_function(g: Genome, max_gen: int, path: Path, capfd):
         if gen is not None:
             setattr(helper, 'gen', gen)
         if not hasattr(helper, 'fmt'):
-            setattr(helper, "fmt", f"{path}/gen{{:0{math.ceil(math.log10(max_gen+1))}}}")
+            setattr(helper, "fmt",
+                    f"{path}/gen{{:0{math.ceil(math.log10(max_gen+1))}}}")
 
         g.to_dot(path=getattr(helper, "fmt").format(getattr(helper, 'gen')),
                  ext="png", debug="depths;keepdot", title=title)
@@ -366,14 +365,15 @@ def mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output, gens,
 
 def test_mutate_genome_topology_with_gvc_output(
         ad_rate, seed, eshn_genome, tmp_path, verbose, capfd):
-    mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output=True, gens=100,
-                           verbose=verbose, capfd=capfd)
+    mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output=True,
+                           gens=100, verbose=verbose, capfd=capfd)
 
 
 def test_mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, capfd):
     gens = 1000
-    g = mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output=False,
-                               gens=gens, verbose=False, capfd=None)
+    g = mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path,
+                               output=False, gens=gens, verbose=False,
+                               capfd=None)
     save_function(g, gens, tmp_path, capfd)(
         gens-1, title=f"gen{gens-1}, add/del: {ad_rate}, seed: {seed}")
 

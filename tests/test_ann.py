@@ -1,6 +1,5 @@
 import logging
 import math
-import pprint
 from random import Random
 from time import perf_counter
 from typing import Tuple, List, Dict, Union, Callable
@@ -10,7 +9,6 @@ import pytest
 from abrain import Config, Genome, Point2D, Point3D, ANN2D, ANN3D
 from abrain.core.ann import ANNMonitor
 from abrain.core.genome import logger as genome_logger
-
 
 ANN = Union[ANN2D, ANN3D]
 Point = Union[Point2D, Point3D]
@@ -32,7 +30,8 @@ def test_default_is_empty(dimension):
         ann.neuronAt(ann.Point.null())
 
 
-def _make_ann(dimension, mutations, rng, other_inputs=None, other_outputs=None) -> \
+def _make_ann(dimension, mutations, rng,
+              other_inputs=None, other_outputs=None) -> \
         Tuple[ANN, List[Point], List[Point]]:
 
     genome = Genome.eshn_random(rng, dimension)

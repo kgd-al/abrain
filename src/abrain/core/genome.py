@@ -3,7 +3,6 @@ Test documentation for genome file (module?)
 """
 import logging
 import pathlib
-import pprint
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
@@ -112,7 +111,8 @@ class Genome(_CPPNData):
         :param inputs: Number of inputs
         :param outputs: Number of outputs or specific functions
         :param with_input_bias: Whether to use an input bias
-        :param labels: Labels for the inputs/outputs (in that order, single characters)
+        :param labels: Labels for the inputs/outputs (in that order,
+         single characters)
         :param id_manager: an optional manager providing unique identifiers
 
         :return: A random CPPN genome
@@ -131,8 +131,8 @@ class Genome(_CPPNData):
             if with_input_bias:
                 tokens = tokens[:g.inputs-1] + ["b"] + tokens[g.inputs-1:]
             if len(tokens) != g.inputs + g.outputs:
-                raise ValueError(f"Wrong number of labels. Expected {g.inputs+g.outputs}"
-                                 f" got {len(tokens)}")
+                raise ValueError(f"Wrong number of labels. Expected"
+                                 f" {g.inputs+g.outputs} got {len(tokens)}")
             g.labels = Genome.__labels_sep.join(tokens)
 
         def output_func(_i):
@@ -164,14 +164,17 @@ class Genome(_CPPNData):
                     with_leo: Optional[bool] = True,
                     with_output_bias: Optional[bool] = True,
                     id_manager: Optional[GIDManager] = None):
-        """Create a random CPPN with boolean initialization for use with ES-HyperNEAT
+        """Create a random CPPN with boolean initialization for use with
+         ES-HyperNEAT
 
         :param rng: The source of randomness
         :param dimension: The substrate dimension (2- or 3-D)
         :param with_input_bias: Whether to use an input bias
-        :param with_input_length: Whether to directly provide the distance between points
+        :param with_input_length: Whether to directly provide the distance
+         between points
         :param with_leo: Whether to use a Level of Expression Output
-        :param with_output_bias: Whether to use the CPPN to generate per-neuron biases
+        :param with_output_bias: Whether to use the CPPN to generate per-neuron
+         biases
         :param id_manager: an optional manager providing unique identifiers
 
         :return: A random CPPN genome for use with ES-HyperNEAT
@@ -179,8 +182,10 @@ class Genome(_CPPNData):
 
         if __debug__:  # pragma: no branch
             if dimension not in [2, 3]:
-                raise ValueError("This ES-HyperNEAT implementation only works with 2D or 3D ANNs")
-            for i in [with_input_bias, with_input_length, with_leo, with_output_bias]:
+                raise ValueError("This ES-HyperNEAT implementation only works"
+                                 " with 2D or 3D ANNs")
+            for i in [with_input_bias, with_input_length, with_leo,
+                      with_output_bias]:
                 if not isinstance(i, bool):
                     raise ValueError("Wrong argument type")
 
@@ -309,7 +314,7 @@ class Genome(_CPPNData):
             should_have_id = hasattr(self, self.__id_field)
             can_have_id = (id_manager is not None)
             assert not should_have_id or can_have_id, \
-                "Current genome has an id, but no ID manager provided for child"
+                "Current genome has an id but no ID manager provided for child"
             assert should_have_id or not can_have_id, \
                 "ID manager provided but parent has no id"
 
@@ -570,8 +575,9 @@ class Genome(_CPPNData):
                      color="red" if l.weight < 0 else "black",
                      penwidth=str(3.75 * w + .25),
                      xlabel=x_label(
-                         l.id if isinstance(debug, Iterable) and "links" in debug
-                         else None))
+                         l.id
+                         if isinstance(debug, Iterable) and "links"
+                         in debug else None))
 
         # enforce i/o order
         for i in range(self.inputs - 1):
@@ -583,7 +589,8 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        cleanup = False if isinstance(debug, Iterable) and "keepdot" in debug else True
+        cleanup = False if (isinstance(debug, Iterable) and "keepdot"
+                            in debug) else True
 
         return dot.render(path, format=ext, cleanup=cleanup)
 
@@ -615,7 +622,8 @@ class Genome(_CPPNData):
         return rng.uniform(Config.cppnWeightBounds.rndMin,
                            Config.cppnWeightBounds.rndMax)
 
-    def _add_link(self, src: int, dst: int, weight: float, spontaneous: bool = True) -> int:
+    def _add_link(self, src: int, dst: int, weight: float,
+                  spontaneous: bool = True) -> int:
         """Add a link to the genome
 
         :param src: index of the source node in [0,

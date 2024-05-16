@@ -1,5 +1,6 @@
 import logging
 
+# flake8: noqa
 from .._cpp.phenotype import (
     Point2D, Point3D,
     CPPN, CPPN2D, CPPN3D

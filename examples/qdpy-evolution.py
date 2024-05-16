@@ -1,10 +1,15 @@
+"""
+Reasonable attempt at making abrain play nice with qdpy.
+Provided as inspiration without any guarantee of functionality
+"""
+
+
 import itertools
 import json
 import logging
 import math
 import multiprocessing
 import pickle
-import pprint
 import random
 import shutil
 from pathlib import Path
@@ -12,20 +17,17 @@ from random import Random
 
 import PIL
 import numpy as np
-import pandas as pd
 from qdpy import algorithms, tools, containers, plots
 from qdpy.algorithms import Evolution, partial
 from qdpy.base import ParallelismManager
 from qdpy.containers import Grid, Container
-from qdpy.phenotype import IndividualLike, Fitness, Fitness, Features
+from qdpy.phenotype import IndividualLike, Fitness, Features
 from rich.progress import track
-from tqdm import tqdm
 
-from abrain import Point, ANN
+from abrain import Point3D as Point, ANN3D as ANN
 from abrain.core.ann import plotly_render
 from abrain.core.config import Config
 from abrain.core.genome import Genome, GIDManager
-
 
 # BUDGET = 50
 BUDGET = 50_000
@@ -37,7 +39,7 @@ RUN_FOLDER = Path(f"tmp/qdpy-evolution_{BUDGET}")
 class Individual(IndividualLike):
     INPUTS = [Point(x, -1, z) for x, z
               in itertools.product([-1, -.5, 0, .5, 1],
-                                    [-1, -.6, -.2, .2, .6, 1])]
+                                   [-1, -.6, -.2, .2, .6, 1])]
     OUTPUTS = [Point(r * math.cos(a),
                      1,
                      r * math.sin(a)) for r, a in
@@ -53,7 +55,8 @@ class Individual(IndividualLike):
         self.evaluate()
 
     def __repr__(self):
-        return f"Ind({self.gen}:{self.genome.id()}, {self._fitness} {self._features}"
+        return (f"Ind({self.gen}:{self.genome.id()},"
+                f" {self._fitness} {self._features}")
 
     def evaluate(self):
         if self._fitness is None:
@@ -123,11 +126,14 @@ class Algorithm(Evolution):
             return ind
 
         def vary(parent: Individual):
-            child = Individual(parent.genome.mutated(self.rng, self.id_manager),
-                               parent.gen + 1)
+            child = Individual(
+                parent.genome.mutated(self.rng, self.id_manager),
+                parent.gen + 1)
+
             if PROCESS:
                 self.genealogy[child.genome.id()] = parent.genome.id()
                 self.population[child.genome.id()] = child
+
             return child
 
         sel_or_init = partial(tools.sel_or_init,
@@ -139,12 +145,10 @@ class Algorithm(Evolution):
             logging.warning(f"Purging contents of {run_folder}, as requested")
 
         run_folder.mkdir(parents=True, exist_ok=False)
-        print(f"[kgd-debug] Using run folder", run_folder.resolve())
 
         self._latest_champion = None
         self._snapshots = run_folder.joinpath("snapshots")
         self._snapshots.mkdir(exist_ok=False)
-        print("[kgd-debug] Created folder", self._snapshots, self._snapshots.exists())
 
         _bd = math.ceil(math.log10(budget))
         self._champion_fmt = f"better-{{:0{_bd}d}}-{{}}-{{:g}}.json"
@@ -164,14 +168,13 @@ class Algorithm(Evolution):
                 self._latest_champion = (0, self.nb_evaluations,
                                          individual.fitness)
                 new_champion = True
-                print("[kgd-debug] First champion:", self._latest_champion)
+
             else:
                 timestamp, n, fitness = self._latest_champion
                 if individual.fitness.dominates(fitness):
                     self._latest_champion = (self.nb_evaluations, n + 1,
                                              individual.fitness)
                     new_champion = True
-                    print("[kgd-debug] New champion:", self._latest_champion)
 
             if new_champion:
                 _t, _n, _f = self._latest_champion
@@ -216,7 +219,8 @@ def evolve():
         algo, save_period=0, log_base_path=RUN_FOLDER)
 
     with ParallelismManager(max_workers=7) as mgr:
-        mgr.executor._mp_context = multiprocessing.get_context("fork")  # TODO: Very brittle
+        mgr.executor._mp_context = (
+            multiprocessing.get_context("fork"))  # TODO: Very brittle
         logging.info("Starting illumination!")
         algo.optimise(evaluate=eval_fn, executor=mgr.executor, batch_mode=True)
 
@@ -227,7 +231,7 @@ def evolve():
 
 def process(data):
     grid: Grid = data["container"]
-    genealogy, population = data["genealogy"], data["population"]
+    population = data["population"]
 
     champions = []
     max_depth = grid.best_fitness
@@ -239,22 +243,10 @@ def process(data):
             continue
         champions.append(ind)
 
-    # features = []
-    # for champion in champions:
-    #     features.append((champion._features[0], -champion._features[1]))
-    #     print(champion.features)
-    #
-    # # Get index of champion with highest ranking (requires two argsort for some reason)
-    # features = np.array(features)
-    # cix = np.argsort(features, axis=0).argsort(axis=0).sum(axis=1).argsort()[0]
-
-    # champion = champions[cix]
-    print(len(champions), "champions")
     for champion in champions:
         lineage = [champion]
         while parent_ids := lineage[-1].genome.parents():
             lineage.append(population.get(parent_ids[0]))
-        print("> lineage:", len(lineage))
 
         name = f"lineage_{champion.genome.id()}"
         _fmt = f"{{:0{math.ceil(math.log10(len(lineage)))}d}}.png"
@@ -262,31 +254,32 @@ def process(data):
         folder.mkdir(parents=False, exist_ok=True)
         files = []
 
-        lineage_sorted = sorted(lineage, key=lambda c: (c.stats["hidden"],
-                                                        c.stats["edges"]))
-        for c in lineage_sorted:
-            print(c, c.stats["hidden"], c.stats["edges"])
+        lineage_sorted = sorted(lineage,
+                                key=lambda _c: (_c.stats["hidden"],
+                                                _c.stats["edges"]))
 
         for i, ind in track(enumerate(lineage_sorted),
                             description=name, total=len(lineage)):
             file = folder.joinpath(_fmt.format(i))
             files.append(file)
             if True or not file.exists():
-                ann = ANN.build(Individual.INPUTS, Individual.OUTPUTS, ind.genome)
-                # print(ind.gen, ind.genome.id(), file)
+                ann = ANN.build(Individual.INPUTS,
+                                Individual.OUTPUTS,
+                                ind.genome)
                 pr = plotly_render(ann, edges_alpha=0.1)
                 pr.write_html(RUN_FOLDER.joinpath(f"{name}.html"))
                 xd = dict(title=None, visible=False, showticklabels=False)
                 cr = 2
-                pr.update_layout(title=dict(automargin=False),
-                                 scene=dict(xaxis=xd, yaxis=xd, zaxis=xd),
-                                 margin=dict(autoexpand=False, b=0, l=0, r=0, t=0),
-                                 width=500, height=500,
-                                 scene_camera=dict(
-                                     eye=dict(
-                                         x=cr*math.cos(math.pi/4),
-                                         y=0,
-                                         z=cr*math.sin(math.pi/4))))
+                pr.update_layout(
+                    title=dict(automargin=False),
+                    scene=dict(xaxis=xd, yaxis=xd, zaxis=xd),
+                    margin=dict(autoexpand=False, b=0, l=0, r=0, t=0),
+                    width=500, height=500,
+                    scene_camera=dict(
+                        eye=dict(
+                            x=cr*math.cos(math.pi/4),
+                            y=0,
+                            z=cr*math.sin(math.pi/4))))
                 pr.write_image(str(file))
 
         frames = [PIL.Image.open(f) for f in files]

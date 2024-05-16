@@ -5,12 +5,13 @@ from itertools import chain, combinations
 from random import Random
 from typing import Callable, Tuple
 
+import pytest
+from pytest_steps import test_steps
+
 from abrain import (
     Genome,
     CPPN as GenericCPPN, CPPN2D, CPPN3D,
-    Point2D, Point3D,
 )
-from pytest_steps import test_steps
 
 
 def _make_generic_cppn(cppn_type, seed, mutations=0):
@@ -41,9 +42,14 @@ def _make_eshn_cppn(cppn_type, seed, mutations=0):
 
 def _make_cppn(cppn_type, seed, mutations=0):
     match cppn_type.__name__:
-        case GenericCPPN.__name__: return _make_generic_cppn(cppn_type, seed, mutations)
-        case CPPN2D.__name__: return _make_eshn_cppn(cppn_type, seed, mutations)
-        case CPPN3D.__name__: return _make_eshn_cppn(cppn_type, seed, mutations)
+        case GenericCPPN.__name__:
+            return _make_generic_cppn(cppn_type, seed, mutations)
+        case CPPN2D.__name__:
+            return _make_eshn_cppn(cppn_type, seed, mutations)
+        case CPPN3D.__name__:
+            return _make_eshn_cppn(cppn_type, seed, mutations)
+        case _:  # pragma: no cover
+            raise ValueError(f"Invalid CPPN type {cppn_type}")
 
 
 def _uniform_point_factory(point_type):
@@ -70,9 +76,12 @@ def test_functions(cppn_type):
         print(f"{k}(0) = {v(0)}")
 
 
-def test_create(cppn_type, seed):
-    cppn = _make_cppn(cppn_type, seed)
+# Force all types to be tested even with small scale test
+@pytest.mark.parametrize('_cppn_type', [GenericCPPN, CPPN2D, CPPN3D])
+def test_create(_cppn_type, seed):
+    cppn, _ = _make_cppn(_cppn_type, seed)
     print(cppn)
+    assert cppn.n_hidden() == 0
 
 
 def test_buffers(cppn_type, seed):
@@ -91,8 +100,8 @@ def test_buffers(cppn_type, seed):
 
 
 # ===================================================
-def __tester_generic_single_output(seed, mutations,
-                                   args_maker: Callable[[GenericCPPN, list], Tuple]):
+def __tester_generic_single_output(
+        seed, mutations, args_maker: Callable[[GenericCPPN, list], Tuple]):
     cppn, _ = _make_cppn(GenericCPPN, seed, mutations)
     inputs = _random_inputs(seed, cppn)
     args = args_maker(cppn, inputs)
@@ -105,8 +114,8 @@ def __tester_generic_single_output(seed, mutations,
 
 
 # ===================================================
-def __tester_generic_all_outputs(seed, mutations,
-                                 args_maker: Callable[[GenericCPPN, list], Tuple]):
+def __tester_generic_all_outputs(
+        seed, mutations, args_maker: Callable[[GenericCPPN, list], Tuple]):
     cppn, _ = _make_cppn(GenericCPPN, seed, mutations)
     inputs = _random_inputs(seed, cppn)
     args = args_maker(cppn, inputs)
@@ -205,7 +214,8 @@ def test_outputs_equals(cppn_nd_type, seed):
         return rng.uniform(-1, 1)
 
     def p():
-        return cppn_nd_type.Point(*[r() for _ in range(cppn_nd_type.DIMENSIONS)])
+        return cppn_nd_type.Point(*[r() for _ in
+                                    range(cppn_nd_type.DIMENSIONS)])
 
     def all_subsets(ss):
         return list(chain(*map(lambda x: combinations(ss, x),
@@ -242,9 +252,10 @@ sample_sizes = [10, 50, 100]
 @test_steps('generate_cppn', *[f"sample_at_{s}" for s in sample_sizes])
 def test_multiscale_sampling(cppn_nd_type, mutations, seed,
                              tmp_path_factory):  # pragma: no cover
-    folder = tmp_path_factory.mktemp(numbered=False,
-                                     basename=f"test_multiscale_sampling_"
-                                              f"s{seed}_m{mutations}_{cppn_nd_type.__name__}")
+    folder = tmp_path_factory.mktemp(
+        numbered=False,
+        basename=f"test_multiscale_sampling_"
+                 f"s{seed}_m{mutations}_{cppn_nd_type.__name__}")
 
     cppn, genome = _make_cppn(cppn_nd_type, seed, mutations)
 
@@ -254,7 +265,10 @@ def test_multiscale_sampling(cppn_nd_type, mutations, seed,
     yield 'generate_cppn'
 
     d = cppn_nd_type.Point.DIMENSIONS
-    def _p(*args): return cppn_nd_type.Point(*(list(args)+[0 for _ in range(d-len(args))]))
+
+    def _p(*args):
+        return cppn_nd_type.Point(*(list(args)+[0 for _
+                                                in range(d-len(args))]))
 
     dp = _p()
     for size in sample_sizes:

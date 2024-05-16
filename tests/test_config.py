@@ -1,5 +1,4 @@
 import json
-import pprint
 import shutil
 from pathlib import Path
 from typing import Dict
@@ -174,12 +173,14 @@ def change_config_value(key, value, path):
         pytest.param("activationFunc", "id", id="str->str"),
         pytest.param("cppnWeightBounds", [1, 1, 1, 1, 1],
                      id="List->Bounds"),
-        pytest.param("functionSet", ["id", "sin", "abs"], id="List->Strings"),
+        pytest.param("functionSet", ["id", "sin", "abs"],
+                     id="List->Strings"),
         pytest.param("mutationRates",
                      nested_getter("mutationRates", get_default_config()),
                      id="MutationRates->MutationRates"),
         pytest.param("eshnOutputFunctions",
-                     nested_getter("eshnOutputFunctions", get_default_config()),
+                     nested_getter("eshnOutputFunctions",
+                                   get_default_config()),
                      id="OutputFunction->OutputFunctions")
     ])
 def test_correct_read_type(key, value, tmp_config_file):
@@ -220,9 +221,10 @@ def test_correct_read_depends(key, value, tmp_config_file):
     [
         # pytest.param("activationFunc", "1", id="act"),
         pytest.param("functionSet", ["circle_quadrature"], id="funcs"),
-        pytest.param("eshnOutputFunctions", {"Weight": "id", "LEO": "id"}, id="outputs"),
         pytest.param("eshnOutputFunctions",
-                    {"Weight": "sa", "LEO": "la", "Bias": "mi"},
+                     {"Weight": "id", "LEO": "id"}, id="outputs"),
+        pytest.param("eshnOutputFunctions",
+                     {"Weight": "sa", "LEO": "la", "Bias": "mi"},
                      id="outputs"),
         pytest.param("cppnWeightBounds", [3, 1, -1, -3, .1],
                      id="inv_bounds"),
