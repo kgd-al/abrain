@@ -5,6 +5,7 @@ namespace py = pybind11;
 namespace kgd::eshn::pybind {
 
 void init_genotype (py::module_ &m);
+void init_innovations (py::module_ &m);
 
 void init_generic_cppn_phenotype(py::module_ &m);
 
@@ -28,6 +29,7 @@ PYBIND11_MODULE(_cpp, main) {
         "genotype",
         "Docstring for genotype submodule");
   init_genotype(genotype);
+  init_innovations(genotype);
 
   auto phenotype = main.def_submodule(
         "phenotype",

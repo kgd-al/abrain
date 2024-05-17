@@ -26,22 +26,18 @@ py::dict to_json (const CPPNData &d) {
   dict["labels"] = d.labels;
   dict["nodes"] = nodes;
   dict["links"] = links;
-  dict["nextNodeID"] = d.nextNodeID;
-  dict["nextLinkID"] = d.nextLinkID;
   return dict;
 }
 
 using Node = CPPNData::Node;
 using Link = CPPNData::Link;
 
-CPPNData from_json (const py::dict& dict) {
+CPPNData genotype_from_json (const py::dict& dict) {
   CPPNData d;
   d.inputs = dict["inputs"].cast<int>();
   d.outputs = dict["inputs"].cast<int>();
   d.bias = dict["bias"].cast<bool>();
   d.labels = dict["labels"].cast<std::string>();
-  d.nextNodeID = dict["nextNodeID"].cast<int>();
-  d.nextLinkID = dict["nextLinkID"].cast<int>();
   for (const py::handle &h: dict["nodes"]) {
     auto t = h.cast<py::tuple>();
     d.nodes.push_back(Node{t[0].cast<int>(), t[1].cast<std::string>()});
@@ -73,14 +69,13 @@ void init_genotype (py::module_ &m) {
       .def_readwrite ID(labels, "(optional) label for the inputs/outputs")
       .def_readwrite ID(nodes, "The collection of computing nodes")
       .def_readwrite ID(links, "The collection of inter-node relationships")
-      .def_readwrite ID(nextNodeID, "ID for the next random node (monotonic)")
-      .def_readwrite ID(nextLinkID, "ID for the next random link (monotonic")
+
       .def("to_json", to_json, "Convert to a json-compliant Python dictionary")
-      .def_static("from_json", from_json, "j"_a,
+      .def_static("from_json", genotype_from_json, "j"_a,
                   "Convert from the json-compliant Python dictionary `j`")
       .def(py::pickle(
         [](const CLASS &d) { return to_json(d); },
-        [](const py::dict &d) { return from_json(d);  }
+        [](const py::dict &d) { return genotype_from_json(d);  }
       ))
       ;
 
@@ -93,7 +88,7 @@ void init_genotype (py::module_ &m) {
         oss << "N" << n.id << ":" << n.func;
         return oss.str();
       })
-      .def_readwrite ID(id, "Numerical identifier")
+      .def_readwrite ID(id, "Historical marking")
       .def_readwrite ID(func, "Function used to compute");
 
 #undef CLASS
@@ -106,7 +101,7 @@ void init_genotype (py::module_ &m) {
             << l.dst;
         return oss.str();
       })
-      .def_readwrite ID(id, "Numerical identifier")
+      .def_readwrite ID(id, "Historical marking")
       .def_readwrite ID(src, "ID of the source node")
       .def_readwrite ID(dst, "ID of the destination node")
       .def_readwrite ID(weight, "Connection weight");

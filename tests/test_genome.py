@@ -9,23 +9,83 @@ from typing import Optional
 
 import pytest
 
-from _utils import assert_equal
-from abrain import Config, Genome, GIDManager
+from _utils import genome_factory
+from abrain import Config, Genome, GIDManager, Innovations
 from abrain.core.genome import logger as genome_logger
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
 
 
-def __genome(seed, eshn: bool, shape=None, labels=None, **kwargs):
-    rng = Random(seed)
-    if eshn:
-        kwargs.setdefault("dimension", 3)
-        g = Genome.eshn_random(rng, **kwargs)
-        return rng, g.inputs, g.outputs, g
-    else:
-        i, o = shape or (5, 3)
-        return rng, i, o, Genome.random(rng, i, o, labels=labels, **kwargs)
+###############################################################################
+# Helpers
+###############################################################################
+
+
+class RatesGuard:
+    def __init__(self, rates: dict):
+        self.override = rates
+
+    def __enter__(self):
+        # print("Backed mutation rates:", Config.mutationRates)
+        self.backup = {k: v for k, v in Config.mutationRates.items()}
+        for k in Config.mutationRates.keys():
+            Config.mutationRates[k] = 0
+        for k, v in self.override.items():
+            Config.mutationRates[k] = v
+        # print("Replaced mutation rates with:", Config.mutationRates)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for k, v in self.backup.items():
+            Config.mutationRates[k] = v
+        # print("Restored mutation rates:", Config.mutationRates)
+
+
+def _assert_valid_genome(g: Genome, i: Innovations, path: Path):
+    try:
+        assert len(g.nodes) == len(set([n.id for n in g.nodes]))
+        assert len(g.links) == len(set([(li.src, li.dst) for li
+                                        in g.links]))
+        assert not any(li.src == li.dst for li in g.links)
+
+        def valid_nid(nid): return nid < i.nextNodeID()
+        # noinspection PyProtectedMember
+        degrees = g._compute_node_degrees()
+        for node in g.nodes:
+            d = degrees[node.id]
+            # noinspection PyProtectedMember
+            assert not g._is_hidden(node.id) \
+                   or (d.i > 0 and d.o > 0)
+            assert valid_nid(node.id)
+        for link in g.links:
+            assert link.id < i.nextLinkID()
+            assert valid_nid(link.src)
+            assert valid_nid(link.dst)
+
+    except Exception as e:  # pragma: no cover
+        genome_logger.debug("== Exception ==")
+        genome_logger.debug(f">> {e.__class__}: {e}")
+        genome_logger.debug("== Post fail details ==")
+        genome_logger.debug("Nodes:")
+        # noinspection PyProtectedMember
+        degrees = g._compute_node_degrees()
+        # noinspection PyProtectedMember
+        depths = g._compute_node_depths(g.links)
+        for node in sorted(g.nodes, key=lambda n_: n_.id):
+            d = degrees[node.id]
+            genome_logger.debug(f"\t{node} i:{d.i}, o:{d.o},"
+                                f" d:{depths[node.id]}")
+        genome_logger.debug("Links:")
+        for link in sorted(g.links, key=lambda l_: l_.id):
+            genome_logger.debug(f"\t{link}")
+
+        g.to_dot(f"{path}/faulty_graph", "png", debug="all")
+        genome_logger.info(f"Wrote faulty graph to {path}/"
+                           f"faulty_graph.png")
+        genome_logger.info(f"Wrote log to {path}/log")
+
+        raise e
+
 
 
 ###############################################################################
@@ -47,7 +107,7 @@ def test_default_genome_fails():
 
 @pytest.mark.parametrize('with_bias', [True, False])
 def test_create_genome(seed, with_bias):
-    _, i, o, g = __genome(seed, eshn=False, with_input_bias=with_bias)
+    _, i, o, g = genome_factory(seed, eshn=False, with_input_bias=with_bias)
     assert g.inputs == i + int(with_bias)
     assert g.outputs == o
     assert g.nextNodeID == o
@@ -83,7 +143,7 @@ def test_create_genome(seed, with_bias):
 def test_create_genome_create_with_labels(seed, with_bias, shape_l):
     i, o, labels = shape_l
 
-    _, _, _, g = __genome(seed, eshn=False, shape=(i, o), labels=labels,
+    _, _, _, g = genome_factory(seed, eshn=False, shape=(i, o), labels=labels,
                           with_input_bias=with_bias)
     assert g.inputs == i + int(with_bias)
     assert g.outputs == o
@@ -99,7 +159,7 @@ def test_create_genome_create_with_labels_error(seed, with_bias, shape_l):
     i, o, labels = shape_l
 
     with pytest.raises(ValueError):
-        __genome(seed, eshn=False, shape=(i, o), labels=labels,
+        genome_factory(seed, eshn=False, shape=(i, o), labels=labels,
                  with_input_bias=with_bias)
 
 
@@ -112,7 +172,7 @@ def test_create_genome_eshn(seed,
                             dimension,
                             input_bias, input_length,
                             leo, output_bias):
-    _, _, _, g = __genome(
+    _, _, _, g = genome_factory(
         seed,
         eshn=True,
         dimension=dimension,
@@ -120,7 +180,7 @@ def test_create_genome_eshn(seed,
         with_input_bias=input_bias,
         with_leo=leo,
         with_output_bias=output_bias)
-    assert g.inputs == 2*dimension + input_length + input_bias
+    assert g.inputs == 2 * dimension + input_length + input_bias
     assert g.outputs == 1 + leo + output_bias
     assert g.nextNodeID == 1 + leo + output_bias
 
@@ -135,7 +195,7 @@ def test_create_genome_eshn(seed,
 def test_create_genome_eshn_error(seed,
                                   args):
     with pytest.raises(ValueError):
-        __genome(
+        genome_factory(
             seed,
             eshn=True,
             dimension=args[0],
@@ -148,25 +208,6 @@ def test_create_genome_eshn_error(seed,
 ###############################################################################
 # Mutation tests
 ###############################################################################
-
-class RatesGuard:
-    def __init__(self, rates: dict):
-        self.override = rates
-
-    def __enter__(self):
-        # print("Backed mutation rates:", Config.mutationRates)
-        self.backup = {k: v for k, v in Config.mutationRates.items()}
-        for k in Config.mutationRates.keys():
-            Config.mutationRates[k] = 0
-        for k, v in self.override.items():
-            Config.mutationRates[k] = v
-        # print("Replaced mutation rates with:", Config.mutationRates)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        for k, v in self.backup.items():
-            Config.mutationRates[k] = v
-        # print("Restored mutation rates:", Config.mutationRates)
-
 
 def save_function(g: Genome, max_gen: int, path: Path, capfd):
     def helper(gen: Optional[int] = None, title: Optional[str] = None):
@@ -188,7 +229,7 @@ def save_function(g: Genome, max_gen: int, path: Path, capfd):
 
 
 def test_mutate_genome_add(seed, eshn_genome, tmp_path, capfd):
-    rng, _, o, g = __genome(seed, eshn=eshn_genome)
+    rng, _, o, g = genome_factory(seed, eshn=eshn_genome)
     steps = 10
 
     save = save_function(g, 2*steps, tmp_path, capfd)
@@ -210,7 +251,7 @@ def test_mutate_genome_add(seed, eshn_genome, tmp_path, capfd):
 
 
 def test_mutate_genome_del_n(seed, eshn_genome, tmp_path, capfd):
-    rng, _, o, g = __genome(seed, eshn=eshn_genome)
+    rng, _, o, g = genome_factory(seed, eshn=eshn_genome)
     steps = 10
 
     save = save_function(g, 2*steps, tmp_path, capfd)
@@ -230,7 +271,7 @@ def test_mutate_genome_del_n(seed, eshn_genome, tmp_path, capfd):
 
 def test_mutate_genome_del_l(seed, eshn_genome, tmp_path, capfd):
     steps = 10
-    rng, _, _, g = __genome(seed, eshn=eshn_genome)
+    rng, _, _, g = genome_factory(seed, eshn=eshn_genome)
 
     save = save_function(g, 3*steps, tmp_path, capfd)
     save(0)
@@ -258,7 +299,7 @@ def test_mutate_genome_del_l(seed, eshn_genome, tmp_path, capfd):
 
 
 def test_mutate_genome_mut(seed, eshn_genome, tmp_path, capfd):
-    rng, _, o, g = __genome(seed, eshn=eshn_genome)
+    rng, _, o, g = genome_factory(seed, eshn=eshn_genome)
     steps = 10
 
     save = save_function(g, 2*steps, tmp_path, capfd)
@@ -300,59 +341,17 @@ def mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output, gens,
     title = f"add/del: {ad_rate}, seed: {seed}"
 
     with RatesGuard(rates):
-        rng, _, _, g = __genome(seed, eshn=eshn_genome)
+        rng, _, _, g = genome_factory(seed, eshn=eshn_genome)
 
         if output:
             save = save_function(g, gens, tmp_path, capfd)
             save(0, title)
 
         for j in range(gens):
-            try:
-                genome_logger.debug(f"Generation {j}")
-                g.mutate(rng)
-                assert len(g.nodes) == len(set([n.id for n in g.nodes]))
-                assert len(g.links) == len(set([(li.src, li.dst) for li
-                                                in g.links]))
-                assert not any(li.src == li.dst for li in g.links)
+            genome_logger.debug(f"Generation {j}")
+            g.mutate(rng)
 
-                def valid_nid(nid): return nid < \
-                    g.nextNodeID + g.inputs + g.outputs
-                # noinspection PyProtectedMember
-                degrees = g._compute_node_degrees()
-                for node in g.nodes:
-                    d = degrees[node.id]
-                    # noinspection PyProtectedMember
-                    assert not g._is_hidden(node.id) \
-                           or (d.i > 0 and d.o > 0)
-                    assert valid_nid(node.id)
-                for link in g.links:
-                    assert link.id < g.nextLinkID
-                    assert valid_nid(link.src)
-                    assert valid_nid(link.dst)
-
-            except Exception as e:  # pragma: no cover
-                genome_logger.debug("== Exception ==")
-                genome_logger.debug(f">> {e}")
-                genome_logger.debug("== Post fail details ==")
-                genome_logger.debug("Nodes:")
-                # noinspection PyProtectedMember
-                degrees = g._compute_node_degrees()
-                # noinspection PyProtectedMember
-                depths = g._compute_node_depths(g.links)
-                for node in sorted(g.nodes, key=lambda n_: n_.id):
-                    d = degrees[node.id]
-                    genome_logger.debug(f"\t{node} i:{d.i}, o:{d.o},"
-                                        f" d:{depths[node.id]}")
-                genome_logger.debug("Links:")
-                for link in sorted(g.links, key=lambda l_: l_.id):
-                    genome_logger.debug(f"\t{link}")
-
-                g.to_dot(f"{tmp_path}/faulty_graph", "png", debug=True)
-                genome_logger.info(f"Wrote faulty graph to {tmp_path}/"
-                                   f"faulty_graph.png")
-                genome_logger.info(f"Wrote log to {tmp_path}/log")
-
-                raise e
+            _assert_valid_genome(g)
 
             if output and verbose:  # pragma: no cover
                 save(title=title)
@@ -379,7 +378,7 @@ def test_mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, capfd):
 
 
 def test_mutate_genome_deepcopy(seed, eshn_genome):
-    rng, _, o, parent = __genome(seed, eshn=eshn_genome)
+    rng, _, o, parent = genome_factory(seed, eshn=eshn_genome)
     steps = 10
 
     with RatesGuard({"add_n": 1}):
@@ -405,8 +404,78 @@ def test_mutate_genome_deepcopy(seed, eshn_genome):
 
 
 ###############################################################################
+# Crossover tests
+###############################################################################
+
+
+def _test_crossover(rng, mutations, genome_maker, tmp_path, verbose):
+    pop_size, gens = 10, 10
+
+    population = [genome_maker() for _ in range(pop_size)]
+    for gen in range(gens):
+        new_pop = []
+        while len(new_pop) < len(population):
+            child = Genome.crossover(*rng.sample(population, 2),
+                                     rng=rng)
+            _assert_valid_genome(child, tmp_path)
+            for _ in range(mutations):
+                child.mutate(rng)
+            new_pop.append(child)
+
+
+@pytest.mark.parametrize("child_mutations", [0, 2])
+def test_generic_cppn_crossover(seed, cppn_shape, mutations, child_mutations,
+                                tmp_path, verbose):
+    rng = Random(seed)
+    innovations = Innovations()
+
+    i, o = cppn_shape
+    _test_crossover(rng, child_mutations,
+                    lambda: Genome.random(rng, i, o, innovations)
+                    .mutated(rng, innovations, n=mutations),
+                    tmp_path, verbose)
+
+
+@pytest.mark.parametrize("child_mutations", [0, 2])
+def test_eshn_cppn_crossover(seed, dimension, mutations, child_mutations,
+                             tmp_path, verbose):
+    rng = Random(seed)
+    innovations = Innovations()
+
+    _test_crossover(rng, child_mutations,
+                    lambda: Genome.eshn_random(rng, dimension, innovations)
+                    .mutated(rng, innovations, n=mutations),
+                    tmp_path, verbose)
+
+
+###############################################################################
 # Serialization tests
 ###############################################################################
+
+
+def assert_equal(lhs: Genome, rhs: Genome):
+    assert lhs is not rhs
+    assert lhs.nodes is not rhs.nodes
+    assert lhs.links is not rhs.nodes
+
+    assert len(lhs.nodes) == len(rhs.nodes)
+    assert len(lhs.links) == len(rhs.links)
+
+    for lhs_n, rhs_n in zip(lhs.nodes, rhs.nodes):
+        assert lhs_n is not rhs_n
+        assert lhs_n.id == rhs_n.id
+        assert lhs_n.func == rhs_n.func
+
+    for lhs_l, rhs_l in zip(lhs.links, rhs.links):
+        assert lhs_l is not rhs_l
+        assert lhs_l.id == rhs_l.id
+        assert lhs_l.src == rhs_l.src
+        assert lhs_l.dst == rhs_l.dst
+        assert lhs_l.weight == rhs_l.weight
+
+    assert lhs.nextNodeID == rhs.nextNodeID
+    assert lhs.nextLinkID == rhs.nextLinkID
+
 
 def _simple_genome(seed, with_id):
     rng = Random(seed)
@@ -439,14 +508,14 @@ def test_copy_genome(seed, with_id):
 
 
 @pytest.mark.parametrize('with_id', [True, False])
-def test___copy___genome(seed, with_id):
+def test___copy_genome_factory(seed, with_id):
     genome = _simple_genome(seed, with_id)
     copied = copy.copy(genome)
     assert_equal(genome, copied)
 
 
 @pytest.mark.parametrize('with_id', [True, False])
-def test___deepcopy___genome(seed, with_id):
+def test___deepcopy_genome_factory(seed, with_id):
     genome = _simple_genome(seed, with_id)
     copied = copy.deepcopy(genome)
     assert_equal(genome, copied)

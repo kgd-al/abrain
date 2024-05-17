@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 from random import Random
 
-from _utils import assert_equal
+from _utils import assert_genomes_equal
 from abrain import Genome, GIDManager, ANN3D as ANN, Point3D as Point
 
 
@@ -44,7 +44,7 @@ class Robot:
 
     @staticmethod
     def assert_equal(lhs, rhs):
-        assert_equal(lhs.genome, rhs.genome)
+        assert_genomes_equal(lhs.genome, rhs.genome)
         assert lhs.fitness == rhs.fitness
         assert len(lhs.brain.neurons()) == len(rhs.brain.neurons())
 

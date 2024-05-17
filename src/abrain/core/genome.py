@@ -5,6 +5,7 @@ import logging
 import pathlib
 from collections import namedtuple
 from collections.abc import Iterable
+from dataclasses import dataclass
 from random import Random
 from shutil import which
 from typing import Dict, List, Any, Optional, Union, Collection
@@ -14,7 +15,7 @@ from importlib_resources import files
 from pyrecord import Record
 
 from .._cpp.config import Config
-from .._cpp.genotype import CPPNData as _CPPNData
+from .._cpp.genotype import CPPNData as _CPPNData, Innovations
 
 ESHNOutputs = Config.ESHNOutputs
 
@@ -38,7 +39,22 @@ def _string_to_labels(string: str):
     return labels
 
 
-class GIDManager:
+class _IDManager:
+    def __init__(self):
+        self._nextNodeID, self._nextLinkID = 0, 0
+
+    def next_node_id(self):
+        value = self._nextNodeID
+        self._nextNodeID += 1
+        return value
+
+    def next_link_id(self):
+        value = self._nextLinkID
+        self._nextLinkID += 1
+        return value
+
+
+class _GIDManager:
     """Simple integer-producing class for unique genome identifier
     """
     def __init__(self):
@@ -61,6 +77,42 @@ class Genome(_CPPNData):
     Can only be created via random init or copy
     """
 
+    class Factory:
+        """ Long-lived data structure encapsulating the various elements
+        needed throughout evolution """
+
+        __private_key = object()
+        """Private key for preventing default-constructed CPPNs
+        """
+
+        rng: Random
+        """ Source of randomness """
+
+        id_manager: Optional[Union[Innovations, _IDManager]]
+        """ Either an innovations database (allowing crossover
+         but slightly more expensive) or a monotonic index-based allocator
+         (for mutations only) """
+
+        gid_manager: Optional[_GIDManager]
+        """ (Optional) Manager for genome identifiers and lineage """
+
+        def __init__(self,
+                     seed: int,
+                     genome_ids: bool = True,
+                     innovations: bool = True,
+                     key=None):
+
+            assert (key == Genome.Factory.__private_key), \
+                "Factories must with created dedicated create_for_* functions"
+
+            self.rng = Random(seed)
+            self.id_manager = Innovations() if innovations else _IDManager()
+            self.gid_manager = _GIDManager() if genome_ids else None
+
+        @staticmethod
+        def create_for_generic_cppn(self):
+
+
     __private_key = object()
     """Private key for preventing default-constructed CPPNs
     """
@@ -74,16 +126,20 @@ class Genome(_CPPNData):
     """
 
     __labels_sep = ","
+    """Separator used internally between i/o node labels
+    """
 
     def __init__(self, key=None):
+        """ Create a genome directly. Only available internally.
+        """
         _CPPNData.__init__(self)
         assert (key == Genome.__private_key), \
             "Genome objects must be created via random, deepcopy or" \
             " reproduction methods"
 
     def __repr__(self):
-        return f"CPPN:{self.inputs}:{self.outputs}([{len(self.nodes)}," \
-               f" {self.nextNodeID}], [{len(self.links)},{self.nextLinkID}])"
+        return (f"CPPN:{self.inputs}:{self.outputs}"
+                f"([{len(self.nodes)}, {len(self.links)}])")
 
     def id(self) -> Optional[int]:
         """Return the genome id if one was generated"""
@@ -101,15 +157,17 @@ class Genome(_CPPNData):
     def random(rng: Random,
                inputs: int,
                outputs: Union[int, Collection[str]],
+               innovations: Innovations,
                with_input_bias: bool = True,
                labels: Optional[Union[str, Collection[str]]] = None,
-               id_manager: Optional[GIDManager] = None) \
+               id_manager: Optional[_GIDManager] = None) \
             -> 'Genome':
         """Create a random CPPN with boolean initialization
 
         :param rng: The source of randomness
         :param inputs: Number of inputs
         :param outputs: Number of outputs or specific functions
+        :param innovations: Innovations database for historical markings
         :param with_input_bias: Whether to use an input bias
         :param labels: Labels for the inputs/outputs (in that order,
          single characters)
@@ -142,13 +200,16 @@ class Genome(_CPPNData):
                 return Config.defaultOutputFunction
 
         for j in range(g.outputs):
-            g._add_node(output_func(j))
+            g._add_node(g.inputs + j, output_func(j))
+
+        innovations.initialize(g.inputs + g.outputs)
 
         for i in range(g.inputs):
             for j in range(g.outputs):
                 if rng.random() < .5:
                     g._add_link(i, j + inputs,
-                                Genome.__random_link_weight(rng))
+                                Genome.__random_link_weight(rng),
+                                innovations)
 
         if id_manager is not None:
             setattr(g, g.__id_field, id_manager())
@@ -159,6 +220,7 @@ class Genome(_CPPNData):
     @staticmethod
     def eshn_random(rng: Random,
                     dimension: int,
+                    innovations: Innovations,
                     with_input_bias: Optional[bool] = True,
                     with_input_length: Optional[bool] = True,
                     with_leo: Optional[bool] = True,
@@ -169,6 +231,7 @@ class Genome(_CPPNData):
 
         :param rng: The source of randomness
         :param dimension: The substrate dimension (2- or 3-D)
+        :param innovations: Innovations database for historical markings
         :param with_input_bias: Whether to use an input bias
         :param with_input_length: Whether to directly provide the distance
          between points
@@ -206,109 +269,34 @@ class Genome(_CPPNData):
             labels.append("B")
 
         return Genome.random(rng, inputs, outputs,
+                             innovations=innovations,
                              with_input_bias=with_input_bias,
                              labels=labels,
                              id_manager=id_manager)
 
-    def mutate(self, rng: Random) -> None:
+    def mutate(self, rng: Random, innovations: Innovations, n=1) -> None:
         """Mutate (in-place) this genome
 
         :param rng: The source of randomness
+        :param innovations: Innovations database for historical markings
+        :param n: Number of mutations to perform
         """
 
-        # Get the list of all nodes
-        N = namedtuple('Node', 'id type')
-        offset = 0
-        all_nodes: List[N] = []
-        for i in range(self.inputs):
-            all_nodes.append(N(i + offset, "I"))
-        offset += self.inputs
-        for i in range(self.outputs):
-            all_nodes.append(N(i + offset, "O"))
-        offset += self.outputs
-        for i, n in enumerate(self.nodes[self.outputs:]):
-            all_nodes.append(N(n.id, "H"))
+        for _ in range(n):
+            self._mutate(rng, innovations)
 
-        depths = self._compute_node_depths(self.links)
-
-        # For now assume that all valid links can be created.
-        # Existing ones are pruned afterward
-        L = namedtuple('Link', 'src dst')
-        potential_links = set()
-        for l_id, l_type in all_nodes:
-            if l_type == "O":
-                continue
-
-            l_depth = depths[l_id]
-            for r_id, r_type in all_nodes:
-                r_depth = depths[r_id]
-                if l_id != r_id \
-                        and r_type != "I" \
-                        and (r_type == "O" or l_depth <= r_depth):
-                    potential_links.add(L(l_id, r_id))
-
-        for link in self.links:
-            potential_links.discard(
-                L(link.src, link.dst))  # not a candidate: already exists
-
-        # Get inputs/outputs for each node.
-        # Refine strict definition to detect loops
-        node_degrees = self._compute_node_degrees()
-
-        # Ensure that link removal does not produce in-/output less nodes
-        # (except for I/O nodes, obviously)
-        non_essential_links: List[int] = []
-        for i, link in enumerate(self.links):
-            if (self._is_input(link.src)
-                and self._is_output(link.dst)) \
-                    or (node_degrees[link.src].o > 1
-                        and node_degrees[link.dst].i > 1):
-                non_essential_links.append(i)
-
-        # Simple nodes are (hidden) nodes of the form:
-        # A -> X -> B which can be replaced by A -> B
-        simples_nodes: List[int] = []
-        for nid, d in node_degrees.items():
-            if not self._is_output(nid) and d.i == 1 and d.o == 1:
-                simples_nodes.append(nid)
-
-        # Copy the rates and update based on possible mutations
-        rates = {k: v for k, v in Config.mutationRates.items()}
-
-        def update(key, predicate):
-            predicate() or rates.pop(key)
-
-        update("add_n", lambda: len(self.links) > 0)
-        update("add_l", lambda: len(potential_links) > 0)
-        update("del_l", lambda: len(non_essential_links) > 0)
-        update("del_n", lambda: len(simples_nodes) > 0)
-        update("mut_f", lambda: len(self.nodes) > 0)
-        update("mut_w", lambda: len(self.links) > 0)
-        assert len(rates) > 0
-
-        actions = {
-            "add_n": [self.__random_add_node],
-            "add_l": [self.__random_add_link, potential_links],
-            "del_n": [self.__random_del_node, simples_nodes],
-            "del_l": [self.__random_del_link, non_essential_links],
-            "mut_f": [self.__random_mutate_func],
-            "mut_w": [self.__random_mutate_weight]
-        }
-
-        assert sum(rates.values()) > 0  # Should never occur outside tests
-
-        choice = rng.choices(list(rates.keys()), list(rates.values()))[0]
-        actions[choice][0](rng, *actions[choice][1:])
-
-    def mutated(self, rng: Random, id_manager: Optional[GIDManager] = None) \
+    def mutated(self, rng: Random, innovations: Innovations,
+                n=1, id_manager: Optional[GIDManager] = None) \
             -> 'Genome':
         """Return a mutated (copied) version of this genome
 
         :param rng: the source of randomness
+        :param innovations: Innovations database for historical markings
+        :param n: Number of mutations to perform
         :param id_manager: an optional manager providing unique identifiers
         """
         copy = self.copy()
-        copy.mutate(rng)
+        copy.mutate(rng, innovations, n)
 
         if __debug__:  # pragma: no branch
             should_have_id = hasattr(self, self.__id_field)
@@ -323,6 +311,10 @@ class Genome(_CPPNData):
             setattr(copy, self.__parents_field, [self.id()])
         return copy
 
+    @staticmethod
+    def crossover(lhs: 'Genome', rhs: 'Genome', rng: Random):
+        return lhs.copy()
+
     def copy(self) -> 'Genome':
         """Return a perfect (deep)copy of this genome"""
         copy = Genome(Genome.__private_key)
@@ -333,8 +325,6 @@ class Genome(_CPPNData):
         copy.labels = self.labels
         copy.nodes = self.nodes
         copy.links = self.links
-        copy.nextNodeID = self.nextNodeID
-        copy.nextLinkID = self.nextLinkID
 
         if hasattr(self, self.__id_field):
             setattr(copy, copy.__id_field, self.id())
@@ -407,8 +397,6 @@ class Genome(_CPPNData):
             labels=self.labels,
             nodes=[(n.id, n.func) for n in self.nodes],
             links=[(l_.id, l_.src, l_.dst, l_.weight) for l_ in self.links],
-            NID=self.nextNodeID,
-            LID=self.nextLinkID
         )
         if (gid := self.id()) is not None:
             dct[self.__id_field] = gid
@@ -430,8 +418,6 @@ class Genome(_CPPNData):
         g.links = _CPPNData.Links([
             _CPPNData.Link(*[d[0], d[1], d[2], d[3]]) for d in data["links"]
         ])
-        g.nextNodeID = data["NID"]
-        g.nextLinkID = data["LID"]
 
         if (gid := data.get(g.__id_field, None)) is not None:
             setattr(g, g.__id_field, gid)
@@ -474,6 +460,7 @@ class Genome(_CPPNData):
                 - 'depth' will display every nodes' depth
                 - 'links' will display every links' id
                 - 'keepdot' will keep the intermediate dot file
+                - 'all' all of the above
 
         Raises:
             OSError: if the `dot` program is not available (not installed, on
@@ -486,6 +473,12 @@ class Genome(_CPPNData):
 
                 [ubuntu] sudo apt install graphviz
             """)
+
+        def _should_debug(flag: str):
+            return isinstance(debug, Iterable) and flag in debug
+
+        if _should_debug("all"):
+            debug = "depth;links;keepdot"
 
         path = pathlib.Path(path)
         if path.suffix != "":
@@ -509,7 +502,7 @@ class Genome(_CPPNData):
         ix_to_name = {}
 
         depths = None
-        if isinstance(debug, Iterable) and "depth" in debug:
+        if _should_debug("depth"):
             depths = self._compute_node_depths(self.links)
 
         def x_label(data):
@@ -575,9 +568,7 @@ class Genome(_CPPNData):
                      color="red" if l.weight < 0 else "black",
                      penwidth=str(3.75 * w + .25),
                      xlabel=x_label(
-                         l.id
-                         if isinstance(debug, Iterable) and "links"
-                         in debug else None))
+                         l.id if _should_debug("links") else None))
 
         # enforce i/o order
         for i in range(self.inputs - 1):
@@ -589,8 +580,7 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        cleanup = False if (isinstance(debug, Iterable) and "keepdot"
-                            in debug) else True
+        cleanup = False if _should_debug("keepdot") else True
 
         return dot.render(path, format=ext, cleanup=cleanup)
 
@@ -611,11 +601,8 @@ class Genome(_CPPNData):
     def __random_node_function(rng: Random):
         return rng.choice(Config.functionSet)
 
-    def _add_node(self, func: str) -> int:
-        nid = self.nextNodeID + self.inputs
+    def _add_node(self, nid: int, func: str) -> None:
         self.nodes.append(_CPPNData.Node(nid, func))
-        self.nextNodeID += 1
-        return nid
 
     @staticmethod
     def __random_link_weight(rng: Random):
@@ -623,6 +610,7 @@ class Genome(_CPPNData):
                            Config.cppnWeightBounds.rndMax)
 
     def _add_link(self, src: int, dst: int, weight: float,
+                  innovations: Innovations,
                   spontaneous: bool = True) -> int:
         """Add a link to the genome
 
@@ -631,27 +619,30 @@ class Genome(_CPPNData):
         :param dst: index of the destination node in
          [Genome.inputs,Genome.outputs]
         :param weight: connection weight in [-1,1]
+        :param innovations: Innovations database for historical markings
         """
-        lid = self.nextLinkID
+        lid = innovations.add_link_innovation(src, dst)
         self.links.append(_CPPNData.Link(lid, src, dst, weight))
-        self.nextLinkID += 1
         if spontaneous:
-            logger.debug(f"[add_l] {src} -> {dst}")
+            logger.debug(f"[add_l:{lid}] {src} -> {dst}")
         return lid
 
-    def __random_add_node(self, rng: Random) -> None:
+    def __random_add_node(self, rng: Random, innovations: Innovations) -> None:
         i = rng.randrange(0, len(self.links))
         link: _CPPNData.Link = self.links[i]
-        nid = self._add_node(Genome.__random_node_function(rng))
-
         src, dst, weight = link.src, link.dst, link.weight
-        logger.debug(f"[add_n] {src} -> {dst} >> {src} -> {nid} -> {dst}")
 
-        self._add_link(src, nid, 1, spontaneous=False)
-        self._add_link(nid, dst, weight, spontaneous=False)
+        nid = innovations.add_node_innovation(src, dst)
+        self._add_node(nid, Genome.__random_node_function(rng))
+
+        logger.debug(f"[add_n:{nid}] {src} -> {dst} >> {src} -> {nid} -> {dst}")
+
+        self._add_link(src, nid, 1, innovations, spontaneous=False)
+        self._add_link(nid, dst, weight, innovations, spontaneous=False)
         self.links.pop(i)
 
-    def __random_del_node(self, rng: Random, candidates) -> None:
+    def __random_del_node(self, rng: Random, candidates,
+                          innovations: Innovations) -> None:
         nid = rng.choice(candidates)
         n_ix, n = next((n_ix, n) for n_ix, n in  # pragma: no branch
                        enumerate(self.nodes) if n.id == nid)
@@ -670,20 +661,23 @@ class Genome(_CPPNData):
                self.links) == 0 \
                 and i_l.src != o_l.dst:
             # Link does not exist already and is not auto-recurrent -> add it
-            self._add_link(i_l.src, o_l.dst, o_l.weight, spontaneous=False)
+            self._add_link(i_l.src, o_l.dst, o_l.weight,
+                           innovations, spontaneous=False)
         self.nodes.pop(n_ix)
         self.links.pop(j_i)
         if j_i < j_o:  # index may have been made invalid
             j_o -= 1
         self.links.pop(j_o)
 
-    def __random_add_link(self, rng: Random, candidates) -> None:
+    def __random_add_link(self, rng: Random, candidates,
+                          innovations: Innovations) -> None:
         link = rng.choice(list(candidates))
         weight = Genome.__random_link_weight(rng)
 
         logger.debug(f"[add_l] {link.src} -({weight})-> {link.dst}")
 
-        self._add_link(link.src, link.dst, weight, spontaneous=False)
+        self._add_link(link.src, link.dst, weight,
+                       innovations, spontaneous=False)
 
     def __random_del_link(self, rng: Random, candidates) -> None:
         i = candidates[rng.randrange(0, len(candidates))]
@@ -708,6 +702,91 @@ class Genome(_CPPNData):
         f = rng.choice([f for f in Config.functionSet if not f == n.func])
         logger.debug(f"[mut_f] N({n.id}, {n.func}) -> {f}")
         n.func = f
+
+    def _mutate(self, rng: Random, innovations: Innovations):
+        # Get the list of all nodes
+        N = namedtuple('Node', 'id type')
+        offset = 0
+        all_nodes: List[N] = []
+        for i in range(self.inputs):
+            all_nodes.append(N(i + offset, "I"))
+        offset += self.inputs
+        for i in range(self.outputs):
+            all_nodes.append(N(i + offset, "O"))
+        offset += self.outputs
+        for i, n in enumerate(self.nodes[self.outputs:]):
+            all_nodes.append(N(n.id, "H"))
+
+        depths = self._compute_node_depths(self.links)
+
+        # For now assume that all valid links can be created.
+        # Existing ones are pruned afterward
+        L = namedtuple('Link', 'src dst')
+        potential_links = set()
+        for l_id, l_type in all_nodes:
+            if l_type == "O":
+                continue
+
+            l_depth = depths[l_id]
+            for r_id, r_type in all_nodes:
+                r_depth = depths[r_id]
+                if l_id != r_id \
+                        and r_type != "I" \
+                        and (r_type == "O" or l_depth <= r_depth):
+                    potential_links.add(L(l_id, r_id))
+
+        for link in self.links:
+            potential_links.discard(
+                L(link.src, link.dst))  # not a candidate: already exists
+
+        # Get inputs/outputs for each node.
+        # Refine strict definition to detect loops
+        node_degrees = self._compute_node_degrees()
+
+        # Ensure that link removal does not produce in-/output less nodes
+        # (except for I/O nodes, obviously)
+        non_essential_links: List[int] = []
+        for i, link in enumerate(self.links):
+            if (self._is_input(link.src)
+                and self._is_output(link.dst)) \
+                    or (node_degrees[link.src].o > 1
+                        and node_degrees[link.dst].i > 1):
+                non_essential_links.append(i)
+
+        # Simple nodes are (hidden) nodes of the form:
+        # A -> X -> B which can be replaced by A -> B
+        simples_nodes: List[int] = []
+        for nid, d in node_degrees.items():
+            if not self._is_output(nid) and d.i == 1 and d.o == 1:
+                simples_nodes.append(nid)
+
+        # Copy the rates and update based on possible mutations
+        rates = {k: v for k, v in Config.mutationRates.items()}
+
+        def update(key, predicate):
+            predicate() or rates.pop(key)
+
+        update("add_n", lambda: len(self.links) > 0)
+        update("add_l", lambda: len(potential_links) > 0)
+        update("del_l", lambda: len(non_essential_links) > 0)
+        update("del_n", lambda: len(simples_nodes) > 0)
+        update("mut_f", lambda: len(self.nodes) > 0)
+        update("mut_w", lambda: len(self.links) > 0)
+        assert len(rates) > 0
+
+        actions = {
+            "add_n": [self.__random_add_node, innovations],
+            "add_l": [self.__random_add_link, potential_links, innovations],
+            "del_n": [self.__random_del_node, simples_nodes, innovations],
+            "del_l": [self.__random_del_link, non_essential_links],
+            "mut_f": [self.__random_mutate_func],
+            "mut_w": [self.__random_mutate_weight]
+        }
+
+        assert sum(rates.values()) > 0  # Should never occur outside tests
+
+        choice = rng.choices(list(rates.keys()), list(rates.values()))[0]
+        actions[choice][0](rng, *actions[choice][1:])
 
     def _compute_node_depths(self, links_original):
         depths = {}

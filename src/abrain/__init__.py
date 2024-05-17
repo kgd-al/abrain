@@ -8,7 +8,7 @@ from .core.cppn import (
 from .core.ann import ANN2D, ANN3D
 
 from .core.config import Config
-from .core.genome import Genome, GIDManager
+from .core.genome import Genome, GIDManager, Innovations
 
 try:  # pragma: no cover
     # __package__ allows for the case where __name__ is "__main__"

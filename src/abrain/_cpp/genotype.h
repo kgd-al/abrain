@@ -3,19 +3,22 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 namespace kgd::eshn::genotype {
 
 struct CPPNData {
+  using ID = int;
+
   struct Node {
-    int id;
+    ID id;
 
     using FuncID = std::string;
     FuncID func;
   };
 
   struct Link {
-    int id;
+    ID id;
 
     uint src, dst;
     float weight;
@@ -28,8 +31,6 @@ struct CPPNData {
 
   std::vector<Node> nodes;
   std::vector<Link> links;
-
-  int nextNodeID, nextLinkID;
 };
 
 } // end of namespace kgd::eshn::genotype

@@ -55,6 +55,8 @@ set(CPP_SRC
     "misc/point.hpp"
 
     "genotype.h"
+    "innovations.cpp"
+    "innovations.h"
 
     "phenotype/cppn.cpp"
     "phenotype/cppn.h"
@@ -68,6 +70,7 @@ set(PYBIND_SRC
     "config.cpp"
 
     "genotype.cpp"
+    "innovations.cpp"
 
     "phenotype/cppn.cpp"
     "phenotype/ann.cpp"

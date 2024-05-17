@@ -1,3 +1,5 @@
+import itertools
+import sys
 from enum import IntFlag
 from typing import Dict, Any
 
@@ -83,6 +85,11 @@ kgd_config: Dict[str, Dict[TestSize, Any]] = dict(
         TestSize.NORMAL: [2, 3],
         TestSize.LARGE: [2, 3],
     },
+    cppn_shape={
+        TestSize.SMALL: [(5, 3), (3, 5)],
+        TestSize.NORMAL: [(5, 3), (3, 5), (3, 3), (5, 5)],
+        TestSize.LARGE: list(itertools.product([3, 4, 5], [3, 4, 5])),
+    }
 )
 
 
@@ -113,7 +120,7 @@ def pytest_generate_tests(metafunc):
             return False
         existing = [
             m for m in metafunc.definition.iter_markers('parametrize')
-            if name in m.args[0]
+            if name == m.args[0]
         ]
         return len(existing) == 0
 
@@ -134,9 +141,11 @@ def pytest_generate_tests(metafunc):
     maybe_parametrize("ad_rate", "ar")
     maybe_parametrize("dimension", "d")
     maybe_parametrize("cppn_type", "cg", [CPPN, CPPN2D, CPPN3D])
+    maybe_parametrize("cppn_shape", "cs")
     maybe_parametrize("cppn_nd_type", "cn", [CPPN2D, CPPN3D])
     maybe_parametrize("eshn_genome", "eg", [True, False])
-    maybe_parametrize("verbose", "v", [metafunc.config.getoption("verbose")])
+    maybe_parametrize("verbose", "v",
+                      [metafunc.config.getoption("verbose")])
 
     if can_parametrize("evo_config"):
         evo_config = metafunc.config.getoption('evolution')
@@ -172,7 +181,8 @@ def pytest_collection_modifyitems(config, items):
                                     f" current target ({scale.name}). Use"
                                     f" {flag} to run")
 
-    file_order = ["config", "genome", "cppn", "ann", "evolution"]
+    file_order = ["config", "genome", "innovations",
+                  "cppn", "ann", "evolution"]
 
     def _key(_item): return _item.reportinfo()[0].stem.split("_")[1]
 
@@ -189,9 +199,9 @@ def pytest_collection_modifyitems(config, items):
                 files.append(key)
         print("File order", prefix, "sort:", files)
 
-    debug_print_order("before")
+    # debug_print_order("before")
     items.sort(key=lambda _item: index(_item))
-    debug_print_order("after")
+    # debug_print_order("after")
 
     for item in items:
         if not hasattr(item, 'callspec'):

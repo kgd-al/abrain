@@ -1,7 +1,7 @@
 #ifndef KGD_ESHN_BINDING_UTILS_HPP
 #define KGD_ESHN_BINDING_UTILS_HPP
 
-#include <ostream>
+#include <sstream>
 #include <utility>
 #include <map>
 

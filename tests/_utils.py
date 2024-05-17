@@ -1,7 +1,9 @@
+from random import Random
+
 from abrain import Genome
 
 
-def assert_equal(lhs: Genome, rhs: Genome):
+def assert_genomes_equal(lhs: Genome, rhs: Genome):
     assert lhs is not rhs
     assert lhs.nodes is not rhs.nodes
     assert lhs.links is not rhs.nodes
@@ -23,3 +25,14 @@ def assert_equal(lhs: Genome, rhs: Genome):
 
     assert lhs.nextNodeID == rhs.nextNodeID
     assert lhs.nextLinkID == rhs.nextLinkID
+
+
+def genome_factory(seed, eshn: bool, shape=None, labels=None, **kwargs):
+    rng = Random(seed)
+    if eshn:
+        kwargs.setdefault("dimension", 3)
+        g = Genome.eshn_random(rng, **kwargs)
+        return rng, g.inputs, g.outputs, g
+    else:
+        i, o = shape or (5, 3)
+        return rng, i, o, Genome.random(rng, i, o, labels=labels, **kwargs)
