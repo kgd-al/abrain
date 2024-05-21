@@ -254,6 +254,7 @@ cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
   cmd_install-cached
   cmd_pytest --small-scale --test-evolution
   flake8 src tests
+  cmd_doc
   ok=0
 }
 
