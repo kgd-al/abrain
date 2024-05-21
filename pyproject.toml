@@ -47,7 +47,7 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "leap-ec", "Pillow", "qdpy", "tqdm"
+  "leap-ec", "Pillow", "qdpy", "tqdm", "kaleido"
 ]
 
 docs = [
