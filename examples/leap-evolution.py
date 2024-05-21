@@ -6,8 +6,6 @@ Provided as inspiration without any guarantee of functionality
 import itertools
 import math
 import shutil
-from pathlib import Path
-from random import Random
 
 import leap_ec
 import pandas as pd
@@ -19,9 +17,8 @@ from leap_ec.ops import tournament_selection, clone, evaluate, pool
 from matplotlib import pyplot as plt
 from rich.progress import Progress
 
-from abrain import Point3D as Point, ANN3D as ANN
-from abrain.core.config import Config
-from abrain.core.genome import Genome, GIDManager
+from abrain import Config, Genome, Point3D as Point, ANN3D as ANN
+from examples.common import example_path
 
 _inputs = [Point(x, -1, z) for x, z
            in itertools.product([0, .25, .5, .75, 1],
@@ -30,8 +27,8 @@ _outputs = [Point(r * math.cos(a),
                   1,
                   r * math.sin(a)) for r, a in
             [(0, 0)] + [(1, i * math.pi / 10) for i in range(5)]]
-_rng = Random(0)
-_id_manager = GIDManager()
+
+_data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=0)
 
 
 class ANNBuilder(Decoder):
@@ -52,8 +49,7 @@ class Problem(MultiObjectiveProblem):
 class Representation(leap_ec.Representation):
     def __init__(self):
         super().__init__(
-            initialize=lambda: Genome.eshn_random(_rng, 3,
-                                                  id_manager=_id_manager),
+            initialize=lambda: Genome.random(_data),
             decoder=ANNBuilder(),
 
         )
@@ -62,17 +58,17 @@ class Representation(leap_ec.Representation):
 def mutate(next_individual):
     while True:
         individual = next(next_individual)
-        individual.genome.mutate(_rng)
-        individual.genome.update_lineage(_id_manager, [individual.genome])
+        individual.genome.mutate(_data)
+        individual.genome.update_lineage(_data, [individual.genome])
         individual.fitness = None
         yield individual
 
 
-def main():
+def main(is_test=False):
     Config.iterations = 32
-    run_folder = Path("tmp/leap-evolution")
-    pop_size = 100
-    generations = 100
+    run_folder = example_path("leap-evolution")
+    pop_size = 10 if is_test else 100
+    generations = 10 if is_test else 100
 
     _g_fmt = f"{{:0{max(3, math.ceil(math.log10(generations)))}d}}"
 

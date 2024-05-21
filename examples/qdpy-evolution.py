@@ -12,10 +12,11 @@ import multiprocessing
 import pickle
 import random
 import shutil
+import warnings
 from pathlib import Path
-from random import Random
 
 import PIL
+import matplotlib
 import numpy as np
 from qdpy import algorithms, tools, containers, plots
 from qdpy.algorithms import Evolution, partial
@@ -28,12 +29,15 @@ from abrain import Point3D as Point, ANN3D as ANN
 from abrain.core.ann import plotly_render
 from abrain.core.config import Config
 from abrain.core.genome import Genome, GIDManager
+from examples.common import example_path
+
+matplotlib.pyplot.set_loglevel(level='warning')
 
 # BUDGET = 50
 BUDGET = 50_000
 EVOLVE = True
 PROCESS = True
-RUN_FOLDER = Path(f"tmp/qdpy-evolution_{BUDGET}")
+RUN_FOLDER = example_path("tmp/qdpy-evolution")
 
 
 class Individual(IndividualLike):
@@ -98,7 +102,9 @@ class Algorithm(Evolution):
                  seed, tournament, initial_mutations,
                  run_folder, budget, batch_size,
                  **kwargs):
-        self.rng = Random(seed)
+        self.genome_data = Genome.Data.create_for_eshn_cppn(
+            dimension=3, seed=seed
+        )
         random.seed(seed)
         np.random.seed(seed % (2**32-1))
 
@@ -110,16 +116,16 @@ class Algorithm(Evolution):
         def select(grid):
             # return self.rng.choice(grid)
             k = min(len(grid), tournament)
-            candidates = self.rng.sample(grid.items, k)
+            candidates = self.genome_data.rng.sample(grid.items, k)
             candidate_cells = [grid.index_grid(c.features) for c in candidates]
-            cell = self.rng.choice(candidate_cells)
+            cell = self.genome_data.rng.choice(candidate_cells)
             selection = candidates[candidate_cells.index(cell)]
             return selection
 
         def init(_):
-            genome = Genome.random(self.rng, self.id_manager)
+            genome = Genome.random(self.genome_data)
             for _ in range(initial_mutations):
-                genome.mutate(self.rng)
+                genome.mutate(self.genome_data)
             ind = Individual(genome)
             if PROCESS:
                 self.population[genome.id()] = ind
@@ -127,7 +133,7 @@ class Algorithm(Evolution):
 
         def vary(parent: Individual):
             child = Individual(
-                parent.genome.mutated(self.rng, self.id_manager),
+                parent.genome.mutated(self.genome_data),
                 parent.gen + 1)
 
             if PROCESS:
@@ -201,9 +207,13 @@ def eval_fn(ind):
     return ind
 
 
-def evolve():
+def evolve(is_test):
     Config.iterations = 32
     Config.maxDepth = 2
+
+    if is_test:
+        global BUDGET
+        BUDGET = 250
 
     grid = containers.Grid(
         shape=Individual.grid_shape(),
@@ -224,12 +234,14 @@ def evolve():
         logging.info("Starting illumination!")
         algo.optimise(evaluate=eval_fn, executor=mgr.executor, batch_mode=True)
 
-    plots.default_plots_grid(logger, output_dir=RUN_FOLDER)
+    with warnings.catch_warnings():      # Emits warning. Should be corrected
+        warnings.simplefilter("ignore")  # upstream
+        plots.default_plots_grid(logger, output_dir=RUN_FOLDER)
 
     return algo.__getstate__()
 
 
-def process(data):
+def process(data, is_test):
     grid: Grid = data["container"]
     population = data["population"]
 
@@ -242,6 +254,9 @@ def process(data):
         if ind.fitness < max_depth:
             continue
         champions.append(ind)
+
+    if is_test:
+        champions = [champions[0]]
 
     for champion in champions:
         lineage = [champion]
@@ -280,7 +295,9 @@ def process(data):
                             x=cr*math.cos(math.pi/4),
                             y=0,
                             z=cr*math.sin(math.pi/4))))
-                pr.write_image(str(file))
+                with warnings.catch_warnings():      # Emits warning. Should be
+                    warnings.simplefilter("ignore")  # corrected upstream
+                    pr.write_image(str(file))
 
         frames = [PIL.Image.open(f) for f in files]
         duration = 8000 // len(frames)
@@ -291,14 +308,14 @@ def process(data):
                        loop=0)
 
 
-def main():
+def main(is_test=False):
     if EVOLVE:
-        data = evolve()
+        data = evolve(is_test)
     else:
         with open(RUN_FOLDER.joinpath("final.p"), "rb") as bf:
             data = pickle.load(bf)
     if PROCESS:
-        process(data)
+        process(data, is_test)
     return data
 
 

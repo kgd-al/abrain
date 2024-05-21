@@ -24,11 +24,6 @@ Neural Network.
 persistent configuration files. In this specific case, we also need
 :class:`~abrain.core.config.Config.Strings` for one particular value.
 
-Finally, the :class:`~abrain.GIDManager` is a tiny helper class
-to provide consecutive int-based id to the genome. It can be used as-is,
-replaced with a more powerful alternative or just ignored if you do not need
-to identify individual genomes.
-
 Helper classes
 ==============
 
@@ -43,16 +38,12 @@ fields:
 The presented pattern consists of the two essential functions `random` (to
 generate the initial population) and `mutated` (to create a mutated copy of a
 genome). The `mutate` function performs the bulk of the work by delegating
-to field-wise mutators (including :func:`abrain.Genome.mutate`).
-Note that, if using an id generator (such as
-:class:`abrain.GIDManager`) you can use the
-:func:`~abrain.Genome.update_lineage` function to update the `id`/`parents`
-fields based on the values of the parents (self in case of a mutation).
+to field-wise mutators (including :func:`~abrain.Genome.mutate`).
 
 We then define an individual, in the sense of an evolutionary algorithm, as the
 composition of a genome and a fitness (trivially based on the ANN's depth).
 For completeness, we provide a serialization method which relies on
-:func:`abrain.Genome.to_json`.
+:func:`~abrain.Genome.to_json`.
 
 .. literalinclude:: ../../../examples/evolution.py
     :lineno-match:
@@ -69,7 +60,7 @@ Configuration
 *************
 
 The following lines showcase how the end-user can tweak the various fields in
-:class:`abrain.Config`:
+:class:`~abrain.Config`:
 
 .. literalinclude:: ../../../examples/evolution.py
     :lineno-match:
@@ -78,23 +69,28 @@ The following lines showcase how the end-user can tweak the various fields in
 
 Most such fields use elementary python types (`int`, `float`, `str`, `bool`)
 and can thus be trivially manipulated. A few other use composite types
-encapsulated, for type-safety, in a C++ object. Those are exposed in the
-:mod:`abrain.core.config` module and can be used to generate new values.
-Additionally, the configuration can be written to a file (and read back with
-:func:`~abrain.Config.read`) and displayed on the screen (for the log).
+encapsulated, for type-safety, in a C++ object. Those are exposed as nested classes
+under :class:`~abrain.Config` (
+:class:`~abrain.core.config.Config.Strings`,
+:class:`~abrain.core.config.Config.MutationRates`,
+:class:`~abrain.Config.ESHNOutputs`,
+:class:`~abrain.core.config.Config.OutputFunctions`,
+:class:`~abrain.core.config.Config.FBounds`)
+and can be used to generate new values.
+Additionally, the configuration can be written to a file, :func:`~abrain.Config.read`
+back and displayed on the screen (for the log).
 
 Variables
 *********
 
 The initial state of this trivial EA is just as straightforward. The only thing
-of note is the highlighted statement where we create the genome id manager.
-This is purely optional and only provided for convenience.
+of note is the highlighted statement where we create the shared genome data.
 
 The actual generation of the initial population simply consists of delegating
 the work to the dedicated function in our wrapper genome.
 
 .. literalinclude:: ../../../examples/evolution.py
     :lineno-match:
-    :emphasize-lines: 3
+    :emphasize-lines: 2
     :start-after: /- init -/
     :end-before: /- init -/

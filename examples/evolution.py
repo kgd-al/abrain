@@ -1,14 +1,11 @@
 import json
 import shutil
-from random import Random
 
 # /- abrain imports -/
 from abrain import Config, Genome, ANN3D as ANN, Point3D as Point
-from abrain.core.config import Strings
-from abrain.core.genome import GIDManager
 # /- abrain imports -/
 
-from common import example_path
+from examples.common import example_path
 
 
 class MyGenome:
@@ -17,20 +14,19 @@ class MyGenome:
         self.nested_field = nested_field
 
     @staticmethod
-    def random(rng: Random, id_m: GIDManager):
-        return MyGenome(Genome.eshn_random(rng, 3, id_manager=id_m),
-                        rng.uniform(-1, 1))
+    def random(data: Genome.Data):
+        return MyGenome(Genome.random(data), data.rng.uniform(-1, 1))
 
-    def mutate(self, rng: Random):
-        if rng.random() < .9:
-            self.abrain_genome.mutate(rng)
+    def mutate(self, data: Genome.Data):
+        if data.rng.random() < .9:
+            self.abrain_genome.mutate(data)
         else:
-            self.nested_field += rng.normalvariate(0, 1)
+            self.nested_field += data.rng.normalvariate(0, 1)
 
-    def mutated(self, rng: Random, id_m: GIDManager):
+    def mutated(self, data: Genome.Data):
         copy = self.copy()
-        copy.mutate(rng)
-        copy.abrain_genome.update_lineage(id_m, [self.abrain_genome])
+        copy.mutate(data)
+        copy.abrain_genome.update_lineage(data, [self.abrain_genome])
         return copy
 
     def copy(self):
@@ -62,13 +58,13 @@ class Individual:
         ), file)
 
 
-def main():
+def main(is_test=False):
     output_folder = example_path("evolution")
     shutil.rmtree(output_folder, ignore_errors=True)
     output_folder.mkdir(exist_ok=False)
 
     # /- configuration -/
-    Config.functionSet = Strings(['sin', 'abs', 'id'])
+    Config.functionSet = Config.Strings(['sin', 'abs', 'id'])
     Config.allowPerceptrons = False
     Config.iterations = 4
     Config.write(output_folder.joinpath("config.json"))
@@ -76,11 +72,13 @@ def main():
     # /- configuration -/
 
     # /- init -/
-    seed = 0
-    rng = Random(seed)
-    id_manager = GIDManager()
-    population = [Individual(MyGenome.random(rng, id_manager))
-                  for _ in range(100)]
+    pop_size = 10 if is_test else 100
+    genome_shared_data = Genome.Data.create_for_eshn_cppn(
+        dimension=3, seed=0,
+        with_lineage=True
+    )
+    population = [Individual(MyGenome.random(genome_shared_data))
+                  for _ in range(pop_size)]
     # /- init -/
 
     def get_champion(pop=None) -> Individual:
@@ -89,7 +87,8 @@ def main():
         return pop[max(range(len(pop)), key=lambda r: pop[r].fitness)]
 
     gen_champion = None
-    for g in range(100):
+    generations = 10 if is_test else 100
+    for g in range(generations):
         for p in population:
             p.evaluate()
 
@@ -98,11 +97,11 @@ def main():
 
         new_population = []
         for _ in range(len(population)):
-            competitors = rng.sample(population, 5)
+            competitors = genome_shared_data.rng.sample(population, 5)
             champion = get_champion(competitors)
             new_population.append(
                 Individual(
-                    champion.genome.mutated(rng, id_manager)))
+                    champion.genome.mutated(genome_shared_data)))
 
         population = new_population
 

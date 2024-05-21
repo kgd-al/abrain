@@ -35,7 +35,7 @@ using Link = CPPNData::Link;
 CPPNData genotype_from_json (const py::dict& dict) {
   CPPNData d;
   d.inputs = dict["inputs"].cast<int>();
-  d.outputs = dict["inputs"].cast<int>();
+  d.outputs = dict["outputs"].cast<int>();
   d.bias = dict["bias"].cast<bool>();
   d.labels = dict["labels"].cast<std::string>();
   for (const py::handle &h: dict["nodes"]) {
@@ -49,6 +49,13 @@ CPPNData genotype_from_json (const py::dict& dict) {
                             t[3].cast<float>()});
   }
   return d;
+}
+
+template <typename T>
+void id_sorted(std::vector<T> &v) {
+  std::sort(v.begin(), v.end(), [] (const T &lhs, const T &rhs) {
+    return lhs.id < rhs.id;
+  });
 }
 
 void init_genotype (py::module_ &m) {
@@ -69,6 +76,13 @@ void init_genotype (py::module_ &m) {
       .def_readwrite ID(labels, "(optional) label for the inputs/outputs")
       .def_readwrite ID(nodes, "The collection of computing nodes")
       .def_readwrite ID(links, "The collection of inter-node relationships")
+
+      .def(
+        "_sort_by_id",
+        [] (CPPNData &d) {
+          id_sorted(d.nodes);
+          id_sorted(d.links);
+        }, "Ensures both nodes and links are id-sorted")
 
       .def("to_json", to_json, "Convert to a json-compliant Python dictionary")
       .def_static("from_json", genotype_from_json, "j"_a,

@@ -1,5 +1,3 @@
-from random import Random
-
 from abrain import Genome
 
 
@@ -23,16 +21,15 @@ def assert_genomes_equal(lhs: Genome, rhs: Genome):
         assert lhs_l.dst == rhs_l.dst
         assert lhs_l.weight == rhs_l.weight
 
-    assert lhs.nextNodeID == rhs.nextNodeID
-    assert lhs.nextLinkID == rhs.nextLinkID
 
-
-def genome_factory(seed, eshn: bool, shape=None, labels=None, **kwargs):
-    rng = Random(seed)
+def genome_factory(seed, eshn: bool, shape=None, labels=None, n=1, **kwargs):
     if eshn:
         kwargs.setdefault("dimension", 3)
-        g = Genome.eshn_random(rng, **kwargs)
-        return rng, g.inputs, g.outputs, g
+        data = Genome.Data.create_for_eshn_cppn(seed=seed, **kwargs)
     else:
         i, o = shape or (5, 3)
-        return rng, i, o, Genome.random(rng, i, o, labels=labels, **kwargs)
+        data = Genome.Data.create_for_generic_cppn(
+            i, o, labels=labels, seed=seed, **kwargs
+        )
+    g = [Genome.random(data) for _ in range(n)]
+    return data, g[0].inputs, g[0].outputs, g if n > 1 else g[0]

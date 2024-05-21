@@ -8,19 +8,16 @@ contents of `examples/basics.py`.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :emphasize-lines: 4
-    :lines: -5
+    :emphasize-lines: 3
+    :lines: -4
 
 We start by importing the essential components, aliased directly under the main
 package:
 
 - :class:`~abrain.Genome` abstracts the evolvable part of the library
-- :class:`~abrain.ANN2D` is the callable object representing an Artificial
-  Neural Network of emergent topology in 2 dimensions
+- :class:`~abrain.ANN3D` is the callable object representing an Artificial
+  Neural Network of emergent topology in 3 dimensions
 - :class:`~abrain.Point3D` describes a coordinate in the substrate ("the brain")
-- :func:`~abrain.ANN3D.render3D` is a helper function for rendering
-  ANN to a, potentially interactive, figure
-- :class:`random.Random` is used as the source of random numbers
 
 .. note::
 
@@ -29,19 +26,25 @@ package:
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 12-15
+    :lines: 11-14
 
-The first object we need is the Genome which can be created by providing the
-random number generator to its :func:`~abrain.Genome.eshn_random` function.
-This function is dedicated to generating a genome for use with Es-HyperNEAT while
-:func:`~abrain.Genome.random` is meant for generic-purpose CPPNs.
+To create a :class:`~abrain.Genome` we first need a :class:`~abrain.Genome.Data`
+object to store all the shared parameters (labels, random number generator,
+id managers, ...).
+This is done either via :meth:`~abrain.Genome.Data.create_for_generic_cppn`, when
+using the :class:`~abrain.CPPN` directly, or with
+:meth:`~abrain.Genome.Data.create_for_eshn_cppn`, when using this genome to create
+:class:`~abrain.ANN3D` through ES-HyperNEAT.
+We can then generate a random Genome by providing this structure to
+:func:`~abrain.Genome.random`.
 
 To simulate an evolutionary process, we subject this Genome `g` to a number of
-undirected mutations (see :ref:`usage-advanced-mutations`)
+undirected mutations (see :ref:`usage-advanced-mutations`).
+Again, the shared :class:`~abrain.Genome.Data` must be provided.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 18-19
+    :lines: 17-18
 
 Before instantiating the ANN, we define the coordinates of the neural inputs
 (sensors) and outputs (effectors).
@@ -70,7 +73,7 @@ relationships (i.e. bilateral symmetry, front-back ...).
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
     :emphasize-lines: 1
-    :lines: 22-24
+    :lines: 21-23
 
 Creating the ANN is then as trivial as calling the static
 :func:`~abrain.ANN3D.build` function with the set of inputs/outputs and the
@@ -80,14 +83,14 @@ build procedure resulted in a functional network.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 27
+    :lines: 26
 
 Optionally, one can produce a 3D rendering of the network through the utility
 function :func:`~abrain.ANN3D.render3D`.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 30-33
+    :lines: 29-32
 
 Actually using the ANN requires defining the neural inputs at a given time step,
 which can be done by direct assignment (line 29) or through slices (line 30).
@@ -106,7 +109,7 @@ responses computed in the next step.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 36-37
+    :lines: 35-36
 
 Following that, we can query the outbound activity by invoking the ANN with both
 buffers.
@@ -115,7 +118,7 @@ activation step is desired, e.g. deep networks with a low update rate.
 
 .. literalinclude:: ../../../examples/basics.py
     :lineno-match:
-    :lines: 40
+    :lines: 39
 
 As with the input buffer, the results can be queried individually or in bulk to
 set the robot's outputs (motors...).

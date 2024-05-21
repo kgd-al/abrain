@@ -127,14 +127,9 @@ class ANNMonitor:
                 return [v_min, -v_min]
 
             nv_min, nv_max = c_range(self.neurons_data.data)
-            # print(f"[kgd-debug] {nv_min=}, {nv_max=}")
-
             ew_min, ew_max = c_range(
                 [link.weight for link, _, _ in _iter_axons(self.ann)])
-            # print(f"[kgd-debug] {ew_min=}, {ew_max=}")
-
             ev_min, ev_max = c_range(self.axonal_data.data)
-            # print(f"[kgd-debug] {ev_min=}, {ev_max=}")
 
             frames = [
                 go.Frame(

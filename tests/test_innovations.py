@@ -1,25 +1,20 @@
 import copy
-import logging
-import math
 import pickle
 import pprint
 import pydoc
-from pathlib import Path
-from random import Random
-from typing import Optional
 
 import pytest
 
 from _utils import genome_factory
-from abrain import Config, Genome, GIDManager, Innovations
-from abrain.core.genome import logger as genome_logger
+from abrain import Genome
+from abrain.core.genome import Innovations
 
 
-def __debug_print_innov(i: Innovations):
+def __debug_print_innov(i: Innovations):  # pragma: no cover
     pprint.pprint(i.to_json())
 
 
-def __debug_print_genome(g: Genome):
+def __debug_print_genome(g: Genome):  # pragma: no cover
     print(g)
     print("Nodes:")
     for n in g.nodes:
@@ -47,30 +42,55 @@ def test_create():
     nn, nl = i.size()
     assert nn == 0
     assert nl == 0
-    assert i.nextNodeID() == 0
-    assert i.nextLinkID() == 0
+    assert i.next_node_id() == 0
+    assert i.next_link_id() == 0
+
+
+def test_ids():
+    i = Innovations()
+    i.initialize(0)
+    assert i.empty()
+
+    steps = 10
+    for _ in range(steps):
+        assert i.get_node_id(0, 0) == 0
+        assert i.get_link_id(0, 0) == 0
+
+    assert i.node_id(0, 0) == 0
+    assert i.link_id(0, 0) == 0
+    assert i.size() == (1, 1)
+
+    i.initialize(0)
+    assert i.empty()
+
+    steps = 10
+    for j in range(steps):
+        assert i.next_node_id() == j
+        assert i.new_node_id(0, 0) == j
+        assert i.next_link_id() == j
+        assert i.new_link_id(0, 0) == j
+    assert i.node_id(0, 0) == steps-1
+    assert i.link_id(0, 0) == steps-1
+
+    assert i.node_id(1, 1) == i.NOT_FOUND
+    assert i.link_id(1, 1) == i.NOT_FOUND
 
 
 @pytest.mark.parametrize('with_bias', [True, False])
 def test_create_single_genome(seed, with_bias, cppn_shape):
-    innovations = Innovations()
-    assert innovations.empty()
-    nn, nl = innovations.size()
-    assert nn == 0 and nl == 0
-    assert innovations.nextNodeID() == 0
-    assert innovations.nextLinkID() == 0
-
     i, o = cppn_shape
 
-    _, _, _, g = genome_factory(seed, eshn=False, shape=(i, o),
-                                with_input_bias=with_bias,
-                                innovations=innovations)
+    data, _, _, g = genome_factory(
+        seed=seed, eshn=False, shape=(i, o),
+        with_input_bias=with_bias, with_innovations=True)
+
+    innovations = data.id_manager
 
     g_links = len(g.links)
     nn, nl = innovations.size()
     assert nn == 0 and nl == g_links
-    assert innovations.nextNodeID() == i + int(with_bias) + o
-    assert innovations.nextLinkID() == g_links
+    assert innovations.next_node_id() == i + int(with_bias) + o
+    assert innovations.next_link_id() == g_links
 
     i_json = innovations.to_json()
     assert "nodes" in i_json
@@ -78,29 +98,26 @@ def test_create_single_genome(seed, with_bias, cppn_shape):
     assert "links" in i_json
     assert len(i_json["links"]) == nl
     assert "nextNode" in i_json
-    assert i_json["nextNode"] == innovations.nextNodeID()
+    assert i_json["nextNode"] == innovations.next_node_id()
     assert "nextLink" in i_json
-    assert i_json["nextLink"] == innovations.nextLinkID()
+    assert i_json["nextLink"] == innovations.next_link_id()
 
 
 @pytest.mark.parametrize('with_bias', [True, False])
 def test_create_multiple_genomes(seed, with_bias, cppn_shape):
-    innovations = Innovations()
-
     i, o = cppn_shape
 
-    genomes = []
-    for j in range(10):
-        _, _, _, g = genome_factory(seed+j, eshn=False, shape=(i, o),
-                                    with_input_bias=with_bias,
-                                    innovations=innovations)
-        genomes.append(g)
+    data, _, _, genomes = genome_factory(
+        n=10, seed=seed, eshn=False, shape=(i, o),
+        with_input_bias=with_bias, with_innovations=True)
+
+    innovations = data.id_manager
 
     g_links = len(set(_l.id for _g in genomes for _l in _g.links))
     nn, nl = innovations.size()
     assert nn == 0 and nl == g_links
-    assert innovations.nextNodeID() == i + int(with_bias) + o
-    assert innovations.nextLinkID() == g_links
+    assert innovations.next_node_id() == i + int(with_bias) + o
+    assert innovations.next_link_id() == g_links
 
     i_json = innovations.to_json()
     assert "nodes" in i_json
@@ -108,33 +125,31 @@ def test_create_multiple_genomes(seed, with_bias, cppn_shape):
     assert "links" in i_json
     assert len(i_json["links"]) == nl
     assert "nextNode" in i_json
-    assert i_json["nextNode"] == innovations.nextNodeID()
+    assert i_json["nextNode"] == innovations.next_node_id()
     assert "nextLink" in i_json
-    assert i_json["nextLink"] == innovations.nextLinkID()
+    assert i_json["nextLink"] == innovations.next_link_id()
 
 
 def test_mutate_multiple_genomes(seed, mutations, cppn_shape):
-    innovations = Innovations()
-
     i, o = cppn_shape
 
-    genomes = []
-    for j in range(10):
-        rng, _, _, g = genome_factory(
-            seed+j, eshn=False, shape=(i, o),
-            innovations=innovations)
-        for _ in range(mutations):
-            g.mutate(rng, innovations)
-        genomes.append(g)
+    data, _, _, genomes = genome_factory(
+        n=10, seed=seed, eshn=False, shape=(i, o),
+        with_innovations=True)
 
-    g_links = len(set(_l.id for _g in genomes for _l in _g.links ))
+    for g in genomes:
+        for _ in range(mutations):
+            g.mutate(data)
+
+    innovations = data.id_manager
+    g_links = len(set(_l.id for _g in genomes for _l in _g.links))
     g_nodes = len(set(n.id for _g in genomes for n in _g.nodes
                       if _g._is_hidden(n.id)))
     nn, nl = innovations.size()
     assert nn >= g_nodes
     assert nl >= g_links
-    assert innovations.nextNodeID() >= i + o + g_nodes
-    assert innovations.nextLinkID() >= g_links
+    assert innovations.next_node_id() >= i + o + g_nodes
+    assert innovations.next_link_id() >= g_links
 
     i_json = innovations.to_json()
     assert "nodes" in i_json
@@ -142,9 +157,9 @@ def test_mutate_multiple_genomes(seed, mutations, cppn_shape):
     assert "links" in i_json
     assert len(i_json["links"]) == nl
     assert "nextNode" in i_json
-    assert i_json["nextNode"] == innovations.nextNodeID()
+    assert i_json["nextNode"] == innovations.next_node_id()
     assert "nextLink" in i_json
-    assert i_json["nextLink"] == innovations.nextLinkID()
+    assert i_json["nextLink"] == innovations.next_link_id()
 
 
 # TODO: Test with specific mutations
@@ -154,19 +169,20 @@ def test_mutate_multiple_genomes(seed, mutations, cppn_shape):
 ###############################################################################
 
 def _simple_innovation(seed):
-    innovations = Innovations()
-    for j in range(10):
-        rng, _, _, g = genome_factory(
-            seed+j, eshn=False, shape=(5, 3),
-            innovations=innovations)
+    data, _, _, genomes = genome_factory(
+        n=10, seed=seed, eshn=False, shape=(5, 3),
+        with_innovations=True)
+
+    for g in genomes:
         for _ in range(10):
-            g.mutate(rng, innovations)
-    return innovations
+            g.mutate(data)
+
+    return data.id_manager
 
 
 def assert_equal(lhs: Innovations, rhs: Innovations):
-    assert lhs.nextNodeID() == rhs.nextNodeID()
-    assert lhs.nextLinkID() == rhs.nextLinkID()
+    assert lhs.next_node_id() == rhs.next_node_id()
+    assert lhs.next_link_id() == rhs.next_link_id()
     assert lhs.__repr__() == rhs.__repr__()
     assert lhs.empty() == rhs.empty()
     assert lhs.size() == rhs.size()

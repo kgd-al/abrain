@@ -3,7 +3,9 @@
 # This file only contains a selection of the most common options. For a full
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+import importlib
 import os
+import sys
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -13,6 +15,15 @@ from typing import List, Optional
 from sphinx.ext.autodoc import AttributeDocumenter
 from sphinx.util import logging
 from sphinx_pyproject import SphinxConfig
+
+# -- Ensure up-to-date sources -----------------------------------------------
+for module in list(m for m in sys.modules.values() if "abrain" in m.__name__):
+    try:
+        print(f"Reloading {module.__name__}\r", end='')
+        importlib.reload(module)
+    except AttributeError:
+        print("Could not reload", {module.__name__})
+print("[kgd-debug] All abrain modules reloaded.")
 
 # -- Project information -----------------------------------------------------
 

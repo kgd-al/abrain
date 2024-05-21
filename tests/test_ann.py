@@ -25,19 +25,22 @@ def test_default_is_empty(dimension):
     with pytest.raises(TypeError):
         _ann_type(dimension)()
 
-    ann, _, _ = _make_ann(dimension, 0, Random(0))
+    ann, _, _ = _make_ann(dimension, 0, 0)
     with pytest.raises(ValueError):
         ann.neuronAt(ann.Point.null())
 
 
-def _make_ann(dimension, mutations, rng,
+def _make_ann(dimension, mutations, seed,
               other_inputs=None, other_outputs=None) -> \
         Tuple[ANN, List[Point], List[Point]]:
 
-    genome = Genome.eshn_random(rng, dimension)
+    data = Genome.Data.create_for_eshn_cppn(dimension=dimension,
+                                            seed=seed)
+    genome = Genome.random(data)
     for _ in range(mutations):
-        genome.mutate(rng)
+        genome.mutate(data)
 
+    rng = data.rng
     ann_t = _ann_type(dimension)
 
     def d(): return rng.randint(10, 20)
@@ -67,10 +70,9 @@ def test_empty_perceptrons(_dimension, mutations, seed):
     n = 10
 
     def generate_stats():
-        rng = Random(seed)
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
-            ann, _, _ = _make_ann(_dimension, mutations, rng)
+            ann, _, _ = _make_ann(_dimension, mutations, seed)
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
@@ -117,11 +119,11 @@ def test_invalid_duplicates(dimension, i, o):
     outputs = [p(c) for c in o]
     with pytest.raises(ValueError):
         print(f"ANN.build({inputs}, {outputs}, genome)")
-        _make_ann(dimension, 0, Random(0), inputs, outputs)
+        _make_ann(dimension, 0, 0, inputs, outputs)
 
 
 def test_inspect_neurons(dimension, mutations, seed):
-    ann, _, _ = _make_ann(dimension, mutations, Random(seed))
+    ann, _, _ = _make_ann(dimension, mutations, seed)
     attrs = [k for k in ann.Neuron.__dict__.keys()
              if k[0].islower() and k[0].isalpha() and k != "links"]
     data = []
@@ -150,8 +152,7 @@ def test_inspect_neurons(dimension, mutations, seed):
 
 
 def test_stats(dimension, mutations, seed):
-    rng = Random(seed)
-    ann, _, _ = _make_ann(dimension, mutations, rng)
+    ann, _, _ = _make_ann(dimension, mutations, seed)
     ann_t = type(ann)
 
     stats = ann.stats()
@@ -173,8 +174,7 @@ def test_stats(dimension, mutations, seed):
 
 
 def test_random_eval(dimension, mutations, seed):
-    rng = Random(seed)
-    ann, inputs, outputs = _make_ann(dimension, mutations, rng)
+    ann, inputs, outputs = _make_ann(dimension, mutations, seed)
 
     assert len(ann.ibuffer()) == len(inputs)
     assert len(ann.obuffer()) == len(outputs)
@@ -183,6 +183,7 @@ def test_random_eval(dimension, mutations, seed):
     assert ann.ibuffer() == ann.ibuffer()  # same objects
     assert ann.obuffer() == ann.obuffer()  #
 
+    rng = Random(seed)
     avg_output = 0
     for _ in range(1000):
         # inputs, outputs = ann.buffers()
@@ -214,8 +215,7 @@ def _random_step(ann: ANN, rng: Random):
 
 
 def test_reset(dimension, mutations, seed):
-    rng = Random(seed)
-    ann, _, _ = _make_ann(dimension, mutations, rng)
+    ann, _, _ = _make_ann(dimension, mutations, seed)
 
     n = 1000
     all_outputs = [[], []]
@@ -233,8 +233,7 @@ def test_reset(dimension, mutations, seed):
 
 
 def test_view_neurons_png(mutations, seed, tmp_path):
-    rng = Random(seed)
-    ann, _, _ = _make_ann(3, mutations, rng)
+    ann, _, _ = _make_ann(3, mutations, seed)
 
     file = f"{tmp_path}/ann.png"
     fig = ann.render3D()
@@ -259,8 +258,7 @@ def _time(_start=None):
 def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
     _, start = _time()
 
-    rng = Random(seed)
-    ann, inputs, _ = _make_ann(3, mutations, rng)
+    ann, inputs, _ = _make_ann(3, mutations, seed)
     duration, start = _time(start)
     print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
 
@@ -297,8 +295,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 
     _, start = _time()
 
-    rng = Random(seed)
-    ann, inputs, _ = _make_ann(3, mutations, rng)
+    ann, inputs, _ = _make_ann(3, mutations, seed)
     duration, start = _time(start)
     print(f"Generating ANN(gen={mutations}, seed={seed}): {duration}s")
 
@@ -319,6 +316,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
         dt=dt
     )
 
+    rng = Random(seed)
     for _ in range(n):
         _random_step(ann, rng)
         ann_monitor.step()

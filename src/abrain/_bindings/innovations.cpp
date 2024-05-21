@@ -30,8 +30,7 @@ py::dict to_json (const Innovations &i) {
   return dict;
 }
 
-Innovations innovations_from_json (const py::dict& dict) {
-  Innovations i;
+auto innovations_from_json (const py::dict& dict) {
   static const auto from_json = [] (const py::dict &dict) {
     Map m;
     for (const auto &[p_key, p_value]: dict) {
@@ -58,49 +57,74 @@ void init_innovations (py::module_ &m) {
   inov.def(py::init<>())
 
           .def ID(initialize,
-                  "Place holder before the class-wide factory constructor")
+                  R"__(
+            Reset the database.
 
-          .def ID(link_innovation_id, R"__(
+            Next node id is set to the provided value and the next link
+            id is set to 0. All known nodes and links mappings are cleared.
+
+            :param nextNodeID: The next node id to give
+                  )__", "nextNodeID"_a)
+
+          .def ID(link_id, R"__(
             Retrieve link innovation marking for provided key
 
-            :param from: ID of the link's source
-            :param to: ID of the link's destination
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
             :return: The corresponding *link* innovation marking or
               :attr:`Innovations.NOT_FOUND` if not found
-                  )__")
-          .def ID(node_innovation_id, R"__(
+                  )__", "src"_a, "dst"_a)
+          .def ID(node_id, R"__(
             Retrieve node innovation marking for provided key
 
             The link refers to the link that was broken up to create this new
              node
 
-            :param from: ID of the link's source
-            :param to: ID of the link's destination
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
             :return: The corresponding *node* innovation marking or
               :attr:`Innovations.NOT_FOUND` if not found
-                  )__")
+                  )__", "src"_a, "dst"_a)
 
-          .def ID(add_link_innovation, R"__(
+          .def ID(get_link_id, R"__(
             Attempt to generate a new link innovation marking for provided key
 
-            :param from: ID of the link's source
-            :param to: ID of the link's destination
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
             :return: The newly created, or existing corresponding *link*
               innovation marking
-                  )__")
-          .def ID(add_node_innovation, R"__(
+                  )__", "src"_a, "dst"_a)
+          .def ID(get_node_id, R"__(
             Attempt to generate a new node innovation marking for provided key
 
-            :param from: ID of the link's source
-            :param to: ID of the link's destination
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
             :return: The newly created, or existing corresponding *node*
               innovation marking
-                  )__")
+                  )__", "src"_a, "dst"_a)
 
-          .def ID(nextNodeID,
-                  "Historical marking of the next new node")
-          .def ID(nextLinkID,
-                  "Historical marking of the next new link")
+          .def ID(new_link_id, R"__(
+            Force generation of a new link innovation marking for provided key
+
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
+            :return: The newly created *link* innovation marking
+                  )__", "src"_a, "dst"_a)
+          .def ID(new_node_id, R"__(
+            Force generation of a new node innovation marking for provided key
+
+            :param src: ID of the link's source
+            :param dst: ID of the link's destination
+            :return: The newly created *node* innovation marking
+                  )__", "src"_a, "dst"_a)
+
+          .def("next_node_id", &Innovations::nextNodeID,
+               "Historical marking of the next new node")
+          .def ("next_link_id", &Innovations::nextLinkID,
+                "Historical marking of the next new link")
+
+          .def_readonly_static
+            ID(NOT_FOUND, "Returned when requested id could not be found")
 
           .def("__repr__", [] (const Innovations &i) {
             return utils::mergeToString(

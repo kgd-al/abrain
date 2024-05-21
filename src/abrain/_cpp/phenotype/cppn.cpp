@@ -16,9 +16,9 @@
 
 namespace utils { // Contains debugging tools
 std::ostream& operator<< (std::ostream &os,
-                         const kgd::eshn::phenotype::CPPN::Outputs &outputs) {
-  os << "[ " << outputs[0];
-  for (uint i=1; i<outputs.size(); i++) os << " " << outputs[i];
+                         const kgd::eshn::phenotype::CPPN::Buffer &buffer) {
+  os << "[ " << buffer[0];
+  for (uint i=1; i<buffer.size(); i++) os << " " << buffer[i];
   return os << "]";
 }
 

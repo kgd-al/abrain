@@ -2,10 +2,9 @@ import json
 import math
 import random
 from pathlib import Path
-from random import Random
 
 from _utils import assert_genomes_equal
-from abrain import Genome, GIDManager, ANN3D as ANN, Point3D as Point
+from abrain import Genome, ANN3D as ANN, Point3D as Point
 
 
 class Robot:
@@ -61,7 +60,10 @@ def test_evolution(evo_config, capsys, tmp_path):
     fitness = evo_config["fitness"]
 
     tour_size = 4
-    rng = Random(seed)
+    data = Genome.Data.create_for_eshn_cppn(
+        dimension=3, seed=seed,
+        with_lineage=True
+    )
 
     def random_coordinates(n_min, n_max, y):
         def rc(): return random.uniform(-1, 1)
@@ -73,8 +75,6 @@ def test_evolution(evo_config, capsys, tmp_path):
     Robot.ann_inputs = random_coordinates(10, 20, -1)
     Robot.ann_outputs = random_coordinates(5, 10, 1)
 
-    id_manager = GIDManager()
-
     with capsys.disabled():
         print()
         print("  ========================")
@@ -83,8 +83,7 @@ def test_evolution(evo_config, capsys, tmp_path):
             print(f"\t{k}: {v}")
         print()
 
-        population = [Robot(Genome.eshn_random(rng, 3,
-                                               id_manager=id_manager))
+        population = [Robot(Genome.random(data))
                       for _ in range(pop_size)]
         print("== Initialized population")
 
@@ -108,9 +107,9 @@ def test_evolution(evo_config, capsys, tmp_path):
 
             new_population = []
             for _ in range(pop_size):
-                winner = champion(rng.sample(population, tour_size))
-                child = Robot(winner.genome.mutated(rng, id_manager))
-                child.genome.update_lineage(id_manager, [winner.genome])
+                winner = champion(data.rng.sample(population, tour_size))
+                child = Robot(winner.genome.mutated(data))
+                child.genome.update_lineage(data, [winner.genome])
                 new_population.append(child)
 
             population = new_population
@@ -130,5 +129,5 @@ def test_evolution(evo_config, capsys, tmp_path):
         roundtrip_champ = Robot.from_json_file(json_path)
         Robot.assert_equal(champ, roundtrip_champ)
 
-        dot_path = champ.genome.to_dot(base_path, "pdf")
+        dot_path = champ.genome.to_dot(data, base_path, "pdf")
         print(">>> Drawn to", dot_path)

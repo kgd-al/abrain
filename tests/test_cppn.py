@@ -14,42 +14,32 @@ from abrain import (
 )
 
 
-def _make_generic_cppn(cppn_type, seed, mutations=0):
-    rng = Random(seed)
-    genome = Genome.random(rng, rng.randint(2, 5), rng.randint(1, 3))
-    for _ in range(mutations):
-        genome.mutate(rng)
-    try:
-        cppn = cppn_type(genome)
-    except Exception as e:  # pragma: no cover
-        genome.to_dot("foo.pdf", debug="depths,links")
-        raise e
-    return cppn, genome
-
-
-def _make_eshn_cppn(cppn_type, seed, mutations=0):
-    rng = Random(seed)
-    genome = Genome.eshn_random(rng, cppn_type.DIMENSIONS)
-    for _ in range(mutations):
-        genome.mutate(rng)
-    try:
-        cppn = cppn_type(genome)
-    except Exception as e:  # pragma: no cover
-        genome.to_dot("foo.pdf", debug="depths,links")
-        raise e
-    return cppn, genome
-
-
 def _make_cppn(cppn_type, seed, mutations=0):
     match cppn_type.__name__:
         case GenericCPPN.__name__:
-            return _make_generic_cppn(cppn_type, seed, mutations)
+            rng = Random(seed)
+            data = Genome.Data.create_for_generic_cppn(
+                seed=seed,
+                inputs=rng.randint(2, 5),
+                outputs=rng.randint(1, 3)
+            )
         case CPPN2D.__name__:
-            return _make_eshn_cppn(cppn_type, seed, mutations)
+            data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
         case CPPN3D.__name__:
-            return _make_eshn_cppn(cppn_type, seed, mutations)
+            data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=seed)
         case _:  # pragma: no cover
             raise ValueError(f"Invalid CPPN type {cppn_type}")
+
+    genome = Genome.random(data)
+    for _ in range(mutations):
+        genome.mutate(data)
+    try:
+        cppn = cppn_type(genome)
+    except Exception as e:  # pragma: no cover
+        genome.to_dot(data, "foo.pdf", debug="depths,links")
+        raise e
+
+    return cppn, genome, data
 
 
 def _uniform_point_factory(point_type):
@@ -62,7 +52,7 @@ def _random_inputs(seed, cppn):
 
 
 def test_exists(cppn_type):
-    cppn, _ = _make_cppn(cppn_type, 16)
+    cppn, _, _ = _make_cppn(cppn_type, 16)
     print(cppn)
     print(pydoc.render_doc(cppn))
     if hasattr(cppn_type, "Point"):
@@ -79,13 +69,13 @@ def test_functions(cppn_type):
 # Force all types to be tested even with small scale test
 @pytest.mark.parametrize('_cppn_type', [GenericCPPN, CPPN2D, CPPN3D])
 def test_create(_cppn_type, seed):
-    cppn, _ = _make_cppn(_cppn_type, seed)
+    cppn, _, _ = _make_cppn(_cppn_type, seed)
     print(cppn)
     assert cppn.n_hidden() == 0
 
 
 def test_buffers(cppn_type, seed):
-    cppn, _ = _make_cppn(cppn_type, seed)
+    cppn, _, _ = _make_cppn(cppn_type, seed)
     for buffer, size in [(cppn.ibuffer(), cppn.n_inputs()),
                          (cppn.obuffer(), cppn.n_outputs())]:
         print(pydoc.render_doc(buffer))
@@ -102,7 +92,7 @@ def test_buffers(cppn_type, seed):
 # ===================================================
 def __tester_generic_single_output(
         seed, mutations, args_maker: Callable[[GenericCPPN, list], Tuple]):
-    cppn, _ = _make_cppn(GenericCPPN, seed, mutations)
+    cppn, _, _ = _make_cppn(GenericCPPN, seed, mutations)
     inputs = _random_inputs(seed, cppn)
     args = args_maker(cppn, inputs)
     for o in range(cppn.n_outputs()):
@@ -116,7 +106,7 @@ def __tester_generic_single_output(
 # ===================================================
 def __tester_generic_all_outputs(
         seed, mutations, args_maker: Callable[[GenericCPPN, list], Tuple]):
-    cppn, _ = _make_cppn(GenericCPPN, seed, mutations)
+    cppn, _, _ = _make_cppn(GenericCPPN, seed, mutations)
     inputs = _random_inputs(seed, cppn)
     args = args_maker(cppn, inputs)
     outputs = cppn.outputs()
@@ -164,7 +154,7 @@ def test_generic_all_outputs_input_args(seed, mutations):
 
 
 def test_nd_output_single(cppn_nd_type, seed):
-    cppn, _ = _make_cppn(cppn_nd_type, seed)
+    cppn, _, _ = _make_cppn(cppn_nd_type, seed)
     _p = _uniform_point_factory(cppn_nd_type.Point)
     p0, p1 = _p(0), _p(0)
     for o in cppn_nd_type.Output:
@@ -175,7 +165,7 @@ def test_nd_output_single(cppn_nd_type, seed):
 
 
 def test_nd_outputs_all(cppn_nd_type, seed):
-    cppn, _ = _make_cppn(cppn_nd_type, seed)
+    cppn, _, _ = _make_cppn(cppn_nd_type, seed)
     _p = _uniform_point_factory(cppn_nd_type.Point)
     p0, p1 = _p(0), _p(0)
     values = {k: set() for k in cppn_nd_type.Output}
@@ -190,7 +180,7 @@ def test_nd_outputs_all(cppn_nd_type, seed):
 
 
 def test_nd_outputs_subset(cppn_nd_type, seed):
-    cppn, _ = _make_cppn(cppn_nd_type, seed)
+    cppn, _, _ = _make_cppn(cppn_nd_type, seed)
     _p = _uniform_point_factory(cppn_nd_type.Point)
     p0, p1 = _p(0), _p(0)
     values = {k: set() for k in cppn_nd_type.Output}
@@ -206,7 +196,7 @@ def test_nd_outputs_subset(cppn_nd_type, seed):
 
 
 def test_outputs_equals(cppn_nd_type, seed):
-    cppn, _ = _make_cppn(cppn_nd_type, seed)
+    cppn, _, _ = _make_cppn(cppn_nd_type, seed)
 
     rng = Random(seed)
 
@@ -257,9 +247,9 @@ def test_multiscale_sampling(cppn_nd_type, mutations, seed,
         basename=f"test_multiscale_sampling_"
                  f"s{seed}_m{mutations}_{cppn_nd_type.__name__}")
 
-    cppn, genome = _make_cppn(cppn_nd_type, seed, mutations)
+    cppn, genome, data = _make_cppn(cppn_nd_type, seed, mutations)
 
-    genome.to_dot(f"{folder}/cppn.png")
+    genome.to_dot(data, f"{folder}/cppn.png")
     print('Generated', f"{folder}/cppn.png")
 
     yield 'generate_cppn'

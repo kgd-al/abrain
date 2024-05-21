@@ -14,17 +14,20 @@ public:
   static constexpr auto NOT_FOUND = ID(-1);
 
   Innovations();
-//  Innovations(...); // from an existing genome/population?
+//  Innovations(...); // src an existing genome/population?
   Innovations (const Map &&nodes, const Map &&links,
                const ID &nextNodeId, const ID &nextLinkID);
 
   void initialize (ID nextNodeID);
 
-  ID link_innovation_id (const ID &from, const ID &to);
-  ID node_innovation_id (const ID &from, const ID &to);
+  ID link_id (const ID &src, const ID &dst) const;
+  ID node_id (const ID &src, const ID &dst) const;
 
-  ID add_link_innovation(const ID &from, const ID &to);
-  ID add_node_innovation(const ID &from, const ID &to);
+  ID get_link_id(const ID &src, const ID &dst);
+  ID get_node_id(const ID &src, const ID &dst);
+
+  ID new_link_id(const ID &src, const ID &dst);
+  ID new_node_id(const ID &src, const ID &dst);
 
   [[nodiscard]] const auto& nodes (void) const { return _nodes; }
   [[nodiscard]] const auto& links (void) const { return _links; }
@@ -38,8 +41,9 @@ private:
   Map _nodes, _links;
   ID _nextNodeID, _nextLinkID;
 
-  static ID innovation_id (const ID &from, const ID &to, const Map &map);
-  static ID add_innovation (const ID &from, const ID &to, Map &map, ID &nextID);
+  static ID id (const ID &src, const ID &dst, const Map &map);
+  static ID get_id (const ID &src, const ID &dst, Map &map, ID &nextID);
+  static ID new_id (const ID &src, const ID &dst, Map &map, ID &nextID);
 };
 
 } // end of namespace kgd::eshn::genotype

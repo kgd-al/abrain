@@ -132,12 +132,12 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
   mkdir -p $out
   
   lcov --zerocounters --directory .
-    
+
   pycoverage=$cout/py.coverage.info
   coverage run --branch --data-file=$(basename $pycoverage) \
-    --source=. --omit "tests/conftest.py,setup.py" \
+    --source=. --omit "tests/conftest.py,setup.py,examples/*.py" \
     -m \
-    pytest --durations=10 --basetemp=$out -x -ra $@ || exit 2
+    pytest --durations=10 --basetemp=$out -x -ra "$@" || exit 2
   mkdir -p $cout # pytest will have cleared everything. Build it back
   mv $(basename $pycoverage) $pycoverage
   coverage report --data-file=$pycoverage
@@ -231,7 +231,7 @@ cmd_doc(){  # Generate the documentation
 
 cmd_autodoc(){  # Generate the documentation continuously
   do_doc_prepare
-  sphinx-autobuild doc/src/ $out/html -aE --watch src \
+  sphinx-autobuild doc/src/ $out/html -aE --watch src --watch examples \
     --color -W --keep-going -w $out/errors --ignore '*_auto*' \
     --pre-build 'bash -c "clear; date;"' $@
 }
@@ -292,5 +292,5 @@ else
   cmd="cmd_$1"
   echo "Making" $cmd
   shift
-  eval $cmd $@
+  eval $cmd "$@"
 fi

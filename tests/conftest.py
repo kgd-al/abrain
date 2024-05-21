@@ -1,5 +1,4 @@
 import itertools
-import sys
 from enum import IntFlag
 from typing import Dict, Any
 
@@ -75,6 +74,11 @@ kgd_config: Dict[str, Dict[TestSize, Any]] = dict(
         TestSize.NORMAL: [100],
         TestSize.LARGE: [0, 1000]
     },
+    generations={
+        TestSize.SMALL: [25],
+        TestSize.NORMAL: [100],
+        TestSize.LARGE: [250]
+    },
     ad_rate={
         TestSize.SMALL: [best_ad_rate],
         TestSize.NORMAL: [1],
@@ -137,6 +141,7 @@ def pytest_generate_tests(metafunc):
 
     # print("Configuring", metafunc.function)
     maybe_parametrize("mutations", "m")
+    maybe_parametrize("generations", "g")
     maybe_parametrize("seed", "s")
     maybe_parametrize("ad_rate", "ar")
     maybe_parametrize("dimension", "d")
@@ -182,7 +187,8 @@ def pytest_collection_modifyitems(config, items):
                                     f" {flag} to run")
 
     file_order = ["config", "genome", "innovations",
-                  "cppn", "ann", "evolution"]
+                  "cppn", "ann", "evolution",
+                  "examples"]
 
     def _key(_item): return _item.reportinfo()[0].stem.split("_")[1]
 

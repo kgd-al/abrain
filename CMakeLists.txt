@@ -19,6 +19,7 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-fno-elide-constructors -fno-default-inline")
 
 ################################################################################
 ## Dependencies
@@ -155,65 +156,6 @@ if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
             "(currently using ${CMAKE_BUILD_TYPE})")
     endif()
 endif()
-
-option(ESHN_WITH_DISTANCE "Whether CPPN inputs include connection length" ON)
-message("> CPPN distance: ${ESHN_WITH_DISTANCE}")
-if (ESHN_WITH_DISTANCE)
-    add_definitions(-DESHN_WITH_DISTANCE)
-endif()
-
-set(ESHN_SUBSTRATE_DIMENSION "3" CACHE STRING
-    "Dimension of the ANN substrate (2 or 3)")
-set_property(CACHE ESHN_SUBSTRATE_DIMENSION PROPERTY STRINGS 2 3)
-message("> Substrate dimension: ${ESHN_SUBSTRATE_DIMENSION}")
-add_definitions(-DESHN_SUBSTRATE_DIMENSION=${ESHN_SUBSTRATE_DIMENSION})
-
-#################################################################################
-### Generate configuration files
-#################################################################################
-
-set(CPPN_CONSTANTS ${PROJECT_SOURCE_DIR}/src/abrain/_cpp/misc/constants)
-
-### CPPN Inputs (depends on arguments)
-#set(CPPN_INPUTS_LIST "")
-#set(CPPN_INPUT_NAMES "")
-#foreach(i RANGE 0 1)
-#    string(APPEND CPPN_INPUTS_LIST "X${i} Y${i} ")
-#    string(APPEND CPPN_INPUT_NAMES "x_${i} y_${i} ")
-#    if (${ESHN_SUBSTRATE_DIMENSION} EQUAL 3)
-#        string(APPEND CPPN_INPUTS_LIST "Z${i} ")
-#        string(APPEND CPPN_INPUT_NAMES "z_${i} ")
-#    endif()
-#endforeach()
-#if(ESHN_WITH_DISTANCE)
-#    string(APPEND CPPN_INPUTS_LIST "Length ")
-#    string(APPEND CPPN_INPUT_NAMES "l ")
-#endif()
-#string(APPEND CPPN_INPUTS_LIST "Bias")
-#string(APPEND CPPN_INPUT_NAMES "b")
-#string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_INPUT_NAMES ${CPPN_INPUT_NAMES})
-#string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_INPUTS_LIST})
-#list(LENGTH tokens CPPN_INPUTS_COUNT)
-#message("> CPPN inputs: ${CPPN_INPUTS_LIST}")
-#
-### CPPN Outputs (constant for now)
-#set(CPPN_OUTPUTS_LIST "Weight LEO Bias")
-#set(CPPN_OUTPUT_NAMES "w l b")
-#string(REGEX MATCHALL "[^ ]+" tokens ${CPPN_OUTPUTS_LIST})
-#string(REGEX REPLACE "([^ ]+)" "\"\\1\"," CPPN_OUTPUT_NAMES ${CPPN_OUTPUT_NAMES})
-#list(LENGTH tokens CPPN_OUTPUTS_COUNT)
-#
-#string(REPLACE " " ", " CPPN_INPUTS_LIST ${CPPN_INPUTS_LIST})
-#string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
-#    CPPN_INPUT_ENUM_NAMES ${CPPN_INPUTS_LIST})
-#string(REPLACE " " ", " CPPN_OUTPUTS_LIST ${CPPN_OUTPUTS_LIST})
-#string(REGEX REPLACE "([^ ,]+)" "\"\\1\""
-#    CPPN_OUTPUT_ENUM_NAMES ${CPPN_OUTPUTS_LIST})
-#string(REGEX REPLACE "([^ ]+)" "CPPN_OUTPUT::\\1"
-#    CPPN_QUALIFIED_OUTPUTS ${CPPN_OUTPUTS_LIST})
-#
-#configure_file(${CPPN_CONSTANTS}_template.h ${CPPN_CONSTANTS}.h)
-#message("-+ Generated cppn constants config '${CPPN_CONSTANTS}.h'")
 
 message("> Compile with: ${CMAKE_CXX_FLAGS}")
 

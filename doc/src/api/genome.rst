@@ -7,10 +7,15 @@ Main Object:
 
 .. autoclass:: abrain.Genome
 
-Underlying types:
+Helper types:
 ^^^^^^^^^^^^^^^^^
 
-.. autoclass:: abrain.GIDManager
+.. autoclass:: abrain._cpp.genotype.Innovations
+.. autoclass:: abrain.core.genome.IDManager
+.. autoclass:: abrain.core.genome.GIDManager
+
+Underlying types:
+^^^^^^^^^^^^^^^^^
 
 .. autoclass:: abrain._cpp.genotype.CPPNData
     :member-order: groupwise
