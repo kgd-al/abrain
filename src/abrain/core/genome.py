@@ -3,6 +3,7 @@ Test documentation for genome file (module?)
 """
 import logging
 import pathlib
+import pprint
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
@@ -190,7 +191,7 @@ class Genome(_CPPNData):
                 with_innovations: bool = True,
                 with_lineage: bool = True
         ):
-            """ Create a structure handling CPPNs for use with ES-HyperNEAT
+            """ Create a structure handling CPPNs for generic use
 
                 :param inputs: Number of inputs for the CPPN
                 :param outputs: Number of outputs for the CPPN
@@ -410,6 +411,51 @@ class Genome(_CPPNData):
                 bias = data.rng.choice([0, 1])
 
         return Genome._crossover(lhs, rhs, data, bias)
+
+    @staticmethod
+    def distance(lhs: 'Genome', rhs: 'Genome', weights=None) -> float:
+        """ Compute the genetic distance between `lhs` and `rhs`
+
+        :param lhs: The first genome
+        :param rhs: The first genome
+        :param weights: How to weight the different terms:
+
+        * Node excess
+        * Node disjoint
+        * Node matched
+        * Link excess
+        * Link disjoint
+        * Link matched
+
+        :return: the weighted genetic distance
+        """
+
+        Genome._debug_align(lhs, rhs)
+        if weights is None:
+            weights = [1]*6
+        nc1, nc2, nc3, lc1, lc2, lc3 = weights
+        nn = max(len(lhs.nodes), len(rhs.nodes))
+        nl = max(len(lhs.links), len(rhs.links))
+        stats = Genome._distance(lhs, rhs)
+        pprint.pprint(stats)
+
+        d = 0
+        if nn > 0:  # pragma: no cover
+            d += (
+                nc1 * stats["nodes"]["excess"] / nn
+                + nc2 * stats["nodes"]["disjoint"] / nn
+            )
+        if (nm := stats["nodes"]["matched"]) > 0:  # pragma: no cover
+            d += nc3 * stats["nodes"]["diff"] / nm
+        if nl > 0:  # pragma: no cover
+            d += (
+                lc1 * stats["links"]["excess"] / nl
+                + lc2 * stats["links"]["disjoint"] / nl
+            )
+        if (lm := stats["links"]["matched"]) > 0:  # pragma: no cover
+            d += lc3 * stats["links"]["diff"] / lm
+
+        return d
 
     def copy(self) -> 'Genome':
         """Return a perfect (deep)copy of this genome"""
@@ -967,7 +1013,34 @@ class Genome(_CPPNData):
         Genome._iter(lhs, rhs, 'links', process_links)
 
         child._sort_by_id()
+        child.update_lineage(data, [lhs, rhs])
         return child
+
+    @staticmethod
+    def _distance(lhs: 'Genome', rhs: 'Genome') -> dict:
+        stats = dict(nodes=dict(matched=0, disjoint=0, excess=0, diff=0),
+                     links=dict(matched=0, disjoint=0, excess=0, diff=0))
+
+        def process(_l: Union[_CPPNData.Node, _CPPNData.Link],
+                    _r: Union[_CPPNData.Node, _CPPNData.Link],
+                    _excess: bool, category: str, _fn: Callable):
+            key = "excess" if _excess else "disjoint"
+            if _l is not None and _r is not None:
+                key = "matched"
+                stats[category]["diff"] += _fn(_l, _r)
+            stats[category][key] += 1
+
+        def n_distance(_l: _CPPNData.Node, _r: _CPPNData.Node) -> float:
+            return int(_l.func != _r.func)
+
+        def l_distance(_l: _CPPNData.Link, _r: _CPPNData.Link) -> float:
+            return abs(_l.weight - _r.weight)
+
+        for (field, fn) in [("nodes", n_distance), ("links", l_distance)]:
+            Genome._iter(lhs, rhs, field,
+                         lambda _l, _r, _e: process(_l, _r, _e, field, fn))
+
+        return stats
 
     ###########################################################################
     # Private helpers
@@ -1038,29 +1111,41 @@ class Genome(_CPPNData):
         while lhs_i < lhs_len and rhs_i < rhs_len:
             l_item, r_item = lhs_items[lhs_i], rhs_items[rhs_i]
             if l_item.id < r_item.id:
-                # print(f"{str(l_item):>20s} <")
                 fn(l_item, None, False)
                 lhs_i += 1
 
             elif l_item.id > r_item.id:
-                # print(f"{' ':>20s}   > {str(r_item):<20s}")
                 fn(None, r_item, False)
                 rhs_i += 1
 
             else:
-                # print(f"{str(l_item):>20s} <=> {str(r_item):<20s}")
                 fn(l_item, r_item, False)
                 lhs_i += 1
                 rhs_i += 1
 
         items = lhs_items
         while lhs_i < lhs_len:
-            # print(f"{str(items[lhs_i]):>20s} <")
             fn(items[lhs_i], None, True)
             lhs_i += 1
 
         items = rhs_items
         while rhs_i < rhs_len:
-            # print(f"{' ':>20s}   > {str(items[rhs_i]):<20s}")
             fn(None, items[rhs_i], True)
             rhs_i += 1
+
+    @staticmethod
+    def _debug_align(lhs: 'Genome', rhs: 'Genome', w=30):  # pragma: no cover
+        print(f"[kgd-debug-align] Aligning {lhs.id()}={rhs.id()}")
+
+        l_fmt, r_fmt = f"{{:>{w}s}}", f"{{:<{w}s}}"
+
+        def print_item(_l, _r, _):
+            if _r is None:
+                print(l_fmt.format(str(_l)), "<")
+            elif _l is None:
+                print(l_fmt.format(""), "  >", r_fmt.format(str(_r)))
+            else:
+                print(l_fmt.format(str(_l)), "<=>", r_fmt.format(str(_r)))
+
+        Genome._iter(lhs, rhs, 'nodes', print_item)
+        Genome._iter(lhs, rhs, 'links', print_item)

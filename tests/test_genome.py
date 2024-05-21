@@ -478,8 +478,20 @@ def _test_crossover(data, parent_mutations, child_mutations,
             for g in population:
                 g.mutate(data, n=1)
 
+        for i in range(pop_size):
+            p = population[i]
+
+            for j in range(i+1, pop_size):
+                p_ = population[j]
+                print(i, j)
+                assert Genome.distance(p, p_) > 0
+                assert Genome.distance(p, p_, [0]*6) == 0
+
+            assert Genome.distance(p, p) == 0
+
         for gen in range(gens):
             new_pop = []
+
             while len(new_pop) < len(population):
                 parents = data.rng.sample(population, 2)
                 child = Genome.crossover(

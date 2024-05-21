@@ -6,7 +6,7 @@ Basic evolution
 This section focuses on using the library in an evolutionary context.
 It showcases:
 
-    * how to include `abrain.Genome` into another class
+    * how to include :class:`abrain.Genome` into another class
     * how to use the configuration
     * how to actually produce novel solutions
 
