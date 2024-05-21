@@ -157,6 +157,11 @@ def test_stats(dimension, mutations, seed):
 
     stats = ann.stats()
 
+    print("==")
+    print(stats.hidden)
+    print(len(ann.ibuffer()))
+    print(len(ann.obuffer()))
+
     assert isinstance(stats.dict(), dict), f"{type(stats)=}"
     assert all([k in stats.dict().keys() for k in
                 "depth hidden edges axons density utility iterations".split()])
@@ -165,6 +170,7 @@ def test_stats(dimension, mutations, seed):
     assert 0 <= stats.hidden <= ann_t.max_hidden_neurons()
     assert ((ann.max_edges() == (len(ann.ibuffer()) * len(ann.obuffer()))) or
             (ann.max_edges() == (len(ann.ibuffer()) * stats.hidden
+                                 + stats.hidden * stats.hidden
                                  + len(ann.obuffer()) * stats.hidden)))
     assert 0 <= stats.edges <= ann.max_edges()
     assert 0 <= stats.axons <= ann.max_edges() * math.sqrt(12)

@@ -116,13 +116,15 @@ public:
     return _stats;
   }
 
-  static uint max_hidden_neurons(void);
+  static uint max_hidden_neurons();
 
-  uint max_edges(void) {
+  uint max_edges() {
     if (_stats.hidden == 0)
       return _inputs.size() * _outputs.size();
     else
-      return (_inputs.size() * _stats.hidden + _stats.hidden * _outputs.size());
+      return (_inputs.size() * _stats.hidden
+              + _stats.hidden * _stats.hidden
+              + _stats.hidden * _outputs.size());
   }
 
   // Deepcopy for develop once / use many
