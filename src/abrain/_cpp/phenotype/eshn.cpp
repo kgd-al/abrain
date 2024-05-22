@@ -263,7 +263,7 @@ struct ESHN {
       float w;
     };
     struct CMP {
-      using is_transparent = void;
+      using is_transparent [[maybe_unused]] = void;
       bool operator() (const N *lhs, const Point &rhs) const {
         return lhs->p < rhs;
       }

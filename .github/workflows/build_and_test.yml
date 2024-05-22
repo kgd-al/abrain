@@ -77,7 +77,7 @@ jobs:
         lcov --zerocounters --directory .
         
         coverage run --branch --data-file=$(basename $PYCOVERAGE) \
-          --source=. --omit="tests/conftest.py,setup.py" \
+          --source=. --omit="tests/conftest.py,setup.py,examples/*.py" \
           -m \
           pytest --durations=10 --basetemp=$TEST_OUT -ra \
             --normal-scale --test-evolution

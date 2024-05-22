@@ -6,7 +6,7 @@ do_line(){
 
 do_set-env(){
   CMAKE_ARGS="-DMAKE_STUBS=ON "
-  if [[ "$1" =~ "test" ]]
+  if [[ "$1" =~ "tests" ]]
   then
     export DEBUG=1
     CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF"
@@ -32,7 +32,7 @@ do_manual-install(){
   do_set-env "$1"
   # Manually ensuring build/test dependencies
   pip install pybind11[global] pybind11-stubgen || exit 2
-  if [[ "$1" =~ "test" ]]
+  if [[ "$1" =~ "tests" ]]
   then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
     || exit 2
@@ -99,7 +99,7 @@ cmd_install-dev(){  # Editable install (with pip)
 }
 
 cmd_install-cached(){ # Editable install (without pip and cached build folder)
-  type=${1:-'dev-test-doc'}
+  type=${1:-'dev-tests-doc'}
   echo "Building for type '$type'"
   do_manual-install "$type"
 }
@@ -250,11 +250,21 @@ cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
     fi
   }
   trap check exit
+  test_dir=$(realpath "../__abrain_deploy_test__/")
   cmd_very-clean
-  cmd_install-cached
+  rm -rf "$test_dir"
+  mkdir -p "$test_dir"
+  cp -r . "$test_dir/abrain"
+  cd "$test_dir/abrain"
+  virtualenv "../venv"
+  source "../venv/bin/activate"
+  echo "$VIRTUAL_ENV"
+  pip install --upgrade pip
+  TEST=1 pip install ".[tests, docs]" -v
   cmd_pytest --small-scale --test-evolution
   flake8 src tests
   cmd_doc
+  rm -rf "$test_dir"
   ok=0
 }
 

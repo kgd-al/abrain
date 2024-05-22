@@ -47,13 +47,14 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "leap-ec", "Pillow", "qdpy", "tqdm", "kaleido"
+  "leap-ec", "Pillow", "qdpy", "tqdm", "kaleido", "matplotlib"
 ]
 
 docs = [
   "sphinx",
   "sphinx-pyproject",   # Auto-extract project version
   "sphinx_design",      # for the nice flowing cards
+  "sphinx-tabs",        # For the 2D/3D cards
   "matplotlib",         # for the plot extension
   "sphinx-copybutton",  # Easily copy code
   "myst-parser",        # Better parser
