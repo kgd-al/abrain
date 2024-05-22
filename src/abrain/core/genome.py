@@ -3,7 +3,6 @@ Test documentation for genome file (module?)
 """
 import logging
 import pathlib
-import pprint
 from collections import namedtuple
 from collections.abc import Iterable
 from random import Random
@@ -430,14 +429,14 @@ class Genome(_CPPNData):
         :return: the weighted genetic distance
         """
 
-        Genome._debug_align(lhs, rhs)
+        # Genome._debug_align(lhs, rhs)
         if weights is None:
             weights = [1]*6
         nc1, nc2, nc3, lc1, lc2, lc3 = weights
         nn = max(len(lhs.nodes), len(rhs.nodes))
         nl = max(len(lhs.links), len(rhs.links))
         stats = Genome._distance(lhs, rhs)
-        pprint.pprint(stats)
+        # pprint.pprint(stats)
 
         d = 0
         if nn > 0:  # pragma: no cover

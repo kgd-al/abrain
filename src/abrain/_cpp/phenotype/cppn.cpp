@@ -155,12 +155,12 @@ CPPN::CPPN (const CPPNData &genotype) {
 
   _has_input_bias = genotype.bias;
 
-  _ibuffer = IBuffer(NI);
-  _obuffer = OBuffer(NO);
-
   _inputs.resize(NI);
   _outputs.resize(NO);
   _hidden.resize(NH);
+
+  _ibuffer = IBuffer(n_inputs(false));
+  _obuffer = OBuffer(NO);
 
   for (NID i=0; i<NI; i++) {
 #ifdef DEBUG_CPPN
@@ -257,7 +257,8 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 #endif
 
 void CPPN::pre_evaluation(const IBuffer &inputs) {
-  if (inputs.size() != n_inputs())  throw std::runtime_error("Invalid number of inputs");
+  if (inputs.size() != n_inputs())
+    throw std::runtime_error("Invalid number of inputs");
   for (uint i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
   common_pre_evaluation();
 }

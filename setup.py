@@ -141,12 +141,8 @@ class CMakeBuild(build_ext):
             build_temp.mkdir(parents=True)
 
         # == kgd - Additions == #
-        # Allow discovering packages in build site-packages (overlay?)
-        # cmake_args += [f"-DCMAKE_PREFIX_PATH={';'.join(sys.path)}"]
         if with_tests:
             cmake_args += ["-DWITH_COVERAGE=ON"]
-        # Ensure discovery of executables (pybind11-stubgen for instance)
-        # cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
         # Forward if we need develop-level info (notably the stubs)
         if dev_build:
             cmake_args += ["-DDEV_BUILD=ON"]
@@ -165,6 +161,11 @@ class CMakeBuild(build_ext):
                 build_str = ' '.join(['cmake', '--build', '.'] + build_args)
                 cc.write(f"       build: {build_str}\n")
         # ===================== #
+
+        # Allow discovering packages in build site-packages (overlay?)
+        cmake_args += [f"-DCMAKE_PREFIX_PATH={';'.join(sys.path)}"]
+        # Ensure discovery of executables (pybind11-stubgen for instance)
+        cmake_args += [f"-DBUILD_TIME_PATH={os.environ.get('PATH')}"]
 
         subprocess.run(
             ["cmake", ext.sourcedir] + cmake_args, cwd=build_temp, check=True

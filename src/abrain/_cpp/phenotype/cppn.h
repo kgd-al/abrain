@@ -64,18 +64,20 @@ public:
 
   struct Buffer : std::vector<float> {
       Buffer () : std::vector<float>() {};
-      explicit Buffer (size_t size) : std::vector<float>(size) {};
+      explicit Buffer (const size_t size) : std::vector<float>(size) {};
   };
   struct IBuffer : Buffer {
       IBuffer () : Buffer() {};
-      explicit IBuffer (size_t size) : Buffer(size) {};
+      explicit IBuffer (const size_t size) : Buffer(size) {};
   };
   struct OBuffer : Buffer {
       OBuffer () : Buffer() {};
-      explicit OBuffer (size_t size) : Buffer(size) {};
+      explicit OBuffer (const size_t size) : Buffer(size) {};
   };
 
-  [[nodiscard]] auto n_inputs() const { return  _inputs.size(); }
+  [[nodiscard]] auto n_inputs(const bool with_bias=false) const {
+    return  _inputs.size() - (1 - with_bias) * _has_input_bias;
+  }
   [[nodiscard]] auto n_outputs() const { return _outputs.size(); }
   [[nodiscard]] auto n_hidden() const { return  _hidden.size(); }
 
