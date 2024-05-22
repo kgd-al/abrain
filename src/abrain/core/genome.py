@@ -971,39 +971,33 @@ class Genome(_CPPNData):
                           _rn: _CPPNData.Node,
                           _excess: bool):
             key = "excess" if _excess else "disjoint"
-            match (_ln, _rn):
-                case (_ln, None):
-                    nodes[_ln.id] = (_ln, False)
-                case (None, _rn):
-                    nodes[_rn.id] = (_rn, False)
-                case (_ln, _rn):
-                    inserted = False
-                    n = data.rng.choice([_ln, _rn])  # Pick one
-                    if child._is_output(_ln.id):     # Always add output nodes
-                        add_node(n)
-                        inserted = True
-                    nodes[_ln.id] = (n, inserted)    # Register
-                    key = "matched"
-                case _:  # pragma: no cover
-                    raise ValueError("Something went wrong")
+            if _rn is None:
+                nodes[_ln.id] = (_ln, False)
+            elif _ln is None:
+                nodes[_rn.id] = (_rn, False)
+            else:
+                inserted = False
+                n = data.rng.choice([_ln, _rn])  # Pick one
+                if child._is_output(_ln.id):     # Always add output nodes
+                    add_node(n)
+                    inserted = True
+                nodes[_ln.id] = (n, inserted)    # Register
+                key = "matched"
             stats["nodes"][key] += 1
 
         def process_links(_ll: _CPPNData.Link,
                           _rl: _CPPNData.Link,
                           _excess: bool):
             key = "excess" if _excess else "disjoint"
-            match (_ll, _rl):
-                case (_ll, None):  # Maybe add link from lhs
-                    if bias == 0:
-                        add_link(_ll)
-                case (None, _rl):  # Maybe add link from lhs
-                    if bias == 1:
-                        add_link(_rl)
-                case (_ll, _rl):  # Matching links -> add one
-                    add_link(data.rng.choice([_ll, _rl]))
-                    key = "matched"
-                case _:  # pragma: no cover
-                    raise ValueError("Something went wrong")
+            if _rl is None:  # Maybe add link from lhs
+                if bias == 0:
+                    add_link(_ll)
+            elif _ll is None:
+                if bias == 1:
+                    add_link(_rl)
+            else:
+                add_link(data.rng.choice([_ll, _rl]))
+                key = "matched"
             stats["links"][key] += 1
 
         # Collect nodes
