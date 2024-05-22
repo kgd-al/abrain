@@ -93,7 +93,7 @@ void init_generic_cppn_phenotype (py::module_ &m) {
 #define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
 #define CLASS CPPN
   cppn.def(py::init<const CPPN::Genotype&>())
-      .def ID(n_inputs, "Return the number of inputs")
+      .def ID(n_inputs, "Return the number of inputs", py::arg("with_bias") = false)
       .def ID(n_outputs, "Return the number of outputs")
       .def ID(n_hidden, "Return the number of internal nodes")
 

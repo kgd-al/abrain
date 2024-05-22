@@ -94,6 +94,8 @@ def __tester_generic_single_output(
         seed, mutations, args_maker: Callable[[GenericCPPN, list], Tuple]):
     cppn, _, _ = _make_cppn(GenericCPPN, seed, mutations)
     inputs = _random_inputs(seed, cppn)
+    print(cppn.n_inputs(), cppn.n_inputs(True))
+    print(len(inputs), inputs)
     args = args_maker(cppn, inputs)
     for o in range(cppn.n_outputs()):
         values = set()
