@@ -7,16 +7,17 @@
 #include "pybind11/pybind11.h"
 namespace py = pybind11;
 
-#include "pybind11/stl_bind.h"
 #include "pybind11/functional.h"
 #include "pybind11/operators.h"
 using namespace pybind11::literals;
 
 using namespace kgd::eshn::phenotype;
-PYBIND11_MAKE_OPAQUE(CPPN::IBuffer);
-PYBIND11_MAKE_OPAQUE(CPPN::OBuffer);
+PYBIND11_MAKE_OPAQUE(CPPN::IBuffer)
+PYBIND11_MAKE_OPAQUE(CPPN::OBuffer)
 
 namespace kgd::eshn::pybind {
+
+#define ID(X, ...) (#X, &CLASS::X, __VA_ARGS__)
 
 template <typename py_type>
 CPPN::IBuffer fromList (const py_type &iterable) {
@@ -90,7 +91,6 @@ void init_generic_cppn_phenotype (py::module_ &m) {
   utils::init_buffer<IBuffer>(cppn, "IBuffer", "Input data buffer for a CPPN");
   utils::init_buffer<OBuffer>(cppn, "OBuffer", "Output data buffer for a CPPN");
 
-#define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
 #define CLASS CPPN
   cppn.def(py::init<const CPPN::Genotype&>())
       .def ID(n_inputs, "Return the number of inputs", py::arg("with_bias") = false)
@@ -159,12 +159,12 @@ void init_eshn_cppn_phenotype (py::module_ &m, const char *name, const char *pna
 
   auto cppn = py::class_<CPPN, phenotype::CPPN>(m, name);
 
-#define ID(X, ...) (#X, &CLASS::X, ##__VA_ARGS__)
-
 #define CLASS CPPN
   cppn.def(py::init<const typename CPPN::Genotype&>(),
            "Create from a :class:`abrain.Genome`")
-      .def_readonly_static ID(DIMENSIONS)
+      .def_readonly_static
+          ID(DIMENSIONS,
+             "Dimensions of the points provided as inputs")
       .def("__call__",
            py::overload_cast<const Point&, const Point&, OBuffer&>(
                    &CPPN::operator ()),
