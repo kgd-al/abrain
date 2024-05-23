@@ -54,7 +54,6 @@ void init_ann_phenotype (py::module_ &m, const char *name) {
         return std::tie(ann.ibuffer(), ann.obuffer());
       }, "Return the ann's I/O buffers as a tuple",
       py::return_value_policy::reference_internal)
-//      .def ID(reset)
       .def("__call__", &ANN::operator (), R"(
 Execute a computational step
 
