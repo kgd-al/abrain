@@ -301,7 +301,7 @@ template <uint DI>
 void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
   static constexpr auto N = DIMENSIONS;
 
-  const auto I = n_inputs();
+  const auto I = n_inputs(true);
   for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
   for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
 

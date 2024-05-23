@@ -96,6 +96,10 @@ def __tester_generic_single_output(
     inputs = _random_inputs(seed, cppn)
     print(cppn.n_inputs(), cppn.n_inputs(True))
     print(len(inputs), inputs)
+
+    with pytest.raises((ValueError, RuntimeError)):
+        cppn(0, *args_maker(cppn, inputs + inputs))
+
     args = args_maker(cppn, inputs)
     for o in range(cppn.n_outputs()):
         values = set()
@@ -113,6 +117,10 @@ def __tester_generic_all_outputs(
     args = args_maker(cppn, inputs)
     outputs = cppn.outputs()
     values = [set() for _ in outputs]
+
+    with pytest.raises((ValueError, RuntimeError)):
+        cppn(0, *args_maker(cppn, inputs + inputs))
+
     for i in range(100):
         cppn(outputs, *args)
         for j, o in enumerate(outputs):
