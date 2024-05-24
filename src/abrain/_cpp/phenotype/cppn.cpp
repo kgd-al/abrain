@@ -300,13 +300,12 @@ template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
 template <uint DI>
 void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
   static constexpr auto N = DIMENSIONS;
-
   const auto I = n_inputs(true);
   for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
   for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
 
   static const auto norm = static_cast<float>(2*std::sqrt(2));
-  if (I - int(_has_input_bias) > 2*N)
+  if (I - static_cast<int>(_has_input_bias) > 2*N)
     _inputs[2*N]->data = (src - dst).length() / norm;
 
   common_pre_evaluation();

@@ -2,23 +2,15 @@
 #define KGD_ESHN_BINDING_UTILS_HPP
 
 #include <sstream>
-#include <utility>
 #include <map>
 
 #include "pybind11/stl.h"
 
+#include "../_cpp/misc/utils.hpp"
+
 namespace kgd::eshn::utils {
 
 namespace py = pybind11;
-
-/// Builds a string from the arguments, delegating type conversion to
-///  appropriate operator<<
-template <typename... ARGS>
-std::string mergeToString (ARGS... args) {
-  std::ostringstream oss;
-  (oss << ... << std::forward<ARGS>(args));
-  return oss.str();
-}
 
 using DocMap = std::map<std::string, std::string>;
 

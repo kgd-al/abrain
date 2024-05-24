@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "../config.h"
+#include "../misc/utils.hpp"
 #include "ann.h"
 
 #include <iostream>
@@ -41,6 +42,11 @@ ANN_t<DI> ANN_t<DI>::build (
     const Coordinates &outputs,
     const genotype::CPPNData &genome) {
 
+  if (genome.inputs < 2*DI + genome.bias || 2*DI + genome.bias + 1 < genome.inputs)
+    throw std::invalid_argument(utils::mergeToString(
+      "Unable to build a ", DI, "D ANN from a genome with ",
+      genome.inputs, " inputs. Did you mix it up with the one for the body?"
+    ));
   using ANN = ANN_t<DI>;
 
 #ifndef NDEBUG
@@ -50,6 +56,7 @@ const auto start_time = timing_clock::now();
   static const auto& weightRange = Config::annWeightsRange;
 
   CPPN cppn (genome);
+
   ANN ann;
 
   NeuronsMap &neurons = ann._neurons;
