@@ -65,14 +65,14 @@ def _make_ann(dimension, mutations, seed,
 
 
 # Force both dimensions to be tested even with small scale test
-@pytest.mark.parametrize('dimension', [2, 3])
-def test_empty_perceptrons(dimension, mutations, seed):
+@pytest.mark.parametrize('_dimension', [2, 3])
+def test_empty_perceptrons(_dimension, mutations, seed):
     n = 10
 
     def generate_stats():
         l_stats: Dict = {key: 0 for key in ['empty', 'perceptron', 'ann']}
         for _ in range(n):
-            ann, _, _ = _make_ann(dimension, mutations, seed)
+            ann, _, _ = _make_ann(_dimension, mutations, seed)
             l_stats['empty'] += ann.empty()
             l_stats['perceptron'] += ann.perceptron()
             l_stats['ann'] += (not ann.empty(strict=True))
@@ -105,13 +105,14 @@ def test_empty_perceptrons(dimension, mutations, seed):
     assert stats_f['perceptron'] == 0
 
 
-def test_invalid_genome(dimension):
-    ann_t = _ann_type(dimension)
+@pytest.mark.parametrize('_dimension', [2, 3])
+def test_invalid_genome(_dimension):
+    ann_t = _ann_type(_dimension)
     genome = Genome.random(Genome.Data.create_for_generic_cppn(2, 2))
     with pytest.raises(ValueError):
         ann_t.build([], [], genome)
 
-    genome = Genome.random(Genome.Data.create_for_eshn_cppn(5 - dimension))
+    genome = Genome.random(Genome.Data.create_for_eshn_cppn(5 - _dimension))
     with pytest.raises(ValueError):
         print()
         ann_t.build([], [], genome)
