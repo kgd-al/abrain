@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
   workflow_dispatch:
 
@@ -308,7 +309,7 @@ jobs:
 
       - name: upload to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: "contains(github.event.head_commit.message, '[Release]')"
+        if: "github.ref_name == 'master' && contains(github.event.head_commit.message, '[Release]')"
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}
