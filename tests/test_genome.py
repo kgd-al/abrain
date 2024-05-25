@@ -2,6 +2,7 @@ import copy
 import logging
 import math
 import pickle
+import pprint
 import pydoc
 from pathlib import Path
 from typing import Optional, Tuple
@@ -14,9 +15,9 @@ from abrain.core.genome import logger as genome_logger
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
-
-print("[kgd-debug] Muted genome logger")
-genome_logger.setLevel(logging.CRITICAL)
+#
+# print("[kgd-debug] Muted genome logger")
+# genome_logger.setLevel(logging.CRITICAL)
 
 
 ###############################################################################
@@ -359,13 +360,15 @@ def test_mutate_genome_mut(seed, eshn_genome, tmp_path, capfd):
 
     assert len(g.nodes) == 1 + o
 
-    with RatesGuard({"mut_f": 1}):
-        for i in range(steps):
-            def _f(): return [str(n.func) for n in g.nodes]
-            func = _f()
-            g.mutate(data)
-            save()
-            assert sum(a != b for a, b in zip(func, _f())) == 1
+    with capfd.disabled():
+        with RatesGuard({"mut_f": 1}):
+            for i in range(steps):
+                def _f(): return [str(n.func) for n in g.nodes]
+                func = _f()
+                g.mutate(data)
+                save()
+                pprint.pprint(list(zip(func, _f())))
+                assert sum(a != b for a, b in zip(func, _f())) == 1
 
     with RatesGuard({"mut_w": 1}):
         steps = 10
@@ -373,8 +376,8 @@ def test_mutate_genome_mut(seed, eshn_genome, tmp_path, capfd):
             weights = [l_.weight for l_ in g.links]
             g.mutate(data)
             save()
-            assert any(b_w != a_w for b_w, a_w in
-                       zip(weights, [l_.weight for l_ in g.links]))
+            assert 1 == sum(b_w != a_w for b_w, a_w in
+                            zip(weights, [l_.weight for l_ in g.links]))
 
 
 def mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output, gens,

@@ -157,7 +157,7 @@ private:
   };
 public:
   using NeuronsMap = std::set<NeuronPtr, NeuronCMP>;
-  
+
   const NeuronsMap& neurons () const {  return _neurons;  }
   NeuronsMap& neurons () {  return _neurons;  }
 

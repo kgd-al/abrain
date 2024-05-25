@@ -96,11 +96,13 @@ jobs:
         with:
           name: dist
           path: ./wheelhouse/*.whl
+          merge-multiple: true
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
           name: logs
           path: ./logs/*.log
+          merge-multiple: true
 
   build_sdist:
     name: Build source distribution

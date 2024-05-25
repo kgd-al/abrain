@@ -843,7 +843,8 @@ class Genome(_CPPNData):
         link.weight = w
 
     def __random_mutate_func(self, data: Data) -> None:
-        n = data.rng.choice(self.nodes[self.outputs:])
+        i = data.rng.randint(self.outputs, len(self.nodes)-1)
+        n = self.nodes[i]
         f = data.rng.choice([f for f in Config.functionSet if not f == n.func])
         logger.debug(f"[mut_f] N({n.id}, {n.func}) -> {f}")
         n.func = f
