@@ -20,7 +20,7 @@ jobs:
     - name: Generating json string
       id: gen-mjson
       env:
-        CIBW_ARCHS_MACOS=all
+        CIBW_ARCHS_MACOS: all
       run: |
         echo "{\"include\":[" > mjson_file
         for os in linux macos windows
