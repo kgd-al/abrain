@@ -15,9 +15,10 @@ Point = Union[Point2D, Point3D]
 
 
 def _ann_type(dimension):
-    match dimension:
-        case 2: return ANN2D
-        case 3: return ANN3D
+    if dimension == 2:
+        return ANN2D
+    else:
+        return ANN3D
 
 
 def test_default_is_empty(dimension):

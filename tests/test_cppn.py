@@ -15,20 +15,20 @@ from abrain import (
 
 
 def _make_cppn(cppn_type, seed, mutations=0):
-    match cppn_type.__name__:
-        case GenericCPPN.__name__:
-            rng = Random(seed)
-            data = Genome.Data.create_for_generic_cppn(
-                seed=seed,
-                inputs=rng.randint(2, 5),
-                outputs=rng.randint(1, 3)
-            )
-        case CPPN2D.__name__:
-            data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
-        case CPPN3D.__name__:
-            data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=seed)
-        case _:  # pragma: no cover
-            raise ValueError(f"Invalid CPPN type {cppn_type}")
+    name = cppn_type.__name__
+    if name == GenericCPPN.__name__:
+        rng = Random(seed)
+        data = Genome.Data.create_for_generic_cppn(
+            seed=seed,
+            inputs=rng.randint(2, 5),
+            outputs=rng.randint(1, 3)
+        )
+    elif name == CPPN2D.__name__:
+        data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
+    elif name == CPPN3D.__name__:
+        data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=seed)
+    else:  # pragma: no cover
+        raise ValueError(f"Invalid CPPN type {cppn_type}")
 
     genome = Genome.random(data)
     for _ in range(mutations):

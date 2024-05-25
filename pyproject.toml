@@ -47,8 +47,13 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
+]
+
+all-tests = [
+  "abrain[tests,kaleido]",
   "leap-ec", "Pillow", "qdpy", "tqdm", "matplotlib"
 ]
+
 
 docs = [
   "sphinx",
