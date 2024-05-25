@@ -347,10 +347,10 @@ template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffe
 
 
 // Hopefully will get rid of i686 float c++ -> python transfer errors
-#if __i386__
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
-#endif
+//#if __i386__
+//#pragma GCC push_options
+//#pragma GCC optimize ("O0")
+//#endif
 template <unsigned int DI>
 float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output o) {
   pre_evaluation(src, dst);
@@ -359,8 +359,8 @@ float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output 
 }
 template float CPPN_ND<2>::operator() (const Point &src, const Point &dst, Output o);
 template float CPPN_ND<3>::operator() (const Point &src, const Point &dst, Output o);
-#if __i386__
-#pragma GCC pop_options
-#endif
+//#if __i386__
+//#pragma GCC pop_options
+//#endif
 
 } // end of namespace kgd::eshn::phenotype
