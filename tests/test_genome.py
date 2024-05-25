@@ -360,15 +360,13 @@ def test_mutate_genome_mut(seed, eshn_genome, tmp_path, capfd):
 
     assert len(g.nodes) == 1 + o
 
-    with capfd.disabled():
-        with RatesGuard({"mut_f": 1}):
-            for i in range(steps):
-                def _f(): return [str(n.func) for n in g.nodes]
-                func = _f()
-                g.mutate(data)
-                save()
-                pprint.pprint(list(zip(func, _f())))
-                assert sum(a != b for a, b in zip(func, _f())) == 1
+    with RatesGuard({"mut_f": 1}):
+        for i in range(steps):
+            def _f(): return [str(n.func) for n in g.nodes]
+            func = _f()
+            g.mutate(data)
+            save()
+            assert sum(a != b for a, b in zip(func, _f())) == 1
 
     with RatesGuard({"mut_w": 1}):
         steps = 10

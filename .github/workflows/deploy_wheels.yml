@@ -94,12 +94,12 @@ jobs:
           
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.runs-on }}
+          name: dist-${{ matrix.build }}
           path: ./wheelhouse/*.whl
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
-          name: log-${{ matrix.runs-on }}
+          name: log-${{ matrix.build }}
           path: ./logs/*.log
 
   build_sdist:
