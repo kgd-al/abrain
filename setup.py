@@ -72,9 +72,11 @@ class CMakeBuild(build_ext):
                            if item]
 
         # Pass the version to C++ (why not?)
-        cmake_args += \
-            [f"-DVERSION_INFO={self.distribution.get_version()}"] \
+        if version := self.distribution.get_version():
             # type: ignore[attr-defined]
+            cmake_args += [f"-DVERSION_INFO={version}"]
+        else:
+            print("No version")
 
         if self.compiler.compiler_type != "msvc":
             # Using Ninja-build since it a) is available as a wheel and b)

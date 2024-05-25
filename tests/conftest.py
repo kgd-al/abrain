@@ -65,8 +65,8 @@ def pytest_addoption(parser):
 
     parser.addoption("--test-examples", dest='examples',
                      action='store_true',
-                     help=f"Run all examples. Requires a ton of packages"
-                          f" (installed via abrain[all-tests]).")
+                     help="Run all examples. Requires a ton of packages"
+                          " (installed via abrain[all-tests]).")
 
 
 best_ad_rate = .75

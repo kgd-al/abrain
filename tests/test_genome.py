@@ -2,16 +2,15 @@ import copy
 import logging
 import math
 import pickle
-import pprint
 import pydoc
 from pathlib import Path
 from typing import Optional, Tuple
 
 import pytest
-
-from _utils import genome_factory
 from abrain import Config, Genome
 from abrain.core.genome import logger as genome_logger
+
+from _utils import genome_factory
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)

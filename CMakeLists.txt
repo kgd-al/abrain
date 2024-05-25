@@ -83,7 +83,7 @@ PREPEND(PYBIND_SRC "src/abrain/_bindings")
 set(LIB_CPP _cpp)
 pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 target_compile_definitions(${LIB_CPP}
-                           PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
+                           PRIVATE VERSION_INFO=${VERSION_INFO})
 
 ################################################################################
 ## C++ Coverage
@@ -114,6 +114,8 @@ if (DEV_BUILD)
 endif()
 
 message("> Build type: ${CMAKE_BUILD_TYPE}${DEV_SUFFIX}")
+message(">    Version: ${VERSION_INFO}")
+
 message("> On n cores: ${CMAKE_BUILD_PARALLEL_LEVEL}")
 
 option(MAKE_STUBS "Sets whether to generate pyi files from module" ON)
