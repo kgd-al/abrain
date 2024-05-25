@@ -1,4 +1,4 @@
-name: Build, test, upload (${{ github.ref_name }} - PyPI)
+name: Build, test, upload (PyPI)
 
 # Build on every branch push, tag push, and pull request change:
 on:
