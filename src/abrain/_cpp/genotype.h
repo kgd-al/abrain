@@ -24,8 +24,8 @@ struct CPPNData {
     float weight;
   };
 
-  uint inputs;
-  uint outputs;
+  int inputs;
+  int outputs;
   std::string labels;
   bool bias;
 
