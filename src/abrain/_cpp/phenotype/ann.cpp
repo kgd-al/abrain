@@ -208,7 +208,7 @@ void ANN_t<DI>::computeStats() {
   std::set<Point> connected_inputs;
 
   for (const NeuronPtr &n: _neurons) {
-    e += unsigned int(n->links().size());
+    e += static_cast<unsigned int>(n->links().size());
     for (const Link &link: n->links()) {
       const auto &_n = link.in.lock();
       l += (n->pos - _n->pos).length();

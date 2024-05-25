@@ -2,6 +2,7 @@
 #define ES_HYPERNEAT_POINT_HPP
 
 #include <cmath>
+#include <cstdint>
 #include <sstream>
 #include <array>
 

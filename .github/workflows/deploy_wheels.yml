@@ -16,7 +16,7 @@ jobs:
     outputs:
       matrix: ${{ steps.gen-mjson.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Generating json string
       id: gen-mjson
       env:
@@ -92,7 +92,7 @@ jobs:
           echo "[kgd-build-status] $res" >> $log
           exit $res
           
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: ./wheelhouse/*.whl
