@@ -25,6 +25,13 @@ from qdpy.containers import Grid, Container
 from qdpy.phenotype import IndividualLike, Fitness, Features
 from rich.progress import track
 
+try:
+    import kaleido
+    HAS_KALEIDO = True
+except ImportError:
+    HAS_KALEIDO = False
+
+
 from abrain import Point3D as Point, ANN3D as ANN
 from abrain.core.ann import plotly_render
 from abrain.core.config import Config
@@ -295,17 +302,21 @@ def process(data, is_test):
                             x=cr*math.cos(math.pi/4),
                             y=0,
                             z=cr*math.sin(math.pi/4))))
-                with warnings.catch_warnings():      # Emits warning. Should be
-                    warnings.simplefilter("ignore")  # corrected upstream
-                    pr.write_image(str(file))
 
-        frames = [PIL.Image.open(f) for f in files]
-        duration = 8000 // len(frames)
-        frames[0].save(RUN_FOLDER.joinpath(f"{name}.gif"),
-                       format="GIF",
-                       append_images=frames,
-                       save_all=True, duration=duration,
-                       loop=0)
+                if HAS_KALEIDO:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        # Emits warning. Should be corrected upstream
+                        pr.write_image(str(file))
+
+        if HAS_KALEIDO:
+            frames = [PIL.Image.open(f) for f in files]
+            duration = 8000 // len(frames)
+            frames[0].save(RUN_FOLDER.joinpath(f"{name}.gif"),
+                           format="GIF",
+                           append_images=frames,
+                           save_all=True, duration=duration,
+                           loop=0)
 
 
 def main(is_test=False):
