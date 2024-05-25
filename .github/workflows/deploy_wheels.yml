@@ -94,15 +94,13 @@ jobs:
           
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-${{ matrix.runs-on }}
           path: ./wheelhouse/*.whl
-          merge-multiple: true
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
-          name: logs
+          name: log-${{ matrix.runs-on }}
           path: ./logs/*.log
-          merge-multiple: true
 
   build_sdist:
     name: Build source distribution
@@ -118,12 +116,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-sources
           path: dist/*.tar.gz
       - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
-          name: logs
+          name: log-sources
           path: ./logs/*.log
 
   post_build:
@@ -137,12 +135,16 @@ jobs:
         with:
           name: dist
           path: dist
+          pattern: dist-*
+          merge-multiple: true
           
       - uses: actions/download-artifact@v4
         name: download logs
         with:
-          name: logs
+          name: log
           path: logs
+          pattern: log-*
+          merge-multiple: true
           
       - name: Generate summary
         env:
