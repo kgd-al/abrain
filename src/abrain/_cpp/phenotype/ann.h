@@ -86,9 +86,6 @@ public:
 
   ANN_t() = default;
 
-  const auto& neurons () const {  return _neurons;  }
-  auto& neurons () {  return _neurons;  }
-
   const NeuronPtr& neuronAt (const Point &p) const {
     auto it = _neurons.find(p);
     if (it == _neurons.end())
@@ -160,6 +157,10 @@ private:
   };
 public:
   using NeuronsMap = std::set<NeuronPtr, NeuronCMP>;
+  
+  const NeuronsMap& neurons () const {  return _neurons;  }
+  NeuronsMap& neurons () {  return _neurons;  }
+
 private:
   NeuronsMap _neurons;
 

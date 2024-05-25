@@ -68,7 +68,7 @@ jobs:
           #echo "[kgd-build-status] $res" >> $log
           #exit $res
                     
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build wheels
         env:
@@ -96,7 +96,7 @@ jobs:
         with:
           name: dist
           path: ./wheelhouse/*.whl
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
           name: logs
@@ -106,7 +106,7 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build sdist
         run: |
@@ -114,11 +114,11 @@ jobs:
           pipx run build --sdist 2>&1 | tee logs/sdist.log
           exit ${PIPESTATUS[0]}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/*.tar.gz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
           name: logs
@@ -130,13 +130,13 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() }}
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: download sdist/wheels
         with:
           name: dist
           path: dist
           
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: download logs
         with:
           name: logs
