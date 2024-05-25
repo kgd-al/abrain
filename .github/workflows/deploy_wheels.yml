@@ -133,15 +133,13 @@ jobs:
       - uses: actions/download-artifact@v4
         name: download sdist/wheels
         with:
-          name: dist
-          path: dist
+          path: dists
           pattern: dist-*
           merge-multiple: true
           
       - uses: actions/download-artifact@v4
         name: download logs
         with:
-          name: log
           path: logs
           pattern: log-*
           merge-multiple: true

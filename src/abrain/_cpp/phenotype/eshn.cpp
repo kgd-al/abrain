@@ -4,7 +4,6 @@
 
 #include "eshn.h"
 
-#include "../config.h"
 #include "ann.h"
 
 namespace kgd::eshn::evolvable_substrate {
@@ -158,8 +157,9 @@ struct ESHN {
     return root;
   }
 
-  static void pruneAndExtract (CPPN &cppn, const Point &p, Connections &con,
-                        const QOTree &t, bool out) {
+  static void pruneAndExtract (
+          CPPN &cppn, const Point &p, Connections &con,
+          const QOTree &t, bool out) {
 
     static const auto &varThr = Config::varThr;
     static const auto &bndThr = Config::bndThr;
@@ -247,22 +247,20 @@ struct ESHN {
 #endif
   }
 
-  static void removeUnconnectedNeurons (
-      const Coordinates &inputs, const Coordinates &outputs,
-      Coordinates_s &shidden, Connections &connections) {
-    using Type = typename ANN::Neuron::Type;
-    struct L;
-    struct N {
+  using Type = typename ANN::Neuron::Type;
+  struct L;
+  struct N {
       Point p;
       Type t;
       std::vector<L> i, o;
       explicit N (const Point &p, Type t = Type::H) : p(p), t(t) {}
-    };
-    struct L {
+  };
+  struct L {
       N *n;
       float w;
-    };
-    struct CMP {
+      explicit L (N *n, const float w) : n(n), w(w) {}
+  };
+  struct CMP {
       using is_transparent [[maybe_unused]] = void;
       bool operator() (const N *lhs, const Point &rhs) const {
         return lhs->p < rhs;
@@ -273,7 +271,11 @@ struct ESHN {
       bool operator() (const N *lhs, const N *rhs) const {
         return lhs->p < rhs->p;
       }
-    };
+  };
+
+  static void removeUnconnectedNeurons (
+      const Coordinates &inputs, const Coordinates &outputs,
+      Coordinates_s &shidden, Connections &connections) {
 
     std::set<N*, CMP> nodes, inodes, onodes;
     for (const Point &p: inputs)
@@ -289,8 +291,8 @@ struct ESHN {
     };
     for (const Connection &c: connections) {
       N *i = getOrCreate(c.from), *o = getOrCreate(c.to);
-      i->o.push_back({o,c.weight});
-      o->i.push_back({i,c.weight});
+      i->o.push_back(L(o, c.weight));
+      o->i.push_back(L(i, c.weight));
     }
 
 #if DEBUG_ES >= 2
