@@ -85,7 +85,7 @@ public:
   [[nodiscard]] const auto& obuffer () const { return _obuffer; }
 
   void operator() (OBuffer &outputs, const IBuffer &inputs);
-  float operator() (uint o, const IBuffer &inputs);
+  float operator() (unsigned int o, const IBuffer &inputs);
 
 private:
     void pre_evaluation(const IBuffer &inputs);
@@ -96,7 +96,7 @@ protected:
     OBuffer _obuffer;
 };
 
-template <uint DI>
+template <unsigned int DI>
 class CPPN_ND : public CPPN {
 public:
   // Specific CPPN for ES-HyperNEAT

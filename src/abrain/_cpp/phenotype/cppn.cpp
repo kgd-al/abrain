@@ -18,14 +18,14 @@ namespace utils { // Contains debugging tools
 std::ostream& operator<< (std::ostream &os,
                          const kgd::eshn::phenotype::CPPN::Buffer &buffer) {
   os << "[ " << buffer[0];
-  for (uint i=1; i<buffer.size(); i++) os << " " << buffer[i];
+  for (unsigned int i=1; i<buffer.size(); i++) os << " " << buffer[i];
   return os << "]";
 }
 
 /// Manages indentation for provided ostream
 /// \author James Kanze @ https://stackoverflow.com/a/9600752
 class IndentingOStreambuf : public std::streambuf {
-  static constexpr uint DEFAULT_INDENT = 2;   ///< Default indenting value
+  static constexpr unsigned int DEFAULT_INDENT = 2;   ///< Default indenting value
 
   std::ostream*       _owner;   ///< Associated ostream
   std::streambuf*     _buffer;  ///< Associated buffer
@@ -45,7 +45,7 @@ protected:
 public:
   /// Creates a proxy buffer managing indentation level
   explicit IndentingOStreambuf(std::ostream& dest,
-                               uint spaces = DEFAULT_INDENT)
+                               unsigned int spaces = DEFAULT_INDENT)
     : _owner(&dest), _buffer(dest.rdbuf()),
       _isAtStartOfLine(true),
       _indent(spaces, ' ' ) { _owner->rdbuf( this );  }
@@ -138,7 +138,7 @@ const std::map<CPPNData::Node::FuncID,
 
 
 CPPN::CPPN (const CPPNData &genotype) {
-  using NID = uint;//CPPNData::Node::ID;
+  using NID = unsigned int;//CPPNData::Node::ID;
   const auto NI = genotype.inputs;
   const auto NO = genotype.outputs;
   const auto NH = genotype.nodes.size() - NO;
@@ -191,8 +191,8 @@ CPPN::CPPN (const CPPNData &genotype) {
   }
 
 #ifdef DEBUG_CPPN
-  uint i=0;
-  std::map<Node_ptr, uint> map;
+  unsigned int i=0;
+  std::map<Node_ptr, unsigned int> map;
   printf("Built CPPN:\n");
   for (const auto &v: {_inputs, _outputs, _hidden})
     for (const Node_ptr &n: v)
@@ -259,7 +259,7 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 void CPPN::pre_evaluation(const IBuffer &inputs) {
   if (inputs.size() != n_inputs())
     throw std::runtime_error("Invalid number of inputs");
-  for (uint i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
+  for (unsigned int i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
   common_pre_evaluation();
 }
 
@@ -281,10 +281,10 @@ void CPPN::common_pre_evaluation() {
 
 void CPPN::operator() (OBuffer &outputs, const IBuffer &inputs) {
   pre_evaluation(inputs);
-  for (uint i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
+  for (unsigned int i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
 }
 
-float CPPN::operator() (uint o, const IBuffer &inputs) {
+float CPPN::operator() (unsigned int o, const IBuffer &inputs) {
   pre_evaluation(inputs);
   return _outputs[o]->value();
 }
@@ -292,17 +292,17 @@ float CPPN::operator() (uint o, const IBuffer &inputs) {
 
 // =============================================================================
 
-template <uint DI>
+template <unsigned int DI>
 CPPN_ND<DI>::CPPN_ND(const Genotype &genotype) : CPPN(genotype) {}
 template CPPN_ND<2>::CPPN_ND(const Genotype &genotype);
 template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
 
-template <uint DI>
+template <unsigned int DI>
 void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
   static constexpr auto N = DIMENSIONS;
   const auto I = n_inputs(true);
-  for (uint i=0; i<N; i++)  _inputs[i]->data = src.get(i);
-  for (uint i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
+  for (unsigned int i=0; i<N; i++)  _inputs[i]->data = src.get(i);
+  for (unsigned int i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
 
   static const auto norm = static_cast<float>(2*std::sqrt(2));
   if (I - static_cast<int>(_has_input_bias) > 2*N)
@@ -311,12 +311,12 @@ void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI
   common_pre_evaluation();
 }
 
-template <uint DI>
+template <unsigned int DI>
 void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, OBuffer &outputs) {
   assert(outputs.size() == _outputs.size());
 
   pre_evaluation(src, dst);
-  for (uint i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
+  for (unsigned int i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
 
 #ifdef DEBUG_CPPN
   using utils::operator<<;
@@ -326,7 +326,7 @@ void CPPN_ND<DI>::operator() (const Point &src, const Point &dst, OBuffer &outpu
 template void CPPN_ND<2>::operator() (const Point &src, const Point &dst, OBuffer &outputs);
 template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffer &outputs);
 
-template <uint DI>
+template <unsigned int DI>
 void CPPN_ND<DI>::operator() (
     const Point &src, const Point &dst,
     OBuffer &outputs,
@@ -351,7 +351,7 @@ template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffe
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 #endif
-template <uint DI>
+template <unsigned int DI>
 float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output o) {
   pre_evaluation(src, dst);
     

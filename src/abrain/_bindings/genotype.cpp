@@ -45,7 +45,7 @@ CPPNData genotype_from_json (const py::dict& dict) {
   for (const py::handle &h: dict["links"]) {
     auto t = h.cast<py::tuple>();
     d.links.push_back(Link{t[0].cast<int>(),
-                            t[1].cast<uint>(), t[2].cast<uint>(),
+                            t[1].cast<unsigned int>(), t[2].cast<unsigned int>(),
                             t[3].cast<float>()});
   }
   return d;
@@ -108,7 +108,7 @@ void init_genotype (py::module_ &m) {
 #undef CLASS
 #define CLASS Link
   link.doc() = "From-to relationship between two computational node";
-  link.def(py::init<int, uint, uint, float>())
+  link.def(py::init<int, unsigned int, unsigned int, float>())
       .def("__repr__", [] (const Link &l) {
         std::ostringstream oss;
         oss << "L" << l.id << ":" << l.src << " -(" << l.weight << ")-> "

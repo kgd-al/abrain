@@ -26,17 +26,17 @@ static typename ANN::Stats::rep t_diff(const time_point start) {
 }
 #endif
 
-template <uint DI>
+template <unsigned int DI>
 bool ANN_t<DI>::empty(bool strict) const {
   return strict ? (stats().hidden == 0) : (stats().edges == 0);
 }
 
-template <uint DI>
+template <unsigned int DI>
 bool ANN_t<DI>::perceptron() const {
   return (stats().hidden == 0) && stats().edges > 0;
 }
 
-template <uint DI>
+template <unsigned int DI>
 ANN_t<DI> ANN_t<DI>::build (
     const Coordinates &inputs,
     const Coordinates &outputs,
@@ -68,7 +68,7 @@ const auto start_time = timing_clock::now();
     return ann.addNeuron(p, t, bias);
   };
 
-  uint i = 0;
+  unsigned int i = 0;
   ann._inputs.resize(inputs.size());
   ann._ibuffer.resize(inputs.size());
   for (auto &p: inputs) neurons.insert(ann._inputs[i++] = add(p, Neuron::I));
@@ -131,18 +131,18 @@ const auto start_time = timing_clock::now();
 //  that._stats = _stats;
 //}
 
-template <uint DI>
+template <unsigned int DI>
 void ANN_t<DI>::reset() {
   for (auto &p: _neurons)   p->reset();
 }
 
-template <uint DI>
-uint ANN_t<DI>::max_hidden_neurons(void) {
+template <unsigned int DI>
+unsigned int ANN_t<DI>::max_hidden_neurons(void) {
   return std::pow(2, DI*Config::maxDepth);
 }
 
 template <typename ANN>
-uint computeDepth (ANN &ann) {
+unsigned int computeDepth (ANN &ann) {
   using Neuron = typename ANN::Neuron;
   using NeuronPtr = typename ANN::NeuronPtr;
   using Point = typename ANN::Point;
@@ -155,7 +155,7 @@ uint computeDepth (ANN &ann) {
   std::map<Point, ReverseNeuron*> neurons;
   std::set<ReverseNeuron*> next;
 
-  uint hcount = 0, hseen = 0;
+  unsigned int hcount = 0, hseen = 0;
   for (const NeuronPtr &n: ann.neurons()) {
     auto p = neurons.emplace(std::make_pair(n->pos, new ReverseNeuron(*n)));
     if (n->type == Neuron::I) next.insert(p.first->second);
@@ -167,7 +167,7 @@ uint computeDepth (ANN &ann) {
       neurons.at(l.in.lock()->pos)->o.push_back(neurons.at(n->pos));
 
   std::set<ReverseNeuron*> seen;
-  uint depth = 0;
+  unsigned int depth = 0;
   while (!next.empty()) {
     auto current = next;
     next.clear();
@@ -190,7 +190,7 @@ uint computeDepth (ANN &ann) {
     depth++;
   }
 
-  uint d = 0;
+  unsigned int d = 0;
   for (auto &p: neurons) {
     d = std::max(d, p.second->n.depth);
     delete p.second;
@@ -198,7 +198,7 @@ uint computeDepth (ANN &ann) {
   return d;
 }
 
-template <uint DI>
+template <unsigned int DI>
 void ANN_t<DI>::computeStats() {
   using Link = typename Neuron::Link;
   auto &e = _stats.edges = 0;
@@ -208,7 +208,7 @@ void ANN_t<DI>::computeStats() {
   std::set<Point> connected_inputs;
 
   for (const NeuronPtr &n: _neurons) {
-    e += uint(n->links().size());
+    e += unsigned int(n->links().size());
     for (const Link &link: n->links()) {
       const auto &_n = link.in.lock();
       l += (n->pos - _n->pos).length();
@@ -223,7 +223,7 @@ void ANN_t<DI>::computeStats() {
   u += connected_inputs.size();
   u /= float(_inputs.size() + _outputs.size());
 
-  _stats.hidden = static_cast<uint>(_neurons.size() - _inputs.size() - _outputs.size());
+  _stats.hidden = static_cast<unsigned int>(_neurons.size() - _inputs.size() - _outputs.size());
   _stats.density = _stats.edges / float(max_edges());
 
   if (_stats.hidden == 0) {
@@ -235,14 +235,14 @@ void ANN_t<DI>::computeStats() {
     _stats.depth = computeDepth(*this);
 }
 
-template <uint DI>
+template <unsigned int DI>
 typename ANN_t<DI>::NeuronPtr
 ANN_t<DI>::addNeuron(const Point &p, typename Neuron::Type t, float bias) {
   return std::make_shared<Neuron>(p, t, bias);
 }
 
-template <uint DI>
-void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps) {
+template <unsigned int DI>
+void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, unsigned int substeps) {
 #ifndef NDEBUG
   const auto start_time = t_now();
 #endif
@@ -252,7 +252,7 @@ void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint subste
   assert(inputs.size() == _inputs.size());
   assert(outputs.size() == outputs.size());
 
-  for (uint i=0; i<inputs.size(); i++) _inputs[i]->value = inputs[i];
+  for (unsigned int i=0; i<inputs.size(); i++) _inputs[i]->value = inputs[i];
 
 #ifdef DEBUG_COMPUTE
   std::cerr << std::setprecision(std::numeric_limits<float>::max_digits10);
@@ -260,7 +260,7 @@ void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint subste
   std::cerr << "## Compute step --\n inputs:\t" << inputs << "\n";
 #endif
 
-  for (uint s = 0; s < substeps; s++) {
+  for (unsigned int s = 0; s < substeps; s++) {
 #ifdef DEBUG_COMPUTE
     std::cerr << "#### Substep " << s+1 << " / " << substeps << "\n";
 #endif
@@ -290,7 +290,7 @@ void ANN_t<DI>::operator() (const IBuffer &inputs, OBuffer &outputs, uint subste
     }
   }
 
-  for (uint i=0; i<_outputs.size(); i++)  outputs[i] = _outputs[i]->value;
+  for (unsigned int i=0; i<_outputs.size(); i++)  outputs[i] = _outputs[i]->value;
 
 #ifdef DEBUG_COMPUTE
   std::cerr << "outputs:\t" << outputs << "\n## --\n";

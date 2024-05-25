@@ -48,9 +48,9 @@ Config::FID Config::activationFunc = "ssgn";
 /// ================================================
 /// ES-HyperNEAT parameters
 
-uint Config::initialDepth = 2;
-uint Config::maxDepth = 3;
-uint Config::iterations = 10;
+unsigned int Config::initialDepth = 2;
+unsigned int Config::maxDepth = 3;
+unsigned int Config::iterations = 10;
 
 float Config::divThr = .3f;
 float Config::varThr = .3f;
