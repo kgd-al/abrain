@@ -177,14 +177,14 @@ if (MAKE_STUBS)
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
         COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-#        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
-#        COMMAND echo "             PATH: '$ENV{PATH}'"
-#        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
-#        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
-#        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
-#        COMMAND which ${STUBGEN}
+        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+        COMMAND echo "             PATH: '$ENV{PATH}'"
+        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
+        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
+        COMMAND which ${STUBGEN}
         COMMAND ${CMAKE_COMMAND} -E
-#            env "PATH=${BUILD_TIME_PATH}"
+            env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"
             ${STUBGEN} -o ${PROJECT_BINARY_DIR}/
                 #--skip-signature-downgrade --no-setup-py --log-level DEBUG

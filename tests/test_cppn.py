@@ -239,11 +239,11 @@ def test_outputs_equals(cppn_nd_type, seed):
         cppn(p0, p1, outputs)
         outputs_all = [outputs[i] for i in range(len(outputs))]
 
-        def assert_near_equal(lhs, rhs):
-            for lhs_v, rhs_v in zip(lhs, rhs):
-                assert abs(lhs_v - rhs_v) < 1e-6
+        def assert_near_equal(_lhs, _rhs):
+            assert abs(_lhs - _rhs) < 1e-6
 
-        assert_near_equal(outputs_manual, outputs_all)
+        for lhs, rhs in zip(outputs_manual, outputs_all):
+            assert_near_equal(lhs, rhs)
         for subset, outputs_subset in outputs_subsets:
             for i in range(len(outputs_manual)):
                 if cppn_nd_type.Output(i) in subset:
