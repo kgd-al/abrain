@@ -270,12 +270,12 @@ def save_function(data: Genome.Data, g: Genome, max_gen: int, path: Path,
                  ext="png", debug="depths;keepdot", title=title)
 
         if capfd is not None:  # pragma: no branch
-            captured = capfd.readouterr()
-            captured = re.sub(
+            err = capfd.readouterr().err
+            err = re.sub(
                 r"dot: graph is too large for cairo-renderer bitmaps[^\n]*\n",
-                "", captured
+                "", err
             )
-            assert len(captured.err) == 0
+            assert len(err) == 0
 
         setattr(helper, 'gen', getattr(helper, 'gen') + 1)
     return helper
