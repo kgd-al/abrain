@@ -119,6 +119,8 @@ cmd_clion-setup(){ # Print out configuration options for CLion
     echo "Details in $log"
   fi
 
+  sed -i 's|</project>|  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />\n&|' .idea/misc.xml
+
   echo "CLion setup instructions (from $config)"
   echo "-----------------"
   cat $config

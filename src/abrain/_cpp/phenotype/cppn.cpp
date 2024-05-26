@@ -226,7 +226,7 @@ float CPPN::FNode::value () {
   std::cout << "F:\n";
 #endif
   if (std::isnan(data)) {
-    data = 0;
+    data = 0.f;
     for (Link &l: links)
       data += l.weight * l.node.lock()->value();
 
@@ -281,7 +281,8 @@ void CPPN::common_pre_evaluation() {
 
 void CPPN::operator() (OBuffer &outputs, const IBuffer &inputs) {
   pre_evaluation(inputs);
-  for (unsigned int i=0; i<outputs.size(); i++) outputs[i] = _outputs[i]->value();
+  for (unsigned int i=0; i<outputs.size(); i++)
+    outputs[i] = _outputs[i]->value();
 }
 
 float CPPN::operator() (unsigned int o, const IBuffer &inputs) {
@@ -298,7 +299,8 @@ template CPPN_ND<2>::CPPN_ND(const Genotype &genotype);
 template CPPN_ND<3>::CPPN_ND(const Genotype &genotype);
 
 template <unsigned int DI>
-void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src, const CPPN_ND<DI>::Point &dst) {
+void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src,
+                                 const CPPN_ND<DI>::Point &dst) {
   static constexpr auto N = DIMENSIONS;
   const auto I = n_inputs(true);
   for (unsigned int i=0; i<N; i++)  _inputs[i]->data = src.get(i);
@@ -347,10 +349,10 @@ template void CPPN_ND<3>::operator() (const Point &src, const Point &dst, OBuffe
 
 
 // Hopefully will get rid of i686 float c++ -> python transfer errors
-//#if __i386__
-//#pragma GCC push_options
-//#pragma GCC optimize ("O0")
-//#endif
+#if __i386__
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#endif
 template <unsigned int DI>
 float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output o) {
   pre_evaluation(src, dst);
@@ -359,8 +361,8 @@ float CPPN_ND<DI>::operator() (const Point &src, const Point &dst, const Output 
 }
 template float CPPN_ND<2>::operator() (const Point &src, const Point &dst, Output o);
 template float CPPN_ND<3>::operator() (const Point &src, const Point &dst, Output o);
-//#if __i386__
-//#pragma GCC pop_options
-//#endif
+#if __i386__
+#pragma GCC pop_options
+#endif
 
 } // end of namespace kgd::eshn::phenotype
