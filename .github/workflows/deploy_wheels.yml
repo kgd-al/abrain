@@ -20,6 +20,7 @@ jobs:
     - name: Generating json string
       id: gen-mjson
       env:
+        CIBW_SKIP: cp38-macosx_arm64
         CIBW_ARCHS_MACOS: "x86_64 arm64"
       run: |
         echo "{\"include\":[" > mjson_file
