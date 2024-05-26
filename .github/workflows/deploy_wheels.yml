@@ -23,7 +23,7 @@ jobs:
         CIBW_ARCHS_MACOS: "x86_64 arm64"
       run: |
         echo "{\"include\":[" > mjson_file
-        for os in linux macos-13 macos-14 windows
+        for os in linux macos windows
         do
           github_os="$os-latest"
           [ "$os" == "linux" ] && github_os="ubuntu-latest" 
