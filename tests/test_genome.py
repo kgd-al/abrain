@@ -3,20 +3,21 @@ import logging
 import math
 import pickle
 import pydoc
+import re
 from pathlib import Path
 from typing import Optional, Tuple
 
 import pytest
-
-from _utils import genome_factory
 from abrain import Config, Genome
 from abrain.core.genome import logger as genome_logger
 
+from _utils import genome_factory
+
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
-
-print("[kgd-debug] Muted genome logger")
-genome_logger.setLevel(logging.CRITICAL)
+#
+# print("[kgd-debug] Muted genome logger")
+# genome_logger.setLevel(logging.CRITICAL)
 
 
 ###############################################################################
@@ -269,8 +270,12 @@ def save_function(data: Genome.Data, g: Genome, max_gen: int, path: Path,
                  ext="png", debug="depths;keepdot", title=title)
 
         if capfd is not None:  # pragma: no branch
-            captured = capfd.readouterr()
-            assert len(captured.err) == 0
+            err = capfd.readouterr().err
+            err = re.sub(
+                r"dot: graph is too large for cairo-renderer bitmaps[^\n]*\n",
+                "", err
+            )
+            assert len(err) == 0
 
         setattr(helper, 'gen', getattr(helper, 'gen') + 1)
     return helper
@@ -373,8 +378,8 @@ def test_mutate_genome_mut(seed, eshn_genome, tmp_path, capfd):
             weights = [l_.weight for l_ in g.links]
             g.mutate(data)
             save()
-            assert any(b_w != a_w for b_w, a_w in
-                       zip(weights, [l_.weight for l_ in g.links]))
+            assert 1 == sum(b_w != a_w for b_w, a_w in
+                            zip(weights, [l_.weight for l_ in g.links]))
 
 
 def mutate_genome_topology(ad_rate, seed, eshn_genome, tmp_path, output, gens,

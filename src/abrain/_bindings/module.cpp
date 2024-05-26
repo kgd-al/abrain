@@ -9,7 +9,7 @@ void init_innovations (py::module_ &m);
 
 void init_generic_cppn_phenotype(py::module_ &m);
 
-template <uint DI> void init_point_type (py::module_ &m, const char *name);
+template <unsigned int DI> void init_point_type (py::module_ &m, const char *name);
 template <typename CPPN> void init_eshn_cppn_phenotype (
         py::module_ &m, const char *name, const char *pname);
 

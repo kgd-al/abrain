@@ -28,7 +28,7 @@ const stdfs::path& debugFilePrefix (const stdfs::path &path = "");
 }
 #endif
 
-template <uint D>
+template <unsigned int D>
 struct Connection_t {
   using Point = typename misc::Point_t<D>;
   Point from{}, to{};
@@ -44,17 +44,17 @@ struct Connection_t {
   }
 };
 
-template <uint D>
+template <unsigned int D>
 using Connections_t = std::set<Connection_t<D>>;
 
-template <uint D>
+template <unsigned int D>
 using Coordinates_t = std::vector<misc::Point_t<D>>;
 
-template <uint D>
+template <unsigned int D>
 bool connect (phenotype::CPPN_ND<D> &cppn,
               const Coordinates_t<D> &inputs, const Coordinates_t<D> &outputs,
               Coordinates_t<D> &hidden, Connections_t<D> &connections,
-              uint &iterations);
+              unsigned int &iterations);
 
 } // end of namespace kgd::eshn::evolvable_substrate
 

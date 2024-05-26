@@ -4,12 +4,11 @@
 
 #include "eshn.h"
 
-#include "../config.h"
 #include "ann.h"
 
 namespace kgd::eshn::evolvable_substrate {
 
-template <uint D>
+template <unsigned int D>
 struct ESHN {
   using Point = misc::Point_t<D>;
   using CPPN = phenotype::CPPN_ND<D>;
@@ -26,19 +25,19 @@ struct ESHN {
   struct QOTreeNode {
     Point center;
     float radius;
-    uint level;
+    unsigned int level;
     float weight;
 
     using ptr = std::shared_ptr<QOTreeNode>;
     std::vector<ptr> cs;
 
-    QOTreeNode (const Point &p, const float r, const uint l)
+    QOTreeNode (const Point &p, const float r, const unsigned int l)
       : center(p), radius(r), level(l), weight(NAN) {}
 
-    QOTreeNode (float x, float y, float r, uint l) requires (D == 2)
+    QOTreeNode (float x, float y, float r, unsigned int l) requires (D == 2)
       : QOTreeNode({x,y}, r, l) {}
 
-    QOTreeNode (float x, float y, float z, float r, uint l) requires (D == 3)
+    QOTreeNode (float x, float y, float z, float r, unsigned int l) requires (D == 3)
       : QOTreeNode({x,y,z}, r, l) {}
 
     [[nodiscard]] float variance () const {
@@ -112,7 +111,7 @@ struct ESHN {
       q.pop();
 
       n.cs.resize(1 << D);
-      uint i=0;
+      unsigned int i=0;
 
       const float hr = .5 * n.radius;
       const float nl = static_cast<float>(n.level) + 1;
@@ -158,8 +157,9 @@ struct ESHN {
     return root;
   }
 
-  static void pruneAndExtract (CPPN &cppn, const Point &p, Connections &con,
-                        const QOTree &t, bool out) {
+  static void pruneAndExtract (
+          CPPN &cppn, const Point &p, Connections &con,
+          const QOTree &t, bool out) {
 
     static const auto &varThr = Config::varThr;
     static const auto &bndThr = Config::bndThr;
@@ -247,22 +247,20 @@ struct ESHN {
 #endif
   }
 
-  static void removeUnconnectedNeurons (
-      const Coordinates &inputs, const Coordinates &outputs,
-      Coordinates_s &shidden, Connections &connections) {
-    using Type = typename ANN::Neuron::Type;
-    struct L;
-    struct N {
+  using Type = typename ANN::Neuron::Type;
+  struct L;
+  struct N {
       Point p;
       Type t;
       std::vector<L> i, o;
       explicit N (const Point &p, Type t = Type::H) : p(p), t(t) {}
-    };
-    struct L {
+  };
+  struct L {
       N *n;
       float w;
-    };
-    struct CMP {
+      explicit L (N *n, const float w) : n(n), w(w) {}
+  };
+  struct CMP {
       using is_transparent [[maybe_unused]] = void;
       bool operator() (const N *lhs, const Point &rhs) const {
         return lhs->p < rhs;
@@ -273,7 +271,11 @@ struct ESHN {
       bool operator() (const N *lhs, const N *rhs) const {
         return lhs->p < rhs->p;
       }
-    };
+  };
+
+  static void removeUnconnectedNeurons (
+      const Coordinates &inputs, const Coordinates &outputs,
+      Coordinates_s &shidden, Connections &connections) {
 
     std::set<N*, CMP> nodes, inodes, onodes;
     for (const Point &p: inputs)
@@ -289,8 +291,8 @@ struct ESHN {
     };
     for (const Connection &c: connections) {
       N *i = getOrCreate(c.from), *o = getOrCreate(c.to);
-      i->o.push_back({o,c.weight});
-      o->i.push_back({i,c.weight});
+      i->o.push_back(L(o, c.weight));
+      o->i.push_back(L(i, c.weight));
     }
 
 #if DEBUG_ES >= 2
@@ -379,26 +381,26 @@ struct ESHN {
     for (const Point &i: inputs) {
       for (const Point &o: outputs) {
         cppn(i, o, res, wl);
-        if (res[static_cast<uint>(Output::LEO)])
-          connections.insert({i, o, res[static_cast<uint>(Output::WEIGHT)]});
+        if (res[static_cast<unsigned int>(Output::LEO)])
+          connections.insert({i, o, res[static_cast<unsigned int>(Output::WEIGHT)]});
       }
     }
   }
 };
 
 // Triggered by duplicate coordinates
-template <uint D>
+template <unsigned int D>
 std::ostream& operator<< (std::ostream &os, const Coordinates_t<D> &c) {
   os << "[";
   if (!c.empty()) os << " " << c[0] << " ";
-  for (uint i=1; i<c.size(); i++) os << c[i] << " ";
+  for (unsigned int i=1; i<c.size(); i++) os << c[i] << " ";
   return os << "]";
 }
 
-template <uint D>
+template <unsigned int D>
 bool connect (phenotype::CPPN_ND<D> &cppn,
               const Coordinates_t<D> &inputs, const Coordinates_t<D> &outputs,
-              Coordinates_t<D> &hidden, Connections_t<D> &connections, uint &iterations) {
+              Coordinates_t<D> &hidden, Connections_t<D> &connections, unsigned int &iterations) {
 
   using E = ESHN<D>;
   using Coordinates_s = typename E::Coordinates_s;
@@ -421,7 +423,7 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
 #if DEBUG_ES
   std::ostringstream oss;
   oss << "\n## --\nStarting evolvable substrate instantiation\n";
-  uint n_hidden = 0, n_connections = 0;
+  unsigned int n_hidden = 0, n_connections = 0;
 #endif
 
   Coordinates_s shidden;
@@ -544,13 +546,13 @@ template bool connect<2>(
         const Coordinates_t<2> &inputs,
         const Coordinates_t<2> &outputs,
         Coordinates_t<2> &hidden,
-        Connections_t<2> &connections, uint &iterations);
+        Connections_t<2> &connections, unsigned int &iterations);
 
 template bool connect<3>(
         phenotype::CPPN3D &cppn,
         const Coordinates_t<3> &inputs,
         const Coordinates_t<3> &outputs,
         Coordinates_t<3> &hidden,
-        Connections_t<3> &connections, uint &iterations);
+        Connections_t<3> &connections, unsigned int &iterations);
 
 } // end of namespace evolvable substrate

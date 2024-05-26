@@ -1,6 +1,6 @@
 [project]
 name = "abrain"
-version = "1.0rc-post5"
+version = "1.0rc-post6"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"
@@ -47,8 +47,13 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "leap-ec", "Pillow", "qdpy", "tqdm", "kaleido", "matplotlib"
 ]
+
+all-tests = [
+  "abrain[tests,kaleido]",
+  "leap-ec", "Pillow", "qdpy", "tqdm", "matplotlib"
+]
+
 
 docs = [
   "sphinx",

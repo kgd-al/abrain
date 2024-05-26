@@ -45,7 +45,7 @@ struct Config {
 
   /// ================================================
   /// ES-HyperNEAT parameters
-  static uint initialDepth, maxDepth, iterations;
+  static unsigned int initialDepth, maxDepth, iterations;
   static float divThr, varThr, bndThr;
   static bool allowPerceptrons;
 };

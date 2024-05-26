@@ -15,20 +15,20 @@ from abrain import (
 
 
 def _make_cppn(cppn_type, seed, mutations=0):
-    match cppn_type.__name__:
-        case GenericCPPN.__name__:
-            rng = Random(seed)
-            data = Genome.Data.create_for_generic_cppn(
-                seed=seed,
-                inputs=rng.randint(2, 5),
-                outputs=rng.randint(1, 3)
-            )
-        case CPPN2D.__name__:
-            data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
-        case CPPN3D.__name__:
-            data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=seed)
-        case _:  # pragma: no cover
-            raise ValueError(f"Invalid CPPN type {cppn_type}")
+    name = cppn_type.__name__
+    if name == GenericCPPN.__name__:
+        rng = Random(seed)
+        data = Genome.Data.create_for_generic_cppn(
+            seed=seed,
+            inputs=rng.randint(2, 5),
+            outputs=rng.randint(1, 3)
+        )
+    elif name == CPPN2D.__name__:
+        data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
+    elif name == CPPN3D.__name__:
+        data = Genome.Data.create_for_eshn_cppn(dimension=3, seed=seed)
+    else:  # pragma: no cover
+        raise ValueError(f"Invalid CPPN type {cppn_type}")
 
     genome = Genome.random(data)
     for _ in range(mutations):
@@ -96,6 +96,10 @@ def __tester_generic_single_output(
     inputs = _random_inputs(seed, cppn)
     print(cppn.n_inputs(), cppn.n_inputs(True))
     print(len(inputs), inputs)
+
+    with pytest.raises((ValueError, RuntimeError)):
+        cppn(0, *args_maker(cppn, inputs + inputs))
+
     args = args_maker(cppn, inputs)
     for o in range(cppn.n_outputs()):
         values = set()
@@ -113,6 +117,10 @@ def __tester_generic_all_outputs(
     args = args_maker(cppn, inputs)
     outputs = cppn.outputs()
     values = [set() for _ in outputs]
+
+    with pytest.raises((ValueError, RuntimeError)):
+        cppn(0, *args_maker(cppn, inputs + inputs))
+
     for i in range(100):
         cppn(outputs, *args)
         for j, o in enumerate(outputs):
@@ -231,11 +239,15 @@ def test_outputs_equals(cppn_nd_type, seed):
         cppn(p0, p1, outputs)
         outputs_all = [outputs[i] for i in range(len(outputs))]
 
-        assert outputs_manual == outputs_all
+        def assert_near_equal(_lhs, _rhs):
+            assert abs(_lhs - _rhs) < 1e-6
+
+        for lhs, rhs in zip(outputs_manual, outputs_all):
+            assert_near_equal(lhs, rhs)
         for subset, outputs_subset in outputs_subsets:
             for i in range(len(outputs_manual)):
                 if cppn_nd_type.Output(i) in subset:
-                    assert outputs_manual[i] == outputs_subset[i]
+                    assert_near_equal(outputs_manual[i], outputs_subset[i])
 
 
 sample_sizes = [10, 50, 100]

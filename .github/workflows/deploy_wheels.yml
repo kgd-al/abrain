@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
   workflow_dispatch:
 
@@ -15,17 +16,25 @@ jobs:
     outputs:
       matrix: ${{ steps.gen-mjson.outputs.matrix }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Generating json string
       id: gen-mjson
+      env:
+        CIBW_SKIP: cp38-macosx_arm64
+        CIBW_ARCHS_MACOS: "x86_64 arm64"
       run: |
         echo "{\"include\":[" > mjson_file
         for os in linux macos windows
         do
-          github_os=$os
-          [ "$os" == "linux" ] && github_os="ubuntu" 
           for bt in $(pipx run cibuildwheel --platform $os --print-build-identifiers)
           do
+            github_os="$os-latest"
+            [ "$os" == "linux" ] && github_os="ubuntu-latest" 
+            if [ "$os" == "macos" ]
+            then
+              arch=$(cut -d '_' -f 2- <<< "$bt")
+              [ "$arch" != "arm64" ] && github_os="macos-13"
+            fi
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
         done >> mjson_file
@@ -37,7 +46,7 @@ jobs:
   build_wheels:
     needs: collect_targets
     name: Build ${{ matrix.build }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.collect_targets.outputs.matrix) }}
@@ -65,7 +74,7 @@ jobs:
           #echo "[kgd-build-status] $res" >> $log
           #exit $res
                     
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build wheels
         env:
@@ -84,26 +93,26 @@ jobs:
         run: |
           mkdir logs
           log=logs/${{ matrix.build }}.log
-          pipx run cibuildwheel 2>&1 | tee $log
+          pipx run cibuildwheel --only ${{ matrix.build }} 2>&1 | tee $log
           res=${PIPESTATUS[0]}
           echo "[kgd-build-status] $res" >> $log
           exit $res
           
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-${{ matrix.build }}
           path: ./wheelhouse/*.whl
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
-          name: logs
+          name: log-${{ matrix.build }}
           path: ./logs/*.log
 
   build_sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build sdist
         run: |
@@ -111,14 +120,14 @@ jobs:
           pipx run build --sdist 2>&1 | tee logs/sdist.log
           exit ${PIPESTATUS[0]}
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-sources
           path: dist/*.tar.gz
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: ${{ always() && !cancelled() }}
         with:
-          name: logs
+          name: log-sources
           path: ./logs/*.log
 
   post_build:
@@ -127,23 +136,27 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() }}
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: download sdist/wheels
         with:
-          name: dist
           path: dist
+          pattern: dist-*
+          merge-multiple: true
           
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: download logs
         with:
-          name: logs
           path: logs
+          pattern: log-*
+          merge-multiple: true
           
       - name: Generate summary
         env:
           GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Generating summary"
+          
+          tree
           
           mjson='${{ needs.collect_targets.outputs.matrix }}'
           builds=$(echo $mjson | jq -r '.include[].build')
@@ -308,7 +321,7 @@ jobs:
 
       - name: upload to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: "contains(github.event.head_commit.message, '[Release]')"
+        if: "github.ref_name == 'master' && contains(github.event.head_commit.message, '[Release]')"
         with:
           user: __token__
           password: ${{ secrets.pypi_password }}

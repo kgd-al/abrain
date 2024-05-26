@@ -13,7 +13,7 @@
 namespace kgd::eshn::phenotype {
 namespace es = evolvable_substrate;
 
-template <uint DI>
+template <unsigned int DI>
 class ANN_t {
 public:
   using CPPN = CPPN_ND<DI>;
@@ -28,10 +28,10 @@ public:
     const float bias;
     float value;
 
-    uint depth = 0;
+    unsigned int depth = 0;
 
     // For clustering purposes (bitwise mask)
-    using Flags_t = uint;
+    using Flags_t = unsigned int;
     Flags_t flags;
 
     Neuron (const Point &p, Type t, float b)
@@ -66,13 +66,13 @@ public:
   };
 
   struct Stats {
-    uint depth;
-    uint hidden;
-    uint edges;
+    unsigned int depth;
+    unsigned int hidden;
+    unsigned int edges;
     float axons;    // total length
     float density;
     float utility;
-    uint iterations;
+    unsigned int iterations;
 #ifndef NDEBUG
     using duration = std::chrono::duration<double>;
     using rep = duration::rep;
@@ -85,9 +85,6 @@ public:
   using NeuronPtr = typename Neuron::ptr;
 
   ANN_t() = default;
-
-  const auto& neurons () const {  return _neurons;  }
-  auto& neurons () {  return _neurons;  }
 
   const NeuronPtr& neuronAt (const Point &p) const {
     auto it = _neurons.find(p);
@@ -106,7 +103,7 @@ public:
 
   /// TODO Modify with buffer-based eval. Maybe
   /// .. todo:: Modify with buffer-based eval. Maybe
-  void operator() (const IBuffer &inputs, OBuffer &outputs, uint substeps = 1);
+  void operator() (const IBuffer &inputs, OBuffer &outputs, unsigned int substeps = 1);
 
   [[nodiscard]] bool empty (bool strict = false) const;
   [[nodiscard]] bool perceptron () const;
@@ -116,9 +113,9 @@ public:
     return _stats;
   }
 
-  static uint max_hidden_neurons();
+  static unsigned int max_hidden_neurons();
 
-  uint max_edges() {
+  unsigned int max_edges() {
     if (_stats.hidden == 0)
       return _inputs.size() * _outputs.size();
     else
@@ -160,6 +157,10 @@ private:
   };
 public:
   using NeuronsMap = std::set<NeuronPtr, NeuronCMP>;
+
+  const NeuronsMap& neurons () const {  return _neurons;  }
+  NeuronsMap& neurons () {  return _neurons;  }
+
 private:
   NeuronsMap _neurons;
 

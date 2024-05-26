@@ -63,6 +63,11 @@ def pytest_addoption(parser):
                           f" defaults arguments",
                      type=parse_evo_config)
 
+    parser.addoption("--test-examples", dest='examples',
+                     action='store_true',
+                     help="Run all examples. Requires a ton of packages"
+                          " (installed via abrain[all-tests]).")
+
 
 best_ad_rate = .75
 
@@ -220,6 +225,15 @@ def pytest_collection_modifyitems(config, items):
                                             " explicit request. Use"
                                             " --test-evolution=[dict] to do"
                                             " so.")
+                )
+            continue
+
+        if item.originalname == "test_run_examples":
+            if not config.getoption("examples"):
+                item.add_marker(
+                    pytest.mark.skip(reason="Only running examples test on"
+                                            " explicit request. Use"
+                                            " --test-examples to do so.")
                 )
             continue
 

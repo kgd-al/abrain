@@ -843,7 +843,11 @@ class Genome(_CPPNData):
         link.weight = w
 
     def __random_mutate_func(self, data: Data) -> None:
-        n = data.rng.choice(self.nodes)
+        # Cannot be used as slices return new objects
+        # n = data.rng.choice(self.nodes[self.outputs:])
+        # ===
+        i = data.rng.randint(self.outputs, len(self.nodes)-1)
+        n = self.nodes[i]
         f = data.rng.choice([f for f in Config.functionSet if not f == n.func])
         logger.debug(f"[mut_f] N({n.id}, {n.func}) -> {f}")
         n.func = f
@@ -915,7 +919,7 @@ class Genome(_CPPNData):
         update("add_l", lambda: len(potential_links) > 0)
         update("del_l", lambda: len(non_essential_links) > 0)
         update("del_n", lambda: len(simples_nodes) > 0)
-        update("mut_f", lambda: len(self.nodes) > 0)
+        update("mut_f", lambda: len(self.nodes) - self.outputs > 0)
         update("mut_w", lambda: len(self.links) > 0)
         assert len(rates) > 0
 
@@ -988,13 +992,13 @@ class Genome(_CPPNData):
                           _rl: _CPPNData.Link,
                           _excess: bool):
             key = "excess" if _excess else "disjoint"
-            if _rl is None:  # Maybe add link from lhs
+            if _rl is None:    # Maybe add link from lhs
                 if bias == 0:
                     add_link(_ll)
-            elif _ll is None:
+            elif _ll is None:  # Maybe add link from lhs
                 if bias == 1:
                     add_link(_rl)
-            else:
+            else:              # Matching links -> add one
                 add_link(data.rng.choice([_ll, _rl]))
                 key = "matched"
             stats["links"][key] += 1

@@ -15,9 +15,10 @@ Point = Union[Point2D, Point3D]
 
 
 def _ann_type(dimension):
-    match dimension:
-        case 2: return ANN2D
-        case 3: return ANN3D
+    if dimension == 2:
+        return ANN2D
+    else:
+        return ANN3D
 
 
 def test_default_is_empty(dimension):
@@ -103,6 +104,19 @@ def test_empty_perceptrons(_dimension, mutations, seed):
         assert (sum(s.values()) == n)
     assert stats_t['empty'] <= stats_f['empty']
     assert stats_f['perceptron'] == 0
+
+
+@pytest.mark.parametrize('_dimension', [2, 3])
+def test_invalid_genome(_dimension):
+    ann_t = _ann_type(_dimension)
+    genome = Genome.random(Genome.Data.create_for_generic_cppn(2, 2))
+    with pytest.raises(ValueError):
+        ann_t.build([], [], genome)
+
+    genome = Genome.random(Genome.Data.create_for_eshn_cppn(5 - _dimension))
+    with pytest.raises(ValueError):
+        print()
+        ann_t.build([], [], genome)
 
 
 @pytest.mark.parametrize(

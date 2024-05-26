@@ -33,7 +33,7 @@ static const utils::DocMap _cppn_docs {
   { "OUTPUTS_LIST", "The list of output types the CPPN can produce" }
 };
 
-template <uint DI>
+template <unsigned int DI>
 void init_point_type (py::module &m, const char *name) {
   using Point = misc::Point_t<DI>;
   static constexpr auto Di = Point::DIMENSIONS;
@@ -114,7 +114,7 @@ void init_generic_cppn_phenotype (py::module_ &m) {
                    &CPPN::operator ()),
            "Evaluates on provided inputs and retrieve all outputs",
            "outputs"_a, "inputs"_a)
-      .def("__call__", py::overload_cast<uint, const IBuffer&>(
+      .def("__call__", py::overload_cast<unsigned int, const IBuffer&>(
                    &CPPN::operator ()),
            "Evaluates on provided inputs and retrieve requested output",
            "output"_a, "inputs"_a)
@@ -126,7 +126,7 @@ void init_generic_cppn_phenotype (py::module_ &m) {
            "Evaluates on provided inputs and retrieve all outputs",
            "outputs"_a, "inputs"_a)
       .def("__call__",
-           [] (CPPN &cppn, uint o, const py::list &inputs) {
+           [] (CPPN &cppn, unsigned int o, const py::list &inputs) {
                return cppn(o, fromList(inputs));
            },
            "Evaluates on provided inputs and retrieve requested output",
@@ -139,7 +139,7 @@ void init_generic_cppn_phenotype (py::module_ &m) {
            "Evaluates on provided inputs and retrieve all outputs",
            "outputs"_a)
       .def("__call__",
-           [] (CPPN &cppn, uint o, const py::args &inputs) {
+           [] (CPPN &cppn, unsigned int o, const py::args &inputs) {
                return cppn(o, fromList(inputs));
            },
            "Evaluates on provided inputs and retrieve requested output",

@@ -20,12 +20,12 @@ struct CPPNData {
   struct Link {
     ID id;
 
-    uint src, dst;
+    unsigned int src, dst;
     float weight;
   };
 
-  uint inputs;
-  uint outputs;
+  unsigned int inputs;
+  unsigned int outputs;
   std::string labels;
   bool bias;
 

@@ -119,6 +119,8 @@ cmd_clion-setup(){ # Print out configuration options for CLion
     echo "Details in $log"
   fi
 
+  sed -i 's|</project>|  <component name="CMakeWorkspace" PROJECT_DIR="$PROJECT_DIR$" />\n&|' .idea/misc.xml
+
   echo "CLion setup instructions (from $config)"
   echo "-----------------"
   cat $config
@@ -135,7 +137,7 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
 
   pycoverage=$cout/py.coverage.info
   coverage run --branch --data-file=$(basename $pycoverage) \
-    --source=. --omit "tests/conftest.py,setup.py,examples/*.py" \
+    --source=. --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
     -m \
     pytest --durations=10 --basetemp=$out -x -ra "$@" || exit 2
   mkdir -p $cout # pytest will have cleared everything. Build it back
@@ -260,8 +262,8 @@ cmd_before-deploy(){  # Run a lot of tests to ensure that the package is clean
   source "../venv/bin/activate"
   echo "$VIRTUAL_ENV"
   pip install --upgrade pip
-  TEST=1 pip install ".[tests, docs]" -v
-  cmd_pytest --small-scale --test-evolution
+  TEST=1 pip install ".[all-tests, docs]" -v
+  cmd_pytest --small-scale --test-evolution --test-examples
   flake8 src tests
   cmd_doc
   rm -rf "$test_dir"

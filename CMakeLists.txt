@@ -30,10 +30,10 @@ if (Python3_EXECUTABLE)
     set(ENV{PATH} "$ENV{PATH}:${PYTHON_BIN}")
     message("Provided python: ${Python3_EXECUTABLE} (added to path)")
 endif()
-
-find_package (Python3 COMPONENTS Interpreter Development)
-message("Using python* ${Python_EXECUTABLE} ${PYTHON_EXECUTABLE}")
-message("Using python3 ${Python3_EXECUTABLE}")
+#
+#find_package (Python3 COMPONENTS Interpreter Development)
+#message("Using python* ${Python_EXECUTABLE} ${PYTHON_EXECUTABLE}")
+#message("Using python3 ${Python3_EXECUTABLE}")
 
 find_package(pybind11 REQUIRED)
 
@@ -83,7 +83,7 @@ PREPEND(PYBIND_SRC "src/abrain/_bindings")
 set(LIB_CPP _cpp)
 pybind11_add_module(${LIB_CPP} ${CPP_SRC} ${PYBIND_SRC})
 target_compile_definitions(${LIB_CPP}
-                           PRIVATE VERSION_INFO=${EXAMPLE_VERSION_INFO})
+                           PRIVATE VERSION_INFO=${VERSION_INFO})
 
 ################################################################################
 ## C++ Coverage
@@ -114,6 +114,8 @@ if (DEV_BUILD)
 endif()
 
 message("> Build type: ${CMAKE_BUILD_TYPE}${DEV_SUFFIX}")
+message(">    Version: ${VERSION_INFO}")
+
 message("> On n cores: ${CMAKE_BUILD_PARALLEL_LEVEL}")
 
 option(MAKE_STUBS "Sets whether to generate pyi files from module" ON)
@@ -175,14 +177,16 @@ if (MAKE_STUBS)
         TARGET ${LIB_CPP} POST_BUILD
         COMMAND echo "binary dir is: ${PROJECT_BINARY_DIR}"
         COMMAND echo "lib has been built as: $<TARGET_FILE:${LIB_CPP}>"
-#        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
-#        COMMAND echo "             PATH: '$ENV{PATH}'"
-#        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
-#        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
-#        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
-#        COMMAND which ${STUBGEN}
+        COMMAND echo "CMAKE_PREFIX_PATH: '${CMAKE_PREFIX_PATH}'"
+        COMMAND echo "             PATH: '$ENV{PATH}'"
+        COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
+        COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
+        COMMAND pwd
+        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
+        COMMAND ls $<TARGET_FILE_DIR:${LIB_CPP}>
+        COMMAND which ${STUBGEN}
         COMMAND ${CMAKE_COMMAND} -E
-#            env "PATH=${BUILD_TIME_PATH}"
+            env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"
             ${STUBGEN} -o ${PROJECT_BINARY_DIR}/
                 #--skip-signature-downgrade --no-setup-py --log-level DEBUG
