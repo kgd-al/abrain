@@ -20,10 +20,10 @@ jobs:
     - name: Generating json string
       id: gen-mjson
       env:
-        CIBW_ARCHS_MACOS: all
+        CIBW_ARCHS_MACOS: native
       run: |
         echo "{\"include\":[" > mjson_file
-        for os in linux macos windows
+        for os in linux macos-13 macos-14 windows
         do
           github_os=$os
           [ "$os" == "linux" ] && github_os="ubuntu" 
