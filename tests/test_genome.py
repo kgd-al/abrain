@@ -3,6 +3,7 @@ import logging
 import math
 import pickle
 import pydoc
+import re
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -270,6 +271,10 @@ def save_function(data: Genome.Data, g: Genome, max_gen: int, path: Path,
 
         if capfd is not None:  # pragma: no branch
             captured = capfd.readouterr()
+            captured = re.sub(
+                r"dot: graph is too large for cairo-renderer bitmaps[^\n]*\n",
+                "", captured
+            )
             assert len(captured.err) == 0
 
         setattr(helper, 'gen', getattr(helper, 'gen') + 1)
