@@ -33,7 +33,6 @@ jobs:
             then
               arch=$(cut -d '_' -f 2- <<< "$bt")
               [ "$arch" != "arm64" ] && github_os="macos-13"
-              echo "$arch -> $github_os"
             fi
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
           done
