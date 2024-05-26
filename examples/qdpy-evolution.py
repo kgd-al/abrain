@@ -26,6 +26,7 @@ from qdpy.phenotype import IndividualLike, Fitness, Features
 from rich.progress import track
 
 try:
+    # flake8: noqa
     import kaleido
     HAS_KALEIDO = True
 except ImportError:
