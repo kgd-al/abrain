@@ -30,10 +30,10 @@ if (Python3_EXECUTABLE)
     set(ENV{PATH} "$ENV{PATH}:${PYTHON_BIN}")
     message("Provided python: ${Python3_EXECUTABLE} (added to path)")
 endif()
-
-find_package (Python3 COMPONENTS Interpreter Development)
-message("Using python* ${Python_EXECUTABLE} ${PYTHON_EXECUTABLE}")
-message("Using python3 ${Python3_EXECUTABLE}")
+#
+#find_package (Python3 COMPONENTS Interpreter Development)
+#message("Using python* ${Python_EXECUTABLE} ${PYTHON_EXECUTABLE}")
+#message("Using python3 ${Python3_EXECUTABLE}")
 
 find_package(pybind11 REQUIRED)
 
