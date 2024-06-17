@@ -1,5 +1,7 @@
+import copy
 import logging
 import math
+import pickle
 from random import Random
 from time import perf_counter
 from typing import Tuple, List, Dict, Union, Callable
@@ -260,10 +262,11 @@ def test_view_neurons_png(mutations, seed, tmp_path):
 
     try:
         fig.write_image(file)
-        print("Generated", file)    # pragma: no cover
-    except Exception as e:  # pragma: no cover
-        pytest.skip(f"Ignoring exceptions from unstable kaleido: "
-                    f"{e=}, {type(e)=}")
+        print("Generated", file)        # pragma: no cover
+    except DeprecationWarning as e:     # pragma: no cover
+        print(f"Ignoring exceptions from unstable kaleido: {e=}, {type(e)=}")
+    except AttributeError as e:         # pragma: no cover
+        print(f"Ignoring exceptions from unstable kaleido: {e=}, {type(e)=}")
 
 
 def _time(_start=None):
@@ -352,3 +355,76 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
     duration, start = _time(start)
     print(f"Writing: {duration}s")
     print("Wrote to", ann_path)
+
+
+###############################################################################
+# Serialization tests
+###############################################################################
+
+#
+# def assert_equal(lhs: ANN, rhs: ANN):
+#     assert lhs is not rhs
+#     assert lhs.nodes is not rhs.nodes
+#     assert lhs.links is not rhs.nodes
+#
+#     assert lhs.inputs == rhs.inputs
+#     assert lhs.outputs == rhs.outputs
+#     assert len(lhs.nodes) == len(rhs.nodes)
+#     assert len(lhs.links) == len(rhs.links)
+#
+#     for lhs_n, rhs_n in zip(lhs.nodes, rhs.nodes):
+#         assert lhs_n is not rhs_n
+#         assert lhs_n.id == rhs_n.id
+#         assert lhs_n.func == rhs_n.func
+#
+#     for lhs_l, rhs_l in zip(lhs.links, rhs.links):
+#         assert lhs_l is not rhs_l
+#         assert lhs_l.id == rhs_l.id
+#         assert lhs_l.src == rhs_l.src
+#         assert lhs_l.dst == rhs_l.dst
+#         assert lhs_l.weight == rhs_l.weight
+#
+#
+# def _simple_genome(seed, with_id):
+#     data = Genome.Data.create_for_generic_cppn(5, 3,
+#                                                seed=seed,
+#                                                with_lineage=with_id)
+#     genome = Genome.random(data)
+#     for _ in range(10):
+#         genome.mutate(data)
+#     return genome
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_pickle_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     roundabout = pickle.loads(pickle.dumps(genome))
+#     assert_equal(genome, roundabout)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_json_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     roundabout = Genome.from_json(genome.to_json())
+#     assert_equal(genome, roundabout)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_copy_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = genome.copy()
+#     assert_equal(genome, copied)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test___copy_genome_factory(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = copy.copy(genome)
+#     assert_equal(genome, copied)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test___deepcopy_genome_factory(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = copy.deepcopy(genome)
+#     assert_equal(genome, copied)

@@ -1,4 +1,5 @@
 import copy
+import itertools
 import logging
 import math
 import pickle
@@ -11,7 +12,7 @@ import pytest
 from abrain import Config, Genome
 from abrain.core.genome import logger as genome_logger
 
-from _utils import genome_factory
+from _utils import genome_factory, assert_genomes_equal, SERIALIZER_FUNCTIONS
 
 logging.root.setLevel(logging.NOTSET)
 logging.getLogger('graphviz').setLevel(logging.WARNING)
@@ -451,7 +452,7 @@ def test_mutate_genome_deepcopy(seed, eshn_genome, with_lineage):
             parent.mutate(data)
         child = parent.mutated(data)
 
-        assert_equal(parent, parent.copy())
+        assert_genomes_equal(parent, parent.copy())
 
     assert len(parent.nodes) == len(child.nodes) - 1
 
@@ -547,69 +548,31 @@ def test_eshn_cppn_crossover(seed, dimension, mutations, child_mutations,
 ###############################################################################
 
 
-def assert_equal(lhs: Genome, rhs: Genome):
-    assert lhs is not rhs
-    assert lhs.nodes is not rhs.nodes
-    assert lhs.links is not rhs.nodes
-
-    assert lhs.inputs == rhs.inputs
-    assert lhs.outputs == rhs.outputs
-    assert len(lhs.nodes) == len(rhs.nodes)
-    assert len(lhs.links) == len(rhs.links)
-
-    for lhs_n, rhs_n in zip(lhs.nodes, rhs.nodes):
-        assert lhs_n is not rhs_n
-        assert lhs_n.id == rhs_n.id
-        assert lhs_n.func == rhs_n.func
-
-    for lhs_l, rhs_l in zip(lhs.links, rhs.links):
-        assert lhs_l is not rhs_l
-        assert lhs_l.id == rhs_l.id
-        assert lhs_l.src == rhs_l.src
-        assert lhs_l.dst == rhs_l.dst
-        assert lhs_l.weight == rhs_l.weight
+serialized_genomes_data = [
+    *[dict(eshn=False, shape=(i, o),
+           with_input_bias=ib, with_lineage=wl)
+      for i, o, ib, wl in itertools.product(
+            [3, 5], [3, 5, "w l"], [True, False], [True, False]
+      )],
+    *[dict(eshn=True, dimension=d,
+           with_input_bias=ib, with_input_length=il,
+           with_leo=leo, with_output_bias=ob,
+           with_lineage=wl)
+      for d, ib, il, leo, ob, wl in itertools.product(
+            [2, 3],
+            [True, False], [True, False],
+            [True, False], [True, False],
+            [True, False]
+      )],
+]
 
 
-def _simple_genome(seed, with_id):
-    data = Genome.Data.create_for_generic_cppn(5, 3,
-                                               seed=seed,
-                                               with_lineage=with_id)
-    genome = Genome.random(data)
-    for _ in range(10):
+@pytest.mark.parametrize("seed", range(2))
+@pytest.mark.parametrize("data", serialized_genomes_data)
+@pytest.mark.parametrize("func", SERIALIZER_FUNCTIONS)
+def test_serialization(seed, mutations, data, func):
+    data, _, _, genome = genome_factory(seed, **data)
+    for _ in range(mutations):
         genome.mutate(data)
-    return genome
-
-
-@pytest.mark.parametrize('with_id', [True, False])
-def test_pickle_genome(seed, with_id):
-    genome = _simple_genome(seed, with_id)
-    roundabout = pickle.loads(pickle.dumps(genome))
-    assert_equal(genome, roundabout)
-
-
-@pytest.mark.parametrize('with_id', [True, False])
-def test_json_genome(seed, with_id):
-    genome = _simple_genome(seed, with_id)
-    roundabout = Genome.from_json(genome.to_json())
-    assert_equal(genome, roundabout)
-
-
-@pytest.mark.parametrize('with_id', [True, False])
-def test_copy_genome(seed, with_id):
-    genome = _simple_genome(seed, with_id)
-    copied = genome.copy()
-    assert_equal(genome, copied)
-
-
-@pytest.mark.parametrize('with_id', [True, False])
-def test___copy_genome_factory(seed, with_id):
-    genome = _simple_genome(seed, with_id)
-    copied = copy.copy(genome)
-    assert_equal(genome, copied)
-
-
-@pytest.mark.parametrize('with_id', [True, False])
-def test___deepcopy_genome_factory(seed, with_id):
-    genome = _simple_genome(seed, with_id)
-    copied = copy.deepcopy(genome)
-    assert_equal(genome, copied)
+    roundabout = func(genome)
+    assert_genomes_equal(genome, roundabout)

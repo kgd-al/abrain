@@ -15,6 +15,9 @@ namespace es = evolvable_substrate;
 
 template <unsigned int DI>
 class ANN_t {
+  template <unsigned int DI_>
+  friend struct ANNSerializer;
+
 public:
   using CPPN = CPPN_ND<DI>;
   using Point = typename CPPN::Point;
@@ -34,7 +37,7 @@ public:
     using Flags_t = unsigned int;
     Flags_t flags;
 
-    Neuron (const Point &p, Type t, float b)
+    Neuron (const Point &p, const Type t, const float b)
       : pos(p), type(t), bias(b), value(0), flags(0) {}
 
     [[nodiscard]] bool isInput () const {   return type == I;  }

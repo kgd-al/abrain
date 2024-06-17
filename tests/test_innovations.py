@@ -189,31 +189,31 @@ def assert_equal(lhs: Innovations, rhs: Innovations):
     assert lhs.to_json() == rhs.to_json()
 
 
-def test_pickle_genome(seed):
-    innovations = _simple_innovation(seed)
-    roundabout = pickle.loads(pickle.dumps(innovations))
-    assert_equal(innovations, roundabout)
-
-
-def test_json_genome(seed):
+def test_json_innovations(seed):
     innovations = _simple_innovation(seed)
     roundabout = Innovations.from_json(innovations.to_json())
     assert_equal(innovations, roundabout)
 
 
-def test_copy_genome(seed):
+def test_pickle_innovations(seed):
+    innovations = _simple_innovation(seed)
+    roundabout = pickle.loads(pickle.dumps(innovations))
+    assert_equal(innovations, roundabout)
+
+
+def test_copy_innovations(seed):
     innovations = _simple_innovation(seed)
     copied = innovations.copy()
     assert_equal(innovations, copied)
 
 
-def test___copy___genome(seed):
+def test__copy__innovations(seed):
     innovations = _simple_innovation(seed)
     copied = copy.copy(innovations)
     assert_equal(innovations, copied)
 
 
-def test___deepcopy___genome(seed):
+def test__deepcopy__innovations(seed):
     innovations = _simple_innovation(seed)
     copied = copy.deepcopy(innovations)
     assert_equal(innovations, copied)
