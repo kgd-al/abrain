@@ -67,11 +67,11 @@ public:
       explicit Buffer (const size_t size) : std::vector<float>(size) {};
   };
   struct IBuffer : Buffer {
-      IBuffer () : Buffer() {};
+      IBuffer () = default;
       explicit IBuffer (const size_t size) : Buffer(size) {};
   };
   struct OBuffer : Buffer {
-      OBuffer () : Buffer() {};
+      OBuffer () = default;
       explicit OBuffer (const size_t size) : Buffer(size) {};
   };
 

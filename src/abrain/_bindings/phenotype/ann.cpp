@@ -60,22 +60,20 @@ struct ANNSerializer {
   static py::dict to_json(const ANN &ann) {
     py::dict dict;
 
-    std::map<Point, unsigned int> map;
     py::list neurons, links;
 
     for (const typename ANN::NeuronPtr &np: ann._neurons) {
       const auto &n = *np;
-      map[n.pos] = neurons.size();
       neurons.append(py::make_tuple(
-        n.pos, n.type, n.bias, n.value, n.depth,n. flags));
+        n.pos, n.type, n.bias, n.value, n.depth, n.flags));
     }
 
     for (const typename ANN::NeuronPtr &np: ann._neurons) {
       const Neuron &to = *np;
-      const auto to_id = map[to.pos];
+      const auto to_id = to.pos;
       for (const typename ANN::Neuron::Link &l: to.links()) {
         links.append(py::make_tuple(
-          map[l.in.lock()->pos], to_id, l.weight
+          l.in.lock()->pos, to_id, l.weight
         ));
       }
     }
@@ -89,8 +87,6 @@ struct ANNSerializer {
 
   static ANN from_json(const py::dict &d) {
     ANN ann;
-
-    std::map<unsigned int, typename ANN::NeuronPtr> map;
     for (const py::handle &h: d["neurons"]) {
       const auto &t = h.cast<py::tuple>();
       auto n = ann.addNeuron(
@@ -100,7 +96,7 @@ struct ANNSerializer {
       n->value = t[3].cast<float>();
       n->depth = t[4].cast<unsigned int>();
       n->flags = t[5].cast<typename Neuron::Flags_t>();
-      map[ann._neurons.size()] = n;
+      ann._neurons.insert(n);
 
       switch (n->type) {
       case Neuron::Type::I:
@@ -119,10 +115,11 @@ struct ANNSerializer {
 
     for (const py::handle &h: d["links"]) {
       const auto &t = h.cast<py::tuple>();
-      auto from_id = t[0].cast<unsigned int>();
-      auto to_id = t[1].cast<unsigned int>();
+      auto from_id = t[0].cast<Point>();
+      auto to_id = t[1].cast<Point>();
       auto weight = t[2].cast<float>();
-      map[to_id]->addLink(weight, map[from_id]);
+
+      ann.neuronAt(to_id)->addLink(weight, ann.neuronAt(from_id));
     }
 
     ann._stats = stats_from_json(d["stats"]);

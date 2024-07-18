@@ -68,19 +68,25 @@ const auto start_time = timing_clock::now();
     return ann.addNeuron(p, t, bias);
   };
 
+  Coordinates sortedInputs (inputs);
+  std::ranges::sort(sortedInputs.begin(), sortedInputs.end(), NeuronCMP());
+
+  Coordinates sortedOutputs (outputs);
+  std::ranges::sort(sortedOutputs.begin(), sortedOutputs.end(), NeuronCMP());
+
   unsigned int i = 0;
   ann._inputs.resize(inputs.size());
   ann._ibuffer.resize(inputs.size());
-  for (auto &p: inputs) neurons.insert(ann._inputs[i++] = add(p, Neuron::I));
+  for (auto &p: sortedInputs) neurons.insert(ann._inputs[i++] = add(p, Neuron::I));
 
   i = 0;
   ann._outputs.resize(outputs.size());
   ann._obuffer.resize(outputs.size());
-  for (auto &p: outputs) neurons.insert(ann._outputs[i++] = add(p, Neuron::O));
+  for (auto &p: sortedOutputs) neurons.insert(ann._outputs[i++] = add(p, Neuron::O));
 
   Coordinates hidden;
   evolvable_substrate::Connections_t<DI> connections;
-  if (evolvable_substrate::connect(cppn, inputs, outputs,
+  if (evolvable_substrate::connect(cppn, sortedInputs, sortedOutputs,
                                    hidden, connections,
                                    ann._stats.iterations)) {
     for (auto &p: hidden) neurons.insert(add(p, Neuron::H));

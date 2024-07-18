@@ -1,6 +1,8 @@
 #ifndef KGD_ESHN_BINDING_UTILS_HPP
 #define KGD_ESHN_BINDING_UTILS_HPP
 
+#include <iostream>
+
 #include <sstream>
 #include <map>
 
@@ -87,6 +89,20 @@ void init_buffer (py::handle scope, const char *name, const char *doc) {
             }
             return list;
       })
+      .def(py::pickle(
+        [](const B &b) {
+          auto n = b.size();
+          py::list l (n);
+          for (size_t i=0; i<n; i++) l[i] = b[i];
+          return l;
+        },
+        [](const py::list &l) {
+          auto n = l.size();
+          B b (n);
+          for (size_t i=0; i<n; i++) b[i] = l[i].cast<float>();
+          return b;
+        }
+      ))
 #ifndef NDEBUG
       .def("tuple", [] (const B &b) { return tuple(b); }, doc_tuple)
       .def("set_to_nan", [] (B &b) { return set_to_nan(b); }, doc_set_to_nan)

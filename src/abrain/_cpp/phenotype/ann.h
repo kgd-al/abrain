@@ -96,10 +96,16 @@ public:
     return *it;
   }
 
-  struct IBuffer : std::vector<float> {};
+  struct IBuffer : std::vector<float> {
+    IBuffer() = default;
+    explicit IBuffer(size_t size): std::vector<float>(size) {}
+  };
   auto& ibuffer () { return _ibuffer; }
 
-  struct OBuffer : std::vector<float> {};
+  struct OBuffer : std::vector<float> {
+    OBuffer() = default;
+    explicit OBuffer(size_t size): std::vector<float>(size) {}
+  };
   auto& obuffer () { return _obuffer; }
 
   void reset ();
@@ -133,8 +139,8 @@ public:
 
   using Coordinates = es::Coordinates_t<DI>;
   static ANN_t build (const Coordinates &inputs,
-                    const Coordinates &outputs,
-                    const genotype::CPPNData &genome);
+                      const Coordinates &outputs,
+                      const genotype::CPPNData &genome);
 
 private:
   struct NeuronCMP {
