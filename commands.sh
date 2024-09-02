@@ -10,6 +10,8 @@ do_set-env(){
   then
     export DEBUG=1
     CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF"
+  else
+    CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=OFF -DWITH_DEBUG_INFO=OFF"
   fi
   export CMAKE_ARGS
   [[ "$1" =~ "dev" ]] && export DEV=1

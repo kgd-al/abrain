@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project("abrain")
 message("\n####################################################################"
-    "############\n## CMakeFile for ${PROJECT_NAME} ${VERSION_INFO}")
+    "############\n## CMakeFile for ${PROJECT_NAME} 1.0")
 
 # set(CMAKE_CXX_FLAGS "")
 if(LINUX)
@@ -181,7 +181,6 @@ if (MAKE_STUBS)
         COMMAND echo "             PATH: '$ENV{PATH}'"
         COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
-        COMMAND pwd
         COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMAND ls $<TARGET_FILE_DIR:${LIB_CPP}>
         COMMAND which ${STUBGEN}
