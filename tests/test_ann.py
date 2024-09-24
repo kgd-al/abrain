@@ -361,7 +361,7 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 # Serialization tests
 ###############################################################################
 
-#
+
 # def assert_equal(lhs: ANN, rhs: ANN):
 #     assert lhs is not rhs
 #     assert lhs.nodes is not rhs.nodes

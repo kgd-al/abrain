@@ -98,7 +98,8 @@ void init_buffer (py::handle scope, const char *name, const char *doc) {
         },
         [](const py::list &l) {
           auto n = l.size();
-          B b (n);
+          B b;
+          b.resize(n);
           for (size_t i=0; i<n; i++) b[i] = l[i].cast<float>();
           return b;
         }

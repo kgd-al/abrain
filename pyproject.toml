@@ -35,6 +35,7 @@ Documentation = "https://abrain.rtfd.io"
 [build-system]
 requires = [
   "setuptools>=65.0",
+  "distutils",
   "cmake>=3.12",
   "pybind11[global]",
   "pybind11-stubgen",
@@ -50,7 +51,7 @@ tests = [
 ]
 
 all-tests = [
-  "abrain[tests,kaleido]",
+  "abrain[tests,kaleido,matplotlib]",
   "leap-ec", "Pillow", "qdpy", "tqdm", "matplotlib"
 ]
 
@@ -68,6 +69,8 @@ docs = [
 ]
 
 kaleido = [ "kaleido" ]
+
+matplotlib = [ "matplotlib", "pandas" ]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

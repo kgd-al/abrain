@@ -98,13 +98,11 @@ public:
 
   struct IBuffer : std::vector<float> {
     IBuffer() = default;
-    explicit IBuffer(size_t size): std::vector<float>(size) {}
   };
   auto& ibuffer () { return _ibuffer; }
 
   struct OBuffer : std::vector<float> {
     OBuffer() = default;
-    explicit OBuffer(size_t size): std::vector<float>(size) {}
   };
   auto& obuffer () { return _obuffer; }
 

@@ -33,7 +33,7 @@ do_manual-install(){
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
   do_set-env "$1"
   # Manually ensuring build/test dependencies
-  pip install pybind11[global] pybind11-stubgen || exit 2
+  pip install setuptools cmake pybind11[global] pybind11-stubgen || exit 2
   if [[ "$1" =~ "tests" ]]
   then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
@@ -148,7 +148,7 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
   coverage html  --fail-under=100 --data-file=$pycoverage -d $cout/html/python
   
   cppcoverage=$cout/cpp.coverage.info
-  lcov --capture --no-external --directory . --rc lcov_branch_coverage=1 --output-file $cppcoverage
+  lcov --capture --no-external --directory . --rc lcov_branch-coverage=1 --output-file $cppcoverage
   lcov --remove $cppcoverage '*cppn.h' -o $cppcoverage
   lcov --remove $cppcoverage '*_bindings*' -o $cppcoverage
   lcov --list $cppcoverage
