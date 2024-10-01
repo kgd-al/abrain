@@ -313,7 +313,7 @@ class Genome(_CPPNData):
         """Return the genome id if one was generated"""
         return getattr(self, self.__id_field, None)
 
-    def parents(self) -> Optional[int]:
+    def parents(self) -> Optional[List[int]]:
         """Return the genome's parent(s) if possible"""
         return getattr(self, self.__parents_field, None)
 

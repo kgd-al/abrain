@@ -1,4 +1,5 @@
 import copy
+import inspect
 import logging
 import math
 import multiprocessing
@@ -25,7 +26,7 @@ from abrain.core.genome import Genome
 
 
 logger = logging.getLogger(__name__)
-logging.MAYBE_DEBUG = logging.DEBUG + 5
+logging.MAYBE_DEBUG = logging.INFO + 5
 logging.addLevelName(logging.MAYBE_DEBUG, 'MAYBE_DEBUG')
 
 
@@ -101,15 +102,16 @@ class Species:
 
 
 class _Distances:
-    def __init__(self, threshold):
+    def __init__(self, threshold, function):
         self._data = {}
         self._threshold = threshold
+        self._function = function
 
     def __call__(self, lhs, rhs):
         lhs_id, rhs_id = id(lhs), id(rhs)
         d = self._data.get((lhs_id, rhs_id))
         if d is None:
-            d = lhs.genome.distance(rhs.genome)
+            d = self._function(lhs.genome, rhs.genome)
             # assert 0 <= d <= 1
             self._data[(lhs_id, rhs_id)] = d
         hit = (d < self._threshold)
@@ -136,8 +138,9 @@ class NEATConfig:
     distance_threshold_variation: float = 1.1
 
     age_threshold = 10
+    protect_young = True
 
-    log_dir: Optional[Path] = None
+    log_dir: Optional[Path | str] = None
     log_level: int = 1
     overwrite: bool = False
 
@@ -150,6 +153,8 @@ class NEATEvolver:
         self.config = config
 
         if config.log_dir is not None:
+            if not isinstance(config.log_dir, Path):
+                config.log_dir = Path(config.log_dir)
             if config.log_dir.exists() and config.overwrite:
                 shutil.rmtree(config.log_dir)
             config.log_dir.mkdir(exist_ok=config.overwrite,
@@ -173,13 +178,13 @@ class NEATEvolver:
         self.stat_fields = {
             "Gen": ("{:3d}", lambda: self.generation),
             "Sp": ("{:2d}", lambda: len(self.species)),
-            "dis_t": ("{:5.3f}", lambda: self.distance_threshold),
-            "d_spc": ("{:5.3f}", lambda: self._distances["species"]),
-            "d_int": ("{:5.3f}", lambda: self._distances["intra"]),
-            "d_ext": ("{:5.3f}", lambda: self._distances["inter"]),
-            "F_max": ("{: 5.2f}", lambda: self.fitnesses["max"]),
-            "F_avg": ("{: 5.2f}", lambda: self.fitnesses["avg"]),
-            "F_dev": ("{: 5.2f}", lambda: self.fitnesses["dev"]),
+            "dis_t": ("{:5.3g}", lambda: self.distance_threshold),
+            "d_spc": ("{:5.3g}", lambda: self._distances["species"]),
+            "d_int": ("{:5.3g}", lambda: self._distances["intra"]),
+            "d_ext": ("{:5.3g}", lambda: self._distances["inter"]),
+            "F_max": ("{: 5.3g}", lambda: self.fitnesses["max"]),
+            "F_avg": ("{: 5.3g}", lambda: self.fitnesses["avg"]),
+            "F_dev": ("{: 5.2g}", lambda: self.fitnesses["dev"]),
         }
         self.files, self.file_names = {}, {}
 
@@ -191,14 +196,21 @@ class NEATEvolver:
             s.prev_size = len(s)
 
     def run(self, n):
-        self.begin()
+        self._begin()
 
         for _ in range(n):
             self.step()
 
-        self.end()
+        self._end()
 
-    def begin(self):
+    def __enter__(self):
+        self._begin()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._end()
+
+    def _begin(self):
         if self.config.log_level >= 0:
             print(" ".join(k for k in self.stat_fields.keys()))
         if self.config.log_dir is not None:
@@ -217,27 +229,27 @@ class NEATEvolver:
 
             make_file("genealogy.dat")
 
-    def end(self):
+        self._global_stats()
+
+    def _end(self):
         for f in self.files.values():
             f.close()
 
     def step(self):
-        if self.config.log_level >= 0:
-            print(" ".join(fmt.format(getter())
-                           for fmt, getter in self.stat_fields.values()))
-
-        if (log_file := self.files.get("stats")) is not None:
-            print(",".join(str(getter())
-                           for _, getter in self.stat_fields.values()),
-                  file=log_file)
-
         new_population = self._reproduce()
         self._evaluate(new_population)
         self._speciate(new_population)
 
+        self.generation += 1
         self._global_stats()
 
-        self.generation += 1
+    @property
+    def best_fitness(self):
+        return self.champion.fitness
+
+    @property
+    def champion(self):
+        return self.species[0].population[0]
 
     @property
     def population(self):
@@ -257,7 +269,8 @@ class NEATEvolver:
         self.fitnesses = _stats(population)
 
     def _speciate(self, population):
-        distances = _Distances(self.distance_threshold)
+        distances = _Distances(self.distance_threshold,
+                               self.individual.fn_distance)
 
         for s in self.species:
             s.reset()
@@ -404,16 +417,32 @@ class NEATEvolver:
             if s.prev_size > 0:
                 spawn = ssi * s.prev_size + (1 - ssi) * spawn
 
-            age_bias = self._age_gain(s.age - s.last_improved)
+            age_debt = s.age - s.last_improved
+            age_bias = self._age_gain(age_debt)
             spawn = int(round(age_bias * spawn))
 
+            # If elitism is on, keep that many from the best species
+            if ((len(spawns) == 0 and self.config.elitism > 0)
+                # Also protect "young" species from premature extinction
+                    or (self.config.protect_young
+                        and age_debt - self.config.age_threshold <= 0)):
+                spawn = min(spawn, self.config.elitism)
+
             spawns.append(spawn)
+
+        if self.config.log_level >= 10:
+            _log(f"Species:\n{'\n'.join(f"> {s}" for s in self.species)}")
+        if self.config.log_level >= 5:
+            _log(f"Spawn rates (raw): {spawns}")
 
         # Normalize
         total_spawn = sum(spawns)
         spawns = [int(pop_size * spawn / total_spawn) for spawn in spawns]
         spawns[0] += (pop_size - sum(spawns))  # Give remainder to best species
         assert sum(spawns) == pop_size
+
+        if self.config.log_level >= 5:
+            _log(f"     (normalized): {spawns}")
 
         # Clear out extinct
         extinct = []
@@ -432,8 +461,8 @@ class NEATEvolver:
         population = []
         for spawn, s in zip(spawns, self.species):
             i = 0
-            elites = min(self.config.elitism, spawn)
-            while len(s) < elites:
+            elites = min(self.config.elitism, spawn, len(s))
+            while i < elites:
                 population.append(s.population[i])
                 i += 1
 
@@ -467,7 +496,6 @@ class NEATEvolver:
                     child = parents[0].mutated()
                 else:
                     child = self.individual.mating(*parents)
-                child.parents = [p.id() for p in parents]
 
                 population.append(child)
                 i += 1
@@ -475,9 +503,18 @@ class NEATEvolver:
         return population
 
     def _global_stats(self):
-        gf = self.files["genealogy"]
-        for i in self.population:
-            print(i.id(), i.fitness, *i.parents, file=gf)
+        if self.config.log_level >= 0:
+            print(" ".join(fmt.format(getter())
+                           for fmt, getter in self.stat_fields.values()))
+
+        if (log_file := self.files.get("stats")) is not None:
+            print(",".join(str(getter())
+                           for _, getter in self.stat_fields.values()),
+                  file=log_file)
+
+        if (log_file := self.files.get("genealogy")) is not None:
+            for i in self.population:
+                print(i.id(), i.fitness, *i.parents(), file=log_file)
 
     @staticmethod
     def _age_gain(age):
@@ -501,24 +538,61 @@ class NEATEvolver:
 
     @staticmethod
     def _individual_class(_genome, _genome_data):
+        def has_function(name, params):
+            fn = getattr(_genome, name)
+            if fn is None:
+                raise ValueError(f"No function '{name}' for '{_genome}'")
+
+            if not callable(fn):
+                raise ValueError(f"'{name}' is not a callable function in"
+                                 f" '{_genome}'")
+
+            sig = inspect.signature(fn)
+            _params = sum(1 for p in sig.parameters.values()
+                          if p.default is p.empty)
+            if _params < params:
+                raise ValueError(
+                    f"'{name}' has unexpected signature: '{sig}'.\n"
+                    f"Will provide {params} parameters, function expects"
+                    f" {_params}")
+
+            return fn
+
         class Individual:
             __key = object()
             genome_class = _genome
             genome_data = _genome_data
             __next_id = 0
 
-            def __init__(self, genome, key=None):
+            fn_random = has_function("random", len(_genome_data))
+            fn_mutate = has_function("mutate", 1+len(_genome_data))
+            fn_crossover = has_function("crossover", 2+len(_genome_data))
+            fn_distance = has_function("distance", 2)
+
+            def __init__(self, genome, parents=None, key=None):
                 assert key == Individual.__key
                 self.genome = genome
                 self.fitness = None
-                if hasattr(genome, "id"):
-                    self.id = genome.id()
+
+                if (gid := getattr(genome, "id")) is not None:
+                    if callable(gid):
+                        self.id = gid
+                    else:
+                        self.id = lambda _: gid
                 else:
                     self._id = Individual.__next_id
+                    self.id = lambda _: self._id
                     Individual.__next_id += 1
 
-            def id(self):
-                return self._id
+                if (pid := getattr(genome, "parents")) is not None:
+                    if callable(pid):
+                        self.parents = pid
+                    else:
+                        self.parents = lambda _: pid
+                else:
+                    self._parents = [p.id for p in parents]
+                    self.parents = lambda _: self._parents
+                assert type(self.parents) is type(self.__repr__)
 
             def __repr__(self):
                 return f"Individual(fitness={self.fitness}, {self.genome})"
@@ -526,21 +600,25 @@ class NEATEvolver:
             @classmethod
             def random(cls):
                 return Individual(
-                    Individual.genome_class.random(
-                        **Individual.genome_data),
+                    cls.fn_random(**Individual.genome_data), [],
                     Individual.__key
                 )
 
             @classmethod
             def mating(cls, lhs: 'Individual', rhs: 'Individual'):
-                child = lhs.genome.crossover(rhs.genome, **cls.genome_data)
-                child.mutate(**cls.genome_data)
-                return Individual(child, Individual.__key)
+                child = cls.fn_crossover(lhs.genome, rhs.genome,
+                                         **cls.genome_data)
+                cls.fn_mutate(child, **cls.genome_data)
+                return Individual(child, [lhs, rhs], Individual.__key)
 
             def mutated(self):
                 child = copy.deepcopy(self.genome)
-                child.mutate(**self.genome_data)
-                return Individual(child, Individual.__key)
+                self.__class__.fn_mutate(child, **self.genome_data)
+                return Individual(child, [self], Individual.__key)
+
+            @classmethod
+            def distance(cls, lhs: 'Individual', rhs: 'Individual'):
+                return cls.fn_distance(lhs.genome, rhs.genome)
 
         return Individual
 
@@ -574,22 +652,23 @@ class _Plotter:
                 d_args = dict(target_species=evolver.config.species_count)
                 for fn, args in [(cls.fitness, {}),
                                  (cls.distances, d_args)]:
-                    fn(df, **args)
+                    fn(df, **args, options=options)
                     pdf.savefig()
                     plt.close()
         else:
-            cls.fitness(df).savefig(o_dir.joinpath(f"fitness.{ext}"),
-                                    bbox_inches="tight")
+            cls.fitness(df, options).savefig(o_dir.joinpath(f"fitness.{ext}"),
+                                             bbox_inches="tight")
 
         # Species over generations (with fitness)
-        cls.species_histogram(pd.read_csv(evolver.file_names["species"]))\
+        cls.species_histogram(pd.read_csv(evolver.file_names["species"]),
+                              options=options)\
             .savefig(o_dir.joinpath(f"species.{ext}"), bbox_inches="tight")
 
         return True
 
     # Simple fitness over generation
     @staticmethod
-    def fitness(df: pd.DataFrame):
+    def fitness(df: pd.DataFrame, options: dict):
         fig, ax = plt.subplots()
         ax.set_xlabel("Generation")
         ax.set_ylabel("Fitness")
@@ -597,11 +676,14 @@ class _Plotter:
                         alpha=.1, label="Dev")
         ax.plot(df.Gen, df.F_avg, label="Avg")
         ax.plot(df.Gen, df.F_max, label="Max")
+        if (of := options.get("optimal_fitness")) is not None:
+            ax.axhline(of, linestyle="--", color='gray',
+                       label="Optimal Fitness")
         ax.legend()
         return fig
 
     @staticmethod
-    def distances(df: pd.DataFrame, target_species: int):
+    def distances(df: pd.DataFrame, target_species: int, options: dict):
         fig, (ax1, ax2) = plt.subplots(2, 1)
         ax1.grid()
         ax1.set_xlabel("Generation")
@@ -622,7 +704,7 @@ class _Plotter:
         # "Sp": ("{:2d}", lambda: len(self.species)),
 
     @staticmethod
-    def species_histogram(df: pd.DataFrame):
+    def species_histogram(df: pd.DataFrame, options: dict):
         length = df.Generation.max() + 1
         gb = df.groupby("Species")
         ys, fs = [], []
@@ -656,6 +738,7 @@ class _Plotter:
 
         p = PatchCollection(patches, alpha=1)
         p.set_cmap("magma")
+        p.set_clim(vmin=None, vmax=options.get("optimal_fitness"))
         p.set_array(colors)
         ax.add_collection(p)
 
