@@ -431,7 +431,7 @@ class NEATEvolver:
             spawns.append(spawn)
 
         if self.config.log_level >= 10:
-            _log(f"Species:\n{'\n'.join(f"> {s}" for s in self.species)}")
+            _log("Species:" + ''.join(f'\n> {s}' for s in self.species))
         if self.config.log_level >= 5:
             _log(f"Spawn rates (raw): {spawns}")
 
