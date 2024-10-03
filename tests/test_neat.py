@@ -158,11 +158,10 @@ def test_evolver(neat_seed, tmp_path):
         plt.close()
 
     plot(0)
-    evolver.begin()
-    for i in range(gen):
-        evolver.step()
-        plot(i+1)
-    evolver.end()
+    with evolver:
+        for i in range(gen):
+            evolver.step()
+            plot(i+1)
     plot(gen, population=False, suffix="_champions")
     # evolver.generate_plots()
     evolver.generate_plots(ext="pdf", options=dict())

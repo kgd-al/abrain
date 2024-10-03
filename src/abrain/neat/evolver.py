@@ -574,25 +574,24 @@ class NEATEvolver:
                 self.genome = genome
                 self.fitness = None
 
-                if (gid := getattr(genome, "id")) is not None:
+                if (gid := getattr(genome, "id", None)) is not None:
                     if callable(gid):
                         self.id = gid
                     else:
                         self.id = lambda _: gid
                 else:
                     self._id = Individual.__next_id
-                    self.id = lambda _: self._id
+                    self.id = lambda: self._id
                     Individual.__next_id += 1
 
-                if (pid := getattr(genome, "parents")) is not None:
+                if (pid := getattr(genome, "parents", None)) is not None:
                     if callable(pid):
                         self.parents = pid
                     else:
                         self.parents = lambda _: pid
                 else:
                     self._parents = [p.id for p in parents]
-                    self.parents = lambda _: self._parents
-                assert type(self.parents) is type(self.__repr__)
+                    self.parents = lambda: self._parents
 
             def __repr__(self):
                 return f"Individual(fitness={self.fitness}, {self.genome})"
