@@ -2,9 +2,12 @@
 Test documentation for genome file (module?)
 """
 import logging
-import pathlib
+import pprint
+import re
+
 from collections import namedtuple
 from collections.abc import Iterable
+from pathlib import Path
 from random import Random
 from shutil import which
 from typing import (Dict, List, Any, Optional, Union,
@@ -261,7 +264,7 @@ class Genome(_CPPNData):
 
             coordinates = "xy" if dimension == 2 else "xyz"
             inputs = 2*dimension
-            labels = [f"{c}_{i}" for c in coordinates for i in range(2)]
+            labels = [f"{c}_{i}" for i in range(2) for c in coordinates]
             if with_input_length:
                 inputs += 1
                 labels.append("l")
@@ -571,19 +574,109 @@ class Genome(_CPPNData):
     # Public graphviz/dot interface
     ###########################################################################
 
-    @staticmethod
-    def from_dot(path: str, rng: Random) -> 'Genome':
+    @classmethod
+    def from_dot(cls, data: Data, path: str) -> 'Genome':
         """Produce a Genome by parsing a simplified graph description
 
             .. warning:: Unimplemented
 
         :param path: the file to load
-        :param rng: random pick unspecified functions
+        :param data: Genome's shared data (to check labels)
         :return: The user-specified CPPN
         """
-        raise NotImplementedError  # pragma: no cover
 
-    def to_dot(self, data: Data, path: str, ext: str = "pdf",
+        def maybe_token(lst, _i):
+            return lst[_i].strip('[]') if len(lst) > _i else None
+
+        inputs, outputs = 0, 0
+        nodes, links = [], []
+        with open(path, 'r') as f:
+            for i, line in enumerate(f):
+                if line.strip()[0:2] == '//':
+                    continue
+                for statement in [_s for s in line.split(";") if (_s := s.strip())]:
+                    # print(statement)
+                    if statement[:6] == "CPPN {" or statement == "}":
+                        continue
+
+                    tokens = statement.split()
+                    if "->" not in statement:  # Link
+                        # print("> node")
+
+                        label = tokens[0]
+                        h = label[0]
+                        if h.islower():  # Input node
+                            inputs += 1
+                            nodes.append(("I", label, None))
+                            if len(tokens) > 1:
+                                logger.warning(f"Unused data on line {i}: {tokens[1:]}")
+                        elif h.isupper():  # Output node
+                            outputs += 1
+                            nodes.append(("O", label, maybe_token(tokens, 1)))
+                        elif h.isdigit():  # Hidden node
+                            nodes.append(("H", label, maybe_token(tokens, 1)))
+                        else:
+                            raise ValueError(
+                                f"Malformed line {i}: Expected node declaration\n{line}"
+                            )
+                    else:
+                        if len(tokens) < 2:
+                            raise ValueError(
+                                f"Malformed line {i}: Expected link declaration\n{line}")
+                        links.append((tokens[0], tokens[2], maybe_token(tokens, 3)))
+        #
+        # print("Nodes:")
+        # pprint.pprint(nodes)
+        #
+        # print("Links:")
+        # pprint.pprint(links)
+
+        if len(set(label for _, label, _ in nodes)) < len(nodes):
+            raise ValueError("Found duplicate node labels")
+
+        if inputs != data.cdata["i"]:
+            raise ValueError(f"Inputs mismatch! Expecting {data.cdata['i']} but got {inputs}.")
+
+        if outputs != data.cdata["o"]:
+            raise ValueError(f"Outputs mismatch! Expecting {data.cdata['o']} but got {outputs}.")
+
+        for fn in set(_fn for _, _, _fn in nodes if _fn):
+            if fn not in Config.functionSet:
+                raise ValueError(f"Unknown function specified: '{fn}'.\n"
+                                 f"Current set is: {Config.functionSet}")
+
+        bias = "b" in [label for _, label, _ in nodes]
+        if bias != data.cdata["input_bias"]:
+            raise ValueError(f"Bias mismatch!")
+
+        g = cls(cls.__private_key)
+        g.inputs, g.outputs, g.bias = inputs, outputs, bias
+
+        nodes_order = "IOH"
+        nodes = sorted(nodes, key=lambda _t: nodes_order.index(_t[0]))
+        nodes_dict = {}
+        for i, (t, label, fn) in enumerate(nodes):
+            nodes_dict[label] = i
+            if t == "I":
+                continue
+            fn = fn or data.rng.choice(Config.functionSet)
+            g._add_node(i, fn)
+
+        for i, o, w in links:
+            w = float(w) or cls.__random_link_weight(data.rng)
+            g._add_link(data, nodes_dict[i], nodes_dict[o], w,
+                        is_mutation=False)
+
+        if data.gid_manager is not None:
+            setattr(g, g.__id_field, data.gid_manager())
+            setattr(g, g.__parents_field, [])
+
+        g._sort_by_id()
+
+        return g
+
+    def to_dot(self, data: Data,
+               path: Union[str, Path], ext: str = "pdf",
                title: Optional[str] = None,
                debug: Optional[Union[str, Iterable]] = None) -> str:
         """Produce a graphical representation of this genome
@@ -623,7 +716,8 @@ class Genome(_CPPNData):
         if _should_debug("all"):  # pragma: no cover
             debug = "depth;links;keepdot"
 
-        path = pathlib.Path(path)
+        if not isinstance(path, Path):
+            path = Path(path)
         if path.suffix != "":
             ext = path.suffix.replace('.', '')
             path = path.with_suffix('')

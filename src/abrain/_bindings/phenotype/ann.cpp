@@ -209,6 +209,12 @@ Whether the ANN contains neurons/connections
       .def ID(reset, "Resets internal state to null (0)")
       .def("neurons", static_cast<const NeuronsMap& (ANN::*)() const>(&ANN::neurons),
            "Provide read-only access to the underlying neurons")
+      .def("input_neurons", &ANN::input_neurons,
+           "Provide read-only access to the underlying input neurons, in the same order as they"
+           " are filled in with data")
+      .def("output_neurons", &ANN::output_neurons,
+           "Provide read-only access to the underlying output neurons, in the same order as they"
+           " are read out for data")
       .def ID(neuronAt, "Query an individual neuron", "pos"_a)
 
       .def_static("build", &ANN::build, R"(

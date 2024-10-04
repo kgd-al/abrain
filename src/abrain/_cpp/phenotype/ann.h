@@ -168,6 +168,9 @@ public:
   const NeuronsMap& neurons () const {  return _neurons;  }
   NeuronsMap& neurons () {  return _neurons;  }
 
+  const auto& input_neurons () const {  return _inputs; }
+  const auto& output_neurons () const { return _outputs; }
+
 private:
   NeuronsMap _neurons;
 
