@@ -30,7 +30,12 @@ The API is served in Python and computations are performed in C++.
 
 To generate directed graphs for the genomes.
 Can only be fetched by system installer (apt-get, yum, ...).
-See https://graphviz.org/download/ for instructions
+See https://graphviz.org/download/ for instructions.
+
+.. note::
+
+    On kubuntu 24.04, getting pdf rendering of genomes required installation of `librsvg2-dev/noble graphviz-dev`
+    (both?)
 
 ### Kaleido
 

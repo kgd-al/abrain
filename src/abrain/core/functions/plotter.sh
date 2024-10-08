@@ -24,7 +24,6 @@ awk '
     inmap && /^}/{ inmap = 0 }
     !/F\(/{next;}
     inmap {
-#       print $0
       match($0, /.*F\( *"(.*)", (.*)\),.* \/\/ (.*)/, tokens)
       printf("%s;%s;%s\n", tokens[1], tokens[2], tokens[3])
     }
@@ -33,8 +32,10 @@ awk '
 declare -A data=(
   ["L","id"]="x" ["B","id"]=".5*x"
   ["L","abs"]="|x|" ["B","abs"]="abs(x)"
+  ["L","sq"]="x*x" ["B","sq"]="x*x"
+  ["L","sqrt"]="sqrt(x)" ["B","sqrt"]="sqrt(x)"
   ["L","sin"]="sin(2x)" ["B","sin"]="sin(100*x)"
-  
+
   ["L","step"]="0 &\ \text{if } x \leq 0\\\\1 &\ \text{otherwise}"
   ["B","step"]="x <= 0 ? 0 : 1"
   
@@ -69,8 +70,8 @@ do
     sed 's|\\def\\func{.*}|\\def\\func{'"$badge_func"'}|' ../template.tex > $name.tex
     pdflatex -shell-escape $name.tex > log \
     && convert -density 300 $name.svg ../$name.png
-    mv $name.svg ../
-    
+    cp $name.svg ../
+
     printf "%4s: %s\n" "$name" "$desc"
     printf "%10s %s\n" "[base]" "$func"
     printf "%10s %s\n" "[badge]" "$badge_func"

@@ -7,7 +7,7 @@ namespace kgd::eshn {
 /// CPPN genotype parameters
 
 Config::FunctionSet Config::functionSet {
-  "abs", "gaus", "id", "bsgm", "sin", "step", "pow"
+  "abs", "gaus", "id", "bsgm", "sin", "step", "sq", "sqrt"
 };
 
 Config::FID Config::defaultOutputFunction = "id";

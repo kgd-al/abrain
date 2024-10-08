@@ -17,6 +17,13 @@ from graphviz import Digraph
 from importlib_resources import files
 from pyrecord import Record
 
+try:
+    from matplotlib import rc_context
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+
 from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData, Innovations
 
@@ -677,6 +684,7 @@ class Genome(_CPPNData):
 
     def to_dot(self, data: Data,
                path: Union[str, Path], ext: str = "pdf",
+               math: Optional[str] = None,
                title: Optional[str] = None,
                debug: Optional[Union[str, Iterable]] = None) -> str:
         """Produce a graphical representation of this genome
@@ -688,6 +696,7 @@ class Genome(_CPPNData):
         Args:
             data: Genome's shared data (for labels)
             path: The path to write to
+            math: Extension of the file to render the equivalent equation into
             ext: The rendering format to use
             title: Optional title for the graph (e.g. for generational info)
             debug: Print more information on the graph.
@@ -813,7 +822,39 @@ class Genome(_CPPNData):
 
         cleanup = False if _should_debug("keepdot") else True
 
-        return dot.render(path, format=ext, cleanup=cleanup)
+        dot_path = dot.render(path, format=ext, cleanup=cleanup)
+        if not dot_path:
+            return dot_path
+
+        if math is not None:
+            tex = (math[-3:] == "tex")
+            if not HAS_MATPLOTLIB and not tex:
+                logger.error("You need to install matplotlib to generate"
+                             " latex equations directly")
+            if math[0] != ".":
+                math = "." + math
+            math_path = path.with_suffix(math)
+
+            equations = []
+            for i, node in enumerate(self.nodes):
+                nid, fn = node.id, node.func
+                label = data.labels[i + self.inputs] if self._is_output(nid) else f"H{i}"
+                equations.append(
+                    fr"{label} &= {node.func}\\"
+                )
+
+            equations.insert(0, r"\begin{eqnarray*}")
+            equations.append(r"\end{eqnarray*}")
+            print("\n".join(equations))
+            # text = r"\begin{eqnarray*}a &=&b\\\frac{c}{d}&=&toto\end{eqnarray*}"
+            # print(text)
+
+            with rc_context({"text.usetex": True}):
+                fig = plt.figure()
+                fig.text(0, 0, "".join(equations))
+                fig.savefig(math_path, bbox_inches="tight")
+
+        return dot_path
 
     ###########################################################################
     # Private mutation interface

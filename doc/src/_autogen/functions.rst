@@ -1,4 +1,4 @@
-.. note:: Automatically extracted from sources on Tue Jan  3 17:03:26 CET 2023 for version 0.1b
+.. note:: Automatically extracted from sources on Mon Oct  7 12:58:00 CEST 2024 for version 1.0rc-post7
 
 Identity
 ________
@@ -30,6 +30,68 @@ ________
        :height: 10em
 
        plt.plot(x, [functions['id'](x_) for x_ in x])
+
+Square function
+_______________
+
+.. grid:: auto
+  :gutter: 0
+
+  .. grid-item-card::
+    :columns: 2
+    :text-align: right
+
+    .. image:: ../../../src/abrain/core/functions/sq.svg
+
+  .. grid-item-card::
+    :columns: 10
+
+    .. math:: x*x
+
+  .. grid-item-card::
+    :columns: 2
+    :text-align: right
+
+    sq
+
+  .. grid-item-card::
+     :columns: 10
+
+     .. plot::
+       :height: 10em
+
+       plt.plot(x, [functions['sq'](x_) for x_ in x])
+
+Square root function
+____________________
+
+.. grid:: auto
+  :gutter: 0
+
+  .. grid-item-card::
+    :columns: 2
+    :text-align: right
+
+    .. image:: ../../../src/abrain/core/functions/sqrt.svg
+
+  .. grid-item-card::
+    :columns: 10
+
+    .. math:: sqrt(x)
+
+  .. grid-item-card::
+    :columns: 2
+    :text-align: right
+
+    sqrt
+
+  .. grid-item-card::
+     :columns: 10
+
+     .. plot::
+       :height: 10em
+
+       plt.plot(x, [functions['sqrt'](x_) for x_ in x])
 
 Absolute value
 ______________

@@ -94,7 +94,7 @@ const std::map<CPPNData::Node::FuncID,
                CPPN::Function> CPPN::functions {
 
   F(  "id", x), // Identity
-  F( "squ", x * x),  // Square function
+  F(  "sq", x * x),  // Square function
   F("sqrt", std::sqrt(x)),  // Square root function
   F( "abs", std::fabs(x)),  // Absolute value
   F( "sin", fd_sin(2.f*x)), // Sinusoidal
@@ -124,6 +124,8 @@ const std::map<CPPNData::Node::FuncID,
 
   F( "abs",  0, 1),
   F("gaus",  0, 1),
+  F(  "sq", -1, 1),
+  F("sqrt",  0, 1),
   F(  "id", -1, 1),
   F("ssgm",  0, 1),
   F("bsgm", -1, 1),
