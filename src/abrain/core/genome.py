@@ -758,15 +758,19 @@ class Genome(_CPPNData):
         def node_x_label(_nid):
             return x_label(depths[_nid] if depths is not None else None)
 
+        def format_label(_label):
+            if '_' in _label:
+                j = _label.find('_')
+                _label = "<" + _label[:j] + "<SUB>" + _label[j + 1:] + "</SUB>>"
+            return _label
+
         # input nodes
         for i in range(self.inputs):
             label = data.labels[i]
             name = "I" + label.upper().replace("_", "")
             ix_to_name[i] = name
-            if '_' in label:
-                j = label.find('_')
-                label = label[:j] + "<SUB>" + label[j + 1:] + "</SUB>"
-            g_i.node(name, f"<{label}>", shape='plaintext',
+            label = format_label(label)
+            g_i.node(name, label, shape='plaintext',
                      xlabel=node_x_label(i))
 
         img_format = "svg" if vectorial else "png"
@@ -790,9 +794,9 @@ class Genome(_CPPNData):
                 dot.edge(name, name + "_l")
 
             else:
-                name = f"H{nid}"
+                name = f"H_{nid}"
                 ix_to_name[nid] = name
-                label = name if debug is not None else ""
+                label = format_label(name) if debug is not None else ""
                 g_h.node(name, label,
                          width="0.5in", height="0.5in", margin="0",
                          fixedsize="shape",
@@ -835,24 +839,87 @@ class Genome(_CPPNData):
                 math = "." + math
             math_path = path.with_suffix(math)
 
+            graph = {}
+            for node in self.nodes:
+                nid, fn = node.id, node.func
+                graph[nid] = (fn, [])
+
+            for link in self.links:
+                graph[link.dst][1].append((link.src, link.weight))
+
+            def default_format(_fn, _content): return f"{_fn}({_content})"
+            formats = {
+                "sq": lambda _fn, _content: f"({_content})^2",
+                "sqrt": lambda _fn, _content: fr"\sqrt{{{_content}}}",
+            }
+
+            def join_expr(_exprs):
+                if len(_exprs) == 0:
+                    return "0"
+
+                _expr = ""
+                for _i, s in enumerate(_exprs):
+                    if _i > 0 and s[0] != "-":
+                        _expr += "+"
+                    _expr += s
+                return _expr
+
+            def add_weight(_expr, weight):
+                if weight == 0:
+                    return "0"
+
+                if weight == -1:
+                    _expr = "-" + _expr
+                elif weight != 1:
+                    _expr = f"{weight:.2g}"
+
+                return _expr
+
+            def parse_math(_nid, weight):
+                if self._is_input(_nid):
+                    _expr = data.labels[_nid]
+                else:
+                    _node = graph[_nid]
+
+                    _fn = _node[0]
+                    _expr = formats.get(_fn, default_format)(
+                        _fn,
+                        join_expr([parse_math(*other) for other in _node[1]]))
+
+                return add_weight(_expr, weight)
+
             equations = []
             for i, node in enumerate(self.nodes):
+                if self._is_output(node.id):
+                    equations.append(
+                        data.labels[i + self.inputs] + "&=" + parse_math(node.id, 1) + r"\\"
+                    )
+            equations.append(r"\cline{0-1} ")
+
+            def get_label(_nid):
+                return f"H_{{{_nid}}}" if self._is_hidden(_nid) else data.labels[_nid]
+
+            for i, node in enumerate(self.nodes):
                 nid, fn = node.id, node.func
-                label = data.labels[i + self.inputs] if self._is_output(nid) else f"H{i}"
-                equations.append(
-                    fr"{label} &= {node.func}\\"
-                )
+                label = get_label(nid)
+                expr = formats.get(fn, default_format)(
+                    fn,
+                    join_expr([add_weight(get_label(entry[0]), entry[1]) for entry in graph[nid][1]]))
+                equations.append(fr"{label} &= {expr}\\")
 
             equations.insert(0, r"\begin{eqnarray*}")
             equations.append(r"\end{eqnarray*}")
-            print("\n".join(equations))
             # text = r"\begin{eqnarray*}a &=&b\\\frac{c}{d}&=&toto\end{eqnarray*}"
             # print(text)
 
-            with rc_context({"text.usetex": True}):
-                fig = plt.figure()
-                fig.text(0, 0, "".join(equations))
-                fig.savefig(math_path, bbox_inches="tight")
+            if not tex:
+                with rc_context({"text.usetex": True}):
+                    fig = plt.figure()
+                    fig.text(0, 0, "".join(equations))
+                    fig.savefig(math_path, bbox_inches="tight")
+            else:
+                with open(math_path, "w") as f:
+                    f.writelines("\n".join(equations) + "\n")
 
         return dot_path
 

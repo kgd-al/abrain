@@ -147,7 +147,12 @@ class NEATConfig:
 
 class NEATEvolver:
     def __init__(self, config: NEATConfig, evaluator: Callable,
-                 genome_class=Genome, genome_data=None):
+                 genome_class=Genome, genome_data=None,
+                 random: Optional[Callable] = None,
+                 mutate: Optional[Callable] = None,
+                 crossover: Optional[Callable] = None,
+                 distance: Optional[Callable] = None):
+
         nan = float("nan")
 
         self.config = config
@@ -170,7 +175,8 @@ class NEATEvolver:
         self.evaluator = evaluator
         self.fitnesses = dict(max=nan, avg=nan, std=nan)
 
-        self.individual = self._individual_class(genome_class, genome_data)
+        self.individual = self._individual_class(genome_class, genome_data,
+                                                 random, mutate, crossover, distance)
 
         self.distance_threshold = self.config.initial_distance_threshold
         self._distances = dict(species=nan, inter=nan, intra=nan)
@@ -188,12 +194,7 @@ class NEATEvolver:
         }
         self.files, self.file_names = {}, {}
 
-        population = [self.individual.random()
-                      for _ in range(self.config.population_size)]
-        self._evaluate(population)
-        self._speciate(population)
-        for s in self.species:
-            s.prev_size = len(s)
+        self.__started = False
 
     def run(self, n):
         self._begin()
@@ -229,13 +230,32 @@ class NEATEvolver:
 
             make_file("genealogy.dat")
 
+        if (t := self.config.threads) is None or t <= 1:
+            self._processes_pool = None
+        else:
+            self._processes_pool = multiprocessing.Pool(processes=t)
+
+        population = [self.individual.random()
+                      for _ in range(self.config.population_size)]
+        self._evaluate(population)
+        self._speciate(population)
+        for s in self.species:
+            s.prev_size = len(s)
+
         self._global_stats()
+        self.__started = True
 
     def _end(self):
         for f in self.files.values():
             f.close()
+        if self._processes_pool is not None:
+            self._processes_pool.close()
 
     def step(self):
+        if not self.__started:
+            raise RuntimeError("Stepping when evolver has not been started."
+                               " Only use step() with the guard form of the evolver")
+
         new_population = self._reproduce()
         self._evaluate(new_population)
         self._speciate(new_population)
@@ -257,15 +277,13 @@ class NEATEvolver:
             yield from s.population
 
     def _evaluate(self, population: List):
-        if (t := self.config.threads) is None or t <= 1:
+        if self._processes_pool is None:
             for i in population:
                 i.fitness = self.evaluator(i.genome)
         else:
-            with multiprocessing.Pool(processes=t) as pool:
-                results = pool.map(self.evaluator,
-                                   [i.genome for i in population])
-                for i, f in zip(population, results):
-                    i.fitness = f
+            results = self._processes_pool.map(self.evaluator, [i.genome for i in population])
+            for i, f in zip(population, results):
+                i.fitness = f
         self.fitnesses = _stats(population)
 
     def _speciate(self, population):
@@ -537,7 +555,12 @@ class NEATEvolver:
                    key=key)
 
     @staticmethod
-    def _individual_class(_genome, _genome_data):
+    def _individual_class(_genome, _genome_data,
+                          _random: Optional[Callable],
+                          _mutate: Optional[Callable],
+                          _crossover: Optional[Callable],
+                          _distance: Optional[Callable]):
+
         def has_function(name, params):
             fn = getattr(_genome, name)
             if fn is None:
@@ -564,10 +587,10 @@ class NEATEvolver:
             genome_data = _genome_data
             __next_id = 0
 
-            fn_random = has_function("random", len(_genome_data))
-            fn_mutate = has_function("mutate", 1+len(_genome_data))
-            fn_crossover = has_function("crossover", 2+len(_genome_data))
-            fn_distance = has_function("distance", 2)
+            fn_random = _random or has_function("random", len(_genome_data))
+            fn_mutate = _mutate or has_function("mutate", 1+len(_genome_data))
+            fn_crossover = _crossover or has_function("crossover", 2+len(_genome_data))
+            fn_distance = _distance or has_function("distance", 2)
 
             def __init__(self, genome, parents=None, key=None):
                 assert key == Individual.__key
