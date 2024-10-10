@@ -13,7 +13,7 @@ from shutil import which
 from typing import (Dict, List, Any, Optional, Union,
                     Collection, Callable, Tuple)
 
-from graphviz import Digraph
+from graphviz import Digraph, render as dot_render
 from importlib_resources import files
 from pyrecord import Record
 
@@ -684,9 +684,8 @@ class Genome(_CPPNData):
 
     def to_dot(self, data: Data,
                path: Union[str, Path], ext: str = "pdf",
-               math: Optional[str] = None,
                title: Optional[str] = None,
-               debug: Optional[Union[str, Iterable]] = None) -> str:
+               debug: Optional[Union[str, Iterable]] = None) -> Path:
         """Produce a graphical representation of this genome
 
         .. note:: Missing functions images in nodes and/or lots of
@@ -826,102 +825,133 @@ class Genome(_CPPNData):
 
         cleanup = False if _should_debug("keepdot") else True
 
-        dot_path = dot.render(path, format=ext, cleanup=cleanup)
-        if not dot_path:
-            return dot_path
+        dot_path = path.with_suffix(".dot")
+        dot_path.write_text(dot.source, encoding="ascii")
+        ret = dot_render('dot', ext, dot_path)
+        ret = Path(ret).rename(path.with_suffix("." + ext))
 
-        if math is not None:
-            tex = (math[-3:] == "tex")
-            if not HAS_MATPLOTLIB and not tex:
-                logger.error("You need to install matplotlib to generate"
-                             " latex equations directly")
-            if math[0] != ".":
-                math = "." + math
-            math_path = path.with_suffix(math)
+        if cleanup:
+            dot_path.unlink(missing_ok=False)
 
-            graph = {}
-            for node in self.nodes:
-                nid, fn = node.id, node.func
-                graph[nid] = (fn, [])
+        return ret
 
-            for link in self.links:
-                graph[link.dst][1].append((link.src, link.weight))
+    def to_math(self, data: Data, path: Path, extension: str = "tex", fmt: str = ".2g"):
+        """
+        Renders this genome's equivalent equation system
 
-            def default_format(_fn, _content): return f"{_fn}({_content})"
-            formats = {
-                "sq": lambda _fn, _content: f"({_content})^2",
-                "sqrt": lambda _fn, _content: fr"\sqrt{{{_content}}}",
-            }
+        :param data: Genome's shared data (for labels)
+        :param path: The path to write to
+        :param extension: The extension to use for rendering (defaults to tex)
+        :param fmt: Numeric format for the weights. Defaults to .2g for compact (but imprecise) output
+        """
 
-            def join_expr(_exprs):
-                if len(_exprs) == 0:
-                    return "0"
+        labels = data.labels.copy()
+        if labels[self.inputs-1] == "b":
+            labels[self.inputs-1] = "1"
 
-                _expr = ""
-                for _i, s in enumerate(_exprs):
-                    if _i > 0 and s[0] != "-":
-                        _expr += "+"
-                    _expr += s
-                return _expr
+        tex = (extension[-3:] == "tex")
+        if not HAS_MATPLOTLIB and not tex:
+            logger.error("You need to install matplotlib to generate"
+                         " latex equations directly")
 
-            def add_weight(_expr, weight):
-                if weight == 0:
-                    return "0"
+        if extension[0] != ".":
+            extension = "." + extension
+        path = path.with_suffix(extension)
 
-                if weight == -1:
-                    _expr = "-" + _expr
-                elif weight != 1:
-                    _expr = f"{weight:.2g}"
+        graph = {}
+        for node in self.nodes:
+            nid, fn = node.id, node.func
+            graph[nid] = (fn, [])
 
-                return _expr
+        for link in self.links:
+            graph[link.dst][1].append((link.src, link.weight))
 
-            def parse_math(_nid, weight):
-                if self._is_input(_nid):
-                    _expr = data.labels[_nid]
+        def default_format(_fn, _content):
+            return f"{_fn}({_content})"
+
+        formats = {
+            "id": lambda _fn, _content: (f"({_content})"
+                                         if any((not c.isdigit() and c != ".") for c in _content)
+                                         else _content),
+            "sq": lambda _fn, _content: f"({_content})^2",
+            "abs": lambda _fn, _content: f"|{_content}|",
+            "sqrt": lambda _fn, _content: fr"\sqrt{{{_content}}}",
+        }
+
+        def join_expr(_exprs):
+            if len(_exprs) == 0:
+                return "0"
+
+            _expr = ""
+            for _i, s in enumerate(_exprs):
+                if _i > 0 and s[0] != "-":
+                    _expr += "+"
+                _expr += s
+            return _expr
+
+        def add_weight(_expr, weight):
+            if weight == 0:
+                return "0"
+
+            weight_str = f"{weight:{fmt}}"
+
+            if weight_str == "-1":
+                _expr = "-" + _expr
+            elif weight_str != "1":
+                if _expr != "1":
+                    _expr = f"{weight_str} {_expr}"
                 else:
-                    _node = graph[_nid]
+                    _expr = weight_str
 
-                    _fn = _node[0]
-                    _expr = formats.get(_fn, default_format)(
-                        _fn,
-                        join_expr([parse_math(*other) for other in _node[1]]))
+            return _expr
 
-                return add_weight(_expr, weight)
-
-            equations = []
-            for i, node in enumerate(self.nodes):
-                if self._is_output(node.id):
-                    equations.append(
-                        data.labels[i + self.inputs] + "&=" + parse_math(node.id, 1) + r"\\"
-                    )
-            equations.append(r"\cline{0-1} ")
-
-            def get_label(_nid):
-                return f"H_{{{_nid}}}" if self._is_hidden(_nid) else data.labels[_nid]
-
-            for i, node in enumerate(self.nodes):
-                nid, fn = node.id, node.func
-                label = get_label(nid)
-                expr = formats.get(fn, default_format)(
-                    fn,
-                    join_expr([add_weight(get_label(entry[0]), entry[1]) for entry in graph[nid][1]]))
-                equations.append(fr"{label} &= {expr}\\")
-
-            equations.insert(0, r"\begin{eqnarray*}")
-            equations.append(r"\end{eqnarray*}")
-            # text = r"\begin{eqnarray*}a &=&b\\\frac{c}{d}&=&toto\end{eqnarray*}"
-            # print(text)
-
-            if not tex:
-                with rc_context({"text.usetex": True}):
-                    fig = plt.figure()
-                    fig.text(0, 0, "".join(equations))
-                    fig.savefig(math_path, bbox_inches="tight")
+        def parse_math(_nid, weight):
+            if self._is_input(_nid):
+                _expr = labels[_nid]
             else:
-                with open(math_path, "w") as f:
-                    f.writelines("\n".join(equations) + "\n")
+                _node = graph[_nid]
 
-        return dot_path
+                _fn = _node[0]
+                _expr = formats.get(_fn, default_format)(
+                    _fn,
+                    join_expr([parse_math(*other) for other in _node[1]]))
+
+            return add_weight(_expr, weight)
+
+        equations = []
+        for i, node in enumerate(self.nodes):
+            if self._is_output(node.id):
+                equations.append(
+                    labels[i + self.inputs] + "&=" + parse_math(node.id, 1) + r"\\"
+                )
+        equations.append(r"\cline{0-1} ")
+
+        def get_label(_nid):
+            return f"H_{{{_nid}}}" if self._is_hidden(_nid) else labels[_nid]
+
+        for i, node in enumerate(self.nodes):
+            nid, fn = node.id, node.func
+            label = get_label(nid)
+            expr = formats.get(fn, default_format)(
+                fn,
+                join_expr([add_weight(get_label(entry[0]), entry[1]) for entry in graph[nid][1]]))
+            equations.append(fr"{label} &= {expr}\\")
+
+        equations.insert(0, r"\begin{eqnarray*}")
+        equations.append(r"\end{eqnarray*}")
+        # text = r"\begin{eqnarray*}a &=&b\\\frac{c}{d}&=&toto\end{eqnarray*}"
+        # print(text)
+
+        if not tex:
+            with rc_context({"text.usetex": True}):
+                fig = plt.figure()
+                fig.text(0, 0, "".join(equations))
+                fig.savefig(path, bbox_inches="tight")
+        else:
+            with open(path, "w") as f:
+                f.writelines("\n".join(equations) + "\n")
+
+        return path
 
     ###########################################################################
     # Private mutation interface

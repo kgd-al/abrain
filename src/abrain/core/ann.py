@@ -1,4 +1,6 @@
 import logging
+import pprint
+
 import math
 from itertools import chain
 from pathlib import Path
@@ -36,7 +38,9 @@ def plotly_render(ann: ANN3D, labels: Optional[Dict[Point3D, str]] = None,
     :param edges_alpha: The alpha value to use for the edges
     """
 
-    return _figure(data=[_edges(ann, alpha=edges_alpha),
+    data = [link.weight for link, _, _ in _iter_axons(ann)]
+    cmin, cmax = _symmetrical_range(data)
+    return _figure(data=[_edges(ann, data=data, cmin=cmin, cmax=cmax),
                          _neurons(ann, labels)])
 
 
@@ -109,35 +113,25 @@ class ANNMonitor:
             logger.info(f"Generated {self.neural_data_file}")
 
         if self.axonal_data_file:
-            def c_range(array):
-                v_min, v_max = math.inf, -math.inf
-                for v in array:
-                    if isinstance(v, Iterable):
-                        _v_min, _v_max = c_range(v)
-                        if _v_min < v_min:
-                            v_min = _v_min
-                        if v_max < _v_max:
-                            v_max = _v_max
-                    else:
-                        if v < v_min:
-                            v_min = v
-                        if v_max < v:
-                            v_max = v
-                v_min = min([v_min, -v_min, v_max, -v_max])
-                return [v_min, -v_min]
+            c_range = _symmetrical_range
 
             nv_min, nv_max = c_range(self.neurons_data.data)
-            ew_min, ew_max = c_range(
-                [link.weight for link, _, _ in _iter_axons(self.ann)])
             ev_min, ev_max = c_range(self.axonal_data.data)
+
+            colorscale = [
+                [0, "rgba(0, 0, 255, 1)"],
+                [.5, "rgba(0, 0, 0, 0)"],
+                [.5, "rgba(0, 0, 0, 0)"],
+                [1, "rgba(255, 0, 0, 1)"]
+            ]
 
             frames = [
                 go.Frame(
                     data=[_neurons(self.ann, self.labels, data=n_row,
                                    cmin=nv_min, cmax=nv_max),
                           _edges(self.ann, data=a_row,
-                                 wmin=ew_min, wmax=ew_max,
-                                 cmin=ev_min, cmax=ev_max)],
+                                 cmin=ev_min, cmax=ev_max,
+                                 colorscale=colorscale, colorbar=.5)],
                     name=f'frame{index}'
                 ) for index, (n_row, a_row)
                 in enumerate(zip(self.neurons_data.data,
@@ -274,34 +268,24 @@ def _edges(ann: _ANN, data: Optional[Iterable[float]] = None,
     # w = [link.weight for link, _, _ in _iter_axons(ann)]
 
     c_min, c_max = kwargs.pop("cmin", None), kwargs.pop("cmax", None)
-    _, _ = kwargs.pop("wmin", None), kwargs.pop("wmax", None)
 
     lines = dict(width=1)
-    if data is None:
-        lines['color'] = f"rgba(0, 0, 0, {alpha})"
-    else:
-        # for (link, src, dst), v in zip(_iter_axons(ann), data):
-        #     x0, y0, z0 = src.pos.tuple()
-        #     x1, y1, z1 = dst.pos.tuple()
-        #     print(f"({x0:+.3f}, {y0:+.3f}, {z0:+.3f})"
-        #           f" -> ({x1:+.3f}, {y1:+.3f}, {z1:+.3f})"
-        #           f" [w={link.weight:+.3f}, v={v:+.3f}]")
-        data = list(chain.from_iterable([(x, x, x) for x in data]))
-        lines.update(dict(
-            color=data,
-            showscale=True,
-            colorscale=[
+    data = list(chain.from_iterable([(x, x, x) for x in data]))
+    lines.update(dict(
+        color=data,
+        showscale=True,
+        colorscale=kwargs.pop("colorscale", [
                 [0, "rgba(0, 0, 255, 1)"],
-                [.325, "rgba(0, 0, 0, 0)"],
-                [.675, "rgba(0, 0, 0, 0)"],
-                [1, "rgba(255, 0, 0, 1)"]],
-            cmin=c_min, cmax=c_max,
-            colorbar=dict(
-                len=0.5, y=1,
-                yanchor="top",
-                title=dict(text="Axons", side="right")
-            )
-        ))
+                [.5, "rgba(0, 0, 0, 1)"],
+                [1, "rgba(255, 0, 0, 1)"]
+            ]),
+        cmin=c_min, cmax=c_max,
+        colorbar=dict(
+            len=kwargs.pop("colorbar", 1), y=1,
+            yanchor="top",
+            title=dict(text="Axons", side="right")
+        )
+    ))
 
     return go.Scatter3d(
         x=x, y=y, z=z,
@@ -353,3 +337,21 @@ class _TinyDataFrame:
             f.write(sep.join(f"\"{s}\"" for s in [""] + self.columns) + "\n")
             for i, row in enumerate(self.data):
                 f.write(sep.join(str(v) for v in [i] + row))
+
+
+def _symmetrical_range(array):
+    v_min, v_max = math.inf, -math.inf
+    for v in array:
+        if isinstance(v, Iterable):
+            _v_min, _v_max = _symmetrical_range(v)
+            if _v_min < v_min:
+                v_min = _v_min
+            if v_max < _v_max:
+                v_max = _v_max
+        else:
+            if v < v_min:
+                v_min = v
+            if v_max < v:
+                v_max = v
+    v_min = min([v_min, -v_min, v_max, -v_max])
+    return [v_min, -v_min]
