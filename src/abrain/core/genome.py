@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from random import Random
 from shutil import which
+from tempfile import TemporaryDirectory, mkstemp
 from typing import (Dict, List, Any, Optional, Union,
                     Collection, Callable, Tuple)
 
@@ -582,7 +583,7 @@ class Genome(_CPPNData):
     ###########################################################################
 
     @classmethod
-    def from_dot(cls, data: Data, path: str) -> 'Genome':
+    def from_dot(cls, data: Data, path: Union[str | Path]) -> 'Genome':
         """Produce a Genome by parsing a simplified graph description
 
             .. warning:: Unimplemented
@@ -823,15 +824,25 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        cleanup = False if _should_debug("keepdot") else True
-
+        print("\n")
+        print("Writing genome to", path)
         dot_path = path.with_suffix(".dot")
-        dot_path.write_text(dot.source, encoding="ascii")
-        ret = dot_render('dot', ext, dot_path)
+        print("> dot path:", dot_path)
+        tmp_dot_path = Path(mkstemp(dir=str(path.parent), suffix="genome.dot")[1])
+        print("> dot path:", tmp_dot_path)
+        tmp_dot_path.write_text(dot.source, encoding="ascii")
+        ret = dot_render('dot', ext, tmp_dot_path)
+        print(">  dot ret:", ret)
         ret = Path(ret).rename(path.with_suffix("." + ext))
+        print(">      ret:", ret)
 
-        if cleanup:
-            dot_path.unlink(missing_ok=False)
+        if _should_debug("keepdot"):
+            dot_ext = ".dot"
+            if dot_path.exists():
+                dot_ext = ".gvz" + dot_ext
+            tmp_dot_path.rename(path.with_suffix(dot_ext))
+        else:
+            tmp_dot_path.unlink()
 
         return ret
 
