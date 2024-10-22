@@ -824,17 +824,11 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        print("\n")
-        print("Writing genome to", path)
         dot_path = path.with_suffix(".dot")
-        print("> dot path:", dot_path)
         tmp_dot_path = Path(mkstemp(dir=str(path.parent), suffix="genome.dot")[1])
-        print("> dot path:", tmp_dot_path)
         tmp_dot_path.write_text(dot.source, encoding="ascii")
         ret = dot_render('dot', ext, tmp_dot_path)
-        print(">  dot ret:", ret)
         ret = Path(ret).rename(path.with_suffix("." + ext))
-        print(">      ret:", ret)
 
         if _should_debug("keepdot"):
             dot_ext = ".dot"
