@@ -671,7 +671,7 @@ class Genome(_CPPNData):
             g._add_node(i, fn)
 
         for i, o, w in links:
-            w = float(w) or cls.__random_link_weight(data.rng)
+            w = float(w) if w is not None else cls.__random_link_weight(data.rng)
             g._add_link(data, nodes_dict[i], nodes_dict[o], w,
                         is_mutation=False)
 

@@ -310,6 +310,11 @@ void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src,
   for (unsigned int i=0; i<N; i++)  _inputs[i]->data = src.get(i);
   for (unsigned int i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
 
+    std::cerr << "Distance:\n"
+              << "  (" << src << " - " << dst << ")\n"
+              << "  " << (src - dst) << "\n"
+              << "  " << (src - dst).length() << "\n";
+
   static const auto norm = static_cast<float>(2*std::sqrt(2));
   if (I - static_cast<int>(_has_input_bias) > 2*N)
     _inputs[2*N]->data = (src - dst).length() / norm;
