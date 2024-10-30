@@ -5,6 +5,7 @@
 
 #include "cppn.h"
 #include "../config.h"
+#include "../misc/utils.hpp"
 
 #ifndef NDEBUG
 //#define DEBUG_CPPN
@@ -14,47 +15,14 @@
 #ifdef DEBUG_CPPN
 #include <iomanip>
 
-namespace utils { // Contains debugging tools
+namespace kgd::eshn::utils { // Contains debugging tools
 std::ostream& operator<< (std::ostream &os,
                          const kgd::eshn::phenotype::CPPN::Buffer &buffer) {
   os << "[ " << buffer[0];
   for (unsigned int i=1; i<buffer.size(); i++) os << " " << buffer[i];
   return os << "]";
 }
-
-/// Manages indentation for provided ostream
-/// \author James Kanze @ https://stackoverflow.com/a/9600752
-class IndentingOStreambuf : public std::streambuf {
-  static constexpr unsigned int DEFAULT_INDENT = 2;   ///< Default indenting value
-
-  std::ostream*       _owner;   ///< Associated ostream
-  std::streambuf*     _buffer;  ///< Associated buffer
-  bool                _isAtStartOfLine; ///< Whether to insert indentation
-
-  const std::string   _indent;  ///< Indentation value
-
-protected:
-  /// Overrides std::basic_streambuf::overflow to insert indentation at line start
-  int overflow (int ch) override {
-    if (_isAtStartOfLine && ch != '\n')
-      _buffer->sputn(_indent.data(), _indent.size());
-    _isAtStartOfLine = (ch == '\n');
-    return _buffer->sputc(ch);
-  }
-
-public:
-  /// Creates a proxy buffer managing indentation level
-  explicit IndentingOStreambuf(std::ostream& dest,
-                               unsigned int spaces = DEFAULT_INDENT)
-    : _owner(&dest), _buffer(dest.rdbuf()),
-      _isAtStartOfLine(true),
-      _indent(spaces, ' ' ) { _owner->rdbuf( this );  }
-
-  /// Returns control of the buffer to its owner
-  virtual ~IndentingOStreambuf(void) { _owner->rdbuf(_buffer); }
-};
-
-} // end of namespace utils
+} // end of namespace kgd::eshn::utils
 #endif
 
 namespace kgd::eshn::phenotype {
@@ -219,7 +187,7 @@ CPPN::CPPN (const CPPNData &genotype) {
 float CPPN::INode::value () {
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "I: " << data << std::endl;
+  std::cout << "  I: " << data << std::endl;
 #endif
   return data;
 }
@@ -227,7 +195,7 @@ float CPPN::INode::value () {
 float CPPN::FNode::value () {
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "F:\n";
+  std::cout << "> F:\n";
 #endif
   if (std::isnan(data)) {
     data = 0.f;
@@ -236,7 +204,7 @@ float CPPN::FNode::value () {
 
 #ifdef DEBUG_CPPN
     auto val = func(data);
-    std::cout << val << " = " << functionToName.at(func)
+    std::cout << "< " << val << " = " << functionToName.at(func)
               << "(" << data << ")\n";
     data = val;
 #else
@@ -276,7 +244,7 @@ void CPPN::common_pre_evaluation() {
 
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "compute step\n\tInputs:"
+  std::cout << "==============\n= compute step\n\tInputs:"
             << std::setprecision(std::numeric_limits<float>::max_digits10);
   for (auto &i: _inputs) std::cout << " " << i->data;
   std::cout << "\n";
@@ -309,11 +277,6 @@ void CPPN_ND<DI>::pre_evaluation(const CPPN_ND<DI>::Point &src,
   const auto I = n_inputs(true);
   for (unsigned int i=0; i<N; i++)  _inputs[i]->data = src.get(i);
   for (unsigned int i=0; i<N; i++)  _inputs[i+N]->data = dst.get(i);
-
-    std::cerr << "Distance:\n"
-              << "  (" << src << " - " << dst << ")\n"
-              << "  " << (src - dst) << "\n"
-              << "  " << (src - dst).length() << "\n";
 
   static const auto norm = static_cast<float>(2*std::sqrt(2));
   if (I - static_cast<int>(_has_input_bias) > 2*N)

@@ -3,8 +3,9 @@
 #include <queue>
 
 #include "eshn.h"
-
 #include "ann.h"
+
+#include "../misc/utils.hpp"
 
 namespace kgd::eshn::evolvable_substrate {
 
@@ -66,16 +67,16 @@ struct ESHN {
   // Debug streamers
 
 #if DEBUG_ES >= 3  // Only in deep debug
-  std::ostream& operator<< (std::ostream &os, const Coordinates_s &c) {
+  static void showHidden (std::ostream &os, const Coordinates_s &c) {
     os << "[";
     if (c.size() >= 1) {
       os << " " << *c.begin() << " ";
       for (auto it = std::next(c.begin()); it != c.end(); ++it) os << *it << " ";
     }
-    return os << "]";
+    os << "]";
   }
 
-  void showConnections(std::ostream &os, const Connections &c, size_t start = 0) {
+  static void showConnections(std::ostream &os, const Connections &c, size_t start = 0) {
     auto it = c.begin();
     std::advance(it, start);
     for (; it != c.end(); ++it) os << "\t" << *it << "\n";
@@ -150,9 +151,9 @@ struct ESHN {
     std::cerr << *root;
 #endif
 
-#if DEBUG_QUADTREE
-    quadtree_debug::debugGenerateImages(*root, p, !out);
-#endif
+//#if DEBUG_QUADTREE
+//    quadtree_debug::debugGenerateImages(*root, p, !out);
+//#endif
 
     return root;
   }
@@ -211,7 +212,7 @@ struct ESHN {
 
         } else {
           float cz = c->center.z();
-          std::vector<float> bnds {
+          std::vector<float> bnds { // No n-ary max in C++
             std::min(dweight(cx-r, cy, cz), dweight(cx+r, cy, cz)),
             std::min(dweight(cx, cy-r, cz), dweight(cx, cy+r, cz)),
             std::min(dweight(cx, cy, cz-r), dweight(cx, cy, cz+r))
@@ -220,11 +221,10 @@ struct ESHN {
         }
 
 #if DEBUG_QUADTREE_PRUNING
-        std::cout << "b> var = " << c->variance() << ", bnd = "
-                  << std::max(std::min(dl, dr), std::min(dt, db))
-                  << " = max(min(" << dl << ", " << dr << "), min(" << dt
-                  << ", " << db << ")) && leo = "
-                  << leoConnection(cppn, out ? p : c->center, out ? c->center : p)
+        std::cout << "b> var = " << c->variance()
+                  << "; (bnd = " << bnd
+                  << ") && (leo = " << leo(cppn, out ? p : c->center, out ? c->center : p)
+                  << ") && (weight = " << c->weight << " != 0)"
                   << "\n";
 #endif
 
@@ -296,7 +296,8 @@ struct ESHN {
     }
 
 #if DEBUG_ES >= 2
-    std::cerr << "\ninodes:\n";
+    std::cerr << "- Removing unconnected neurons -\n"
+              << "\ninodes:\n";
     for (const auto &n: inodes) std::cerr << "\t" << n->p << "\n";
     std::cerr << "\nonodes:\n";
     for (const auto &n: onodes) std::cerr << "\t" << n->p << "\n";
@@ -440,12 +441,14 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
 #if DEBUG_ES
   oss << "[I -> H] found " << shidden.size() - n_hidden << " hidden neurons";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << shidden << "\n";
+  oss << "\n";
+  E::showHidden(oss, shidden);
+  oss << "\n";
 #endif
   oss << " and " << connections.size() - n_connections << " connections";
 #if DEBUG_ES >= 3
   oss << "\n";
-  showConnections(oss, connections, n_connections);
+  E::showConnections(oss, connections, n_connections);
   oss << "\n";
 #endif
   n_hidden = shidden.size();
@@ -471,12 +474,14 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
   oss << "[H -> H] found " << shidden.size() - n_hidden
       << " hidden neurons (" << unexploredHidden.size() << " to explore)";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << unexploredHidden << "\n";
+  oss << "\n";
+  E::showHidden(oss, unexploredHidden);
+  oss << "\n";
 #endif
   oss << " and " << connections.size() - n_connections << " connections";
 #if DEBUG_ES >= 3
   oss << "\n";
-  showConnections(oss, connections, n_connections);
+  E::showConnections(oss, connections, n_connections);
   oss << "\n";
 #endif
   n_hidden = shidden.size();
@@ -487,7 +492,7 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
     converged = unexploredHidden.empty();
 #if DEBUG_ES
     if (converged)
-      oss << "\t> Premature convergence at iteration " << i << "\n";
+      oss << "\t> Premature convergence at iteration " << iterations << "\n";
 #endif
   }
 
@@ -503,7 +508,7 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
       << " connections";
 #if DEBUG_ES >= 3
   oss << "\n";
-  showConnections(oss, connections, n_connections);
+  E::showConnections(oss, connections, n_connections);
   oss << "\n";
 #endif
   oss << "\n";
@@ -515,12 +520,14 @@ bool connect (phenotype::CPPN_ND<D> &cppn,
 #if DEBUG_ES
   oss << "[Filtrd] total " << shidden2.size() << " hidden neurons";
 #if DEBUG_ES >= 3
-  oss << "\n\t" << shidden2 << "\n";
+  oss << "\n";
+  E::showHidden(oss, shidden2);
+  oss << "\n";
 #endif
   oss << " and " << connections.size() << " connections";
 #if DEBUG_ES >= 3
   oss << "\n";
-  showConnections(oss, connections);
+  E::showConnections(oss, connections);
   oss << "\n";
 #endif
 #endif
