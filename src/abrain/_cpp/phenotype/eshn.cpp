@@ -382,8 +382,9 @@ struct ESHN {
     for (const Point &i: inputs) {
       for (const Point &o: outputs) {
         cppn(i, o, res, wl);
-        if (res[static_cast<unsigned int>(Output::LEO)])
-          connections.insert({i, o, res[static_cast<unsigned int>(Output::WEIGHT)]});
+        auto leo = res[static_cast<unsigned int>(Output::LEO)];
+        auto weight = res[static_cast<unsigned int>(Output::WEIGHT)];
+        if (leo && weight != 0) connections.insert({i, o, weight});
       }
     }
   }
