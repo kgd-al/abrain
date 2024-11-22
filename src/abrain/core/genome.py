@@ -607,6 +607,9 @@ class Genome(_CPPNData):
                     if statement[:6] == "CPPN {" or statement == "}":
                         continue
 
+                    if statement[0:2] == "//":
+                        continue
+
                     tokens = statement.split()
                     if "->" not in statement:  # Link
                         # print("> node")
