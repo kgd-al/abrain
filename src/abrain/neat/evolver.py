@@ -26,7 +26,7 @@ from abrain.core.genome import Genome
 
 
 logger = logging.getLogger(__name__)
-logging.MAYBE_DEBUG = logging.INFO + 5
+logging.MAYBE_DEBUG = logging.DEBUG + 5
 logging.addLevelName(logging.MAYBE_DEBUG, 'MAYBE_DEBUG')
 
 
@@ -213,7 +213,7 @@ class NEATEvolver:
 
     def _begin(self):
         if self.config.log_level >= 0:
-            print(" ".join(k for k in self.stat_fields.keys()))
+            logger.info(" ".join(k for k in self.stat_fields.keys()))
         if self.config.log_dir is not None:
             def make_file(name):
                 key = name.split(".")[0]
@@ -299,7 +299,7 @@ class NEATEvolver:
         #     for s in self.species:
         #         s_distances = [(d[0], g) for g in population
         #                        if (d := distances(s.representative, g))[1]]
-        #         # print("[kgd-debug]", s.id, s_distances)
+        #         # logger.debug("[kgd-debug]", s.id, s_distances)
         #
         #         if len(s_distances) == 0:
         #             if self.config.log_level >= 2:
@@ -390,7 +390,7 @@ class NEATEvolver:
             #
             # sign = -1 if ns < tns else 1
             # delta = sign * .5 * sample_distance
-            # print("d:", delta)
+            # logger.debug("d:", delta)
             # self.distance_threshold = max(.5 * self.distance_threshold,
             #                               min(self.distance_threshold + delta,
             #                                   1.5 * self.distance_threshold))
@@ -522,8 +522,8 @@ class NEATEvolver:
 
     def _global_stats(self):
         if self.config.log_level >= 0:
-            print(" ".join(fmt.format(getter())
-                           for fmt, getter in self.stat_fields.values()))
+            logger.info(" ".join(fmt.format(getter())
+                                 for fmt, getter in self.stat_fields.values()))
 
         if (log_file := self.files.get("stats")) is not None:
             print(",".join(str(getter())
