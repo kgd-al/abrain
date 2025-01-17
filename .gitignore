@@ -13,6 +13,8 @@ tests-results/
 .coverage
 tests.xml
 
+neat-stanley-c++/
+
 doc/src/_autogen/errors.rst
 
 package.dot
