@@ -25,3 +25,4 @@ src/abrain/_cpp/misc/constants.h
 
 !.github/
 !doc/src/_autogen/functions.rst
+.python-version

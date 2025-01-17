@@ -562,7 +562,7 @@ class NEATEvolver:
                           _distance: Optional[Callable]):
 
         def has_function(name, params):
-            fn = getattr(_genome, name)
+            fn = getattr(_genome, name, None)
             if fn is None:
                 raise ValueError(f"No function '{name}' for '{_genome}'")
 
