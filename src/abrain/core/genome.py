@@ -1250,7 +1250,8 @@ class Genome(_CPPNData):
         Genome._iter(lhs, rhs, 'links', process_links)
 
         child._sort_by_id()
-        child.update_lineage(data, [lhs, rhs])
+        if data.gid_manager is not None:
+            child.update_lineage(data, [lhs, rhs])
         return child
 
     @staticmethod

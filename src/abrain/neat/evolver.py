@@ -237,7 +237,7 @@ class NEATEvolver:
 
         population = [self.individual.random()
                       for _ in range(self.config.population_size)]
-        self._evaluate(population)
+        population = self._evaluate(population)
         self._speciate(population)
         for s in self.species:
             s.prev_size = len(s)
@@ -257,7 +257,7 @@ class NEATEvolver:
                                " Only use step() with the guard form of the evolver")
 
         new_population = self._reproduce()
-        self._evaluate(new_population)
+        new_population = self._evaluate(new_population)
         self._speciate(new_population)
 
         self.generation += 1
@@ -276,7 +276,7 @@ class NEATEvolver:
         for s in self.species:
             yield from s.population
 
-    def _evaluate(self, population: List):
+    def _evaluate(self, population: List) -> List:
         if self._processes_pool is None:
             for i in population:
                 i.fitness = self.evaluator(i.genome)
@@ -284,7 +284,15 @@ class NEATEvolver:
             results = self._processes_pool.map(self.evaluator, [i.genome for i in population])
             for i, f in zip(population, results):
                 i.fitness = f
+
+        # Filter out invalid fitnesses
+        population = [_i for _i in population
+                      if (_f := _i.fitness)
+                      and not math.isnan(_f) and not math.isinf(_f)]
+
         self.fitnesses = _stats(population)
+
+        return population
 
     def _speciate(self, population):
         distances = _Distances(self.distance_threshold,
