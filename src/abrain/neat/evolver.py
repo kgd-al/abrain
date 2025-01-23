@@ -9,10 +9,12 @@ import shutil
 import signal
 from dataclasses import dataclass
 from fileinput import filename
+from io import TextIOWrapper
 from json import JSONEncoder
 from pathlib import Path
 from random import Random
-from typing import List, Callable, Optional, Any, Tuple
+from typing import List, Callable, Optional, Any, Tuple, Type, Dict
+from xml.dom import InvalidStateErr
 
 import graphviz
 import jsonpickle
@@ -124,7 +126,7 @@ class _Distances:
 
 
 @dataclass
-class NEATConfig:
+class Config:
     population_size: int = 10
     tournament_size: int = 4
     elitism: int = 1
@@ -150,44 +152,86 @@ class NEATConfig:
     overwrite: bool = False
 
 
+@dataclass
+class EvaluationResult:
+    fitness: float = float("-inf")
+    stats: dict = None
+
+    def __iter__(self): return iter((self.fitness, self.stats))
+
+#
+# @jsonpickle.handlers.register(multiprocessing.Pool().__class__, base=True)
+# class ProcessingPoolHandler(jsonpickle.handlers.BaseHandler):
+#     magics = ('py/object', "multiprocessing.pool.Pool")
+#
+#     def flatten(self, obj, data):
+#         assert data[self.magics[0]] == self.magics[1]
+#         data["threads"] = len(obj._pool)
+#         return data
+#
+#     def restore(self, data):
+#         assert data[self.magics[0]] == self.magics[1]
+#         return multiprocessing.Pool(data["threads"])
+#
+
+
 @jsonpickle.handlers.register(multiprocessing.Pool().__class__, base=True)
 class ProcessingPoolHandler(jsonpickle.handlers.BaseHandler):
-    magics = ('py/object', "multiprocessing.pool.Pool")
-
     def flatten(self, obj, data):
-        print(self, obj, data)
-        assert data[self.magics[0]] == self.magics[1]
-        data["threads"] = len(obj._pool)
         return data
 
     def restore(self, data):
-        print(self, data)
-        assert data[self.magics[0]] == self.magics[1]
-        return multiprocessing.Pool(data["threads"])
+        return None
 
 
-class NEATEvolver:
+@jsonpickle.handlers.register(TextIOWrapper, base=True)
+class OpenFilesHandler(jsonpickle.handlers.BaseHandler):
+    magics = ('py/object', '_io.TextIOWrapper')
+
+    def flatten(self, obj: TextIOWrapper, data):
+        data["name"] = obj.name
+        data["mode"] = obj.mode
+        data["encoding"] = obj.encoding
+        return data
+
+    def restore(self, data):
+        return open(file=data["name"], mode=data["mode"],
+                    encoding=data["encoding"])
+
+
+class Evolver:
+    @dataclass
+    class Interface:
+        """
+            :param g_class: the class of the genome to wrap into an individual
+            :param data: data passed along to every genome operator.
+            :param random: genome operator for creating a new, random genome.
+            :param mutate: genome operator for transforming a genome.
+            :param crossover: genome operator for creating an offspring from two parents.
+            :param distance: genome operator for computing the genetic distance between two individuals.
+        """
+        g_class: Type = Genome
+        data: Optional[Dict[Any, Any]] = None
+        random: Optional[Callable] = None
+        mutate: Optional[Callable] = None
+        crossover: Optional[Callable] = None
+        distance: Optional[Callable] = None
+
     def __init__(
             self,
-            config: NEATConfig, evaluator: Callable[[Any], Tuple[float, Optional[dict]]],
-            genome_class=Genome, genome_data=None,
-            random: Optional[Callable] = None,
-            mutate: Optional[Callable] = None,
-            crossover: Optional[Callable] = None,
-            distance: Optional[Callable] = None,
+            config: Config,
+            evaluator: Callable[[Any], EvaluationResult],
+            genotype_interface: Interface,
             global_config: Optional[Any] = None,
     ):
         """
         Creates a NEAT evolver.
         :param config: The NEAT-specific configuration
-        :param evaluator: a callable taking a genome and returning its fitness and an
+        :param evaluator: Callable taking a genome and returning its fitness and an
                           optional dictionary of relevant statistics.
-        :param genome_class: the class of the genome to wrap into an individual
-        :param genome_data: data passed along to every genome operator.
-        :param random: genome operator for creating a new, random genome.
-        :param mutate: genome operator for transforming a genome.
-        :param crossover: genome operator for creating an offspring from two parents.
-        :param distance: genome operator for computing the genetic distance between two individuals.
+        :param genotype_interface: Collection of types and callables to access
+                                   the appropriate genotype-level operators
+                                   (mutation, crossover, ...)
         :param global_config: User-specific data that should be stored alongside the rest of the data.
         """
 
@@ -214,14 +258,13 @@ class NEATEvolver:
         self.evaluator = evaluator
         self.fitnesses = dict(max=nan, avg=nan, std=nan)
 
-        self.individual = self._individual_class(genome_class, genome_data,
-                                                 random, mutate, crossover, distance)
+        self.individual = self._individual_class(genotype_interface)
 
         self._distance_threshold = self.config.initial_distance_threshold
         self._distances = dict(species=nan, inter=nan, intra=nan)
 
         self.stat_fields = {
-            key: (f"{key:^{width}s}", f"{{:{width}{flags}}}", getattr(NEATEvolver, prop).fget)
+            key: (f"{key:^{width}s}", f"{{:{width}{flags}}}", getattr(Evolver, prop).fget)
             for key, width, flags, prop in [
                 ("Gen", 3, "d", "generation"),
                 ("Sp", 3, "d", "species_count"),
@@ -229,12 +272,11 @@ class NEATEvolver:
                 ("d_spc", 5, ".3g", "distance_between_species"),
                 ("d_int", 5, ".3g", "distance_intra_species"),
                 ("d_ext", 5, ".3g", "distance_inter_species"),
-                ("F_max", 5, ".3g", "fitness_max"),
-                ("F_avg", 5, ".3g", "fitness_avg"),
-                ("F_dev", 5, ".2g", "fitness_stddev"),
+                ("F_max", 8, ".3g", "fitness_max"),
+                ("F_avg", 8, ".3g", "fitness_avg"),
+                ("F_dev", 8, ".2g", "fitness_stddev"),
             ]
         }
-        pprint.pprint(self.stat_fields)
         self.files, self.file_names = {}, {}
 
         self.__started = False
@@ -278,18 +320,18 @@ class NEATEvolver:
         else:
             self._processes_pool = multiprocessing.Pool(processes=t)
 
-        population = [self.individual.random()
-                      for _ in range(self.config.population_size)]
-        population = self._evaluate(population)
-        self._speciate(population)
-        for s in self.species:
-            s.prev_size = len(s)
+        if not (self.generation > 0 and self.__started):
+            population = [self.individual.random()
+                          for _ in range(self.config.population_size)]
+            population = self._evaluate(population)
+            self._speciate(population)
+            for s in self.species:
+                s.prev_size = len(s)
 
         self._global_stats()
 
         def interrupt_handler(signum, _):
-            logger.warning(f"Interrupted by signal {signum}. Panic-saving current state")
-            self.dump()
+            logger.warning(f"Interrupted by signal {signum}.")
             self._processes_pool.terminate()
             self._processes_pool.join()
             raise RuntimeError(f"Interrupted by signal {signum}")
@@ -324,13 +366,41 @@ class NEATEvolver:
             return None
 
         with open(path or self.config.log_dir.joinpath("evolution.json"), "wt") as f:
-            f.write(jsonpickle.encode(self.__dict__, f, fail_safe=_fail_safe))
+            dct = copy.copy(self.__dict__)
+            del dct["individual"]
+            dct["interface"] = self.individual.interface()
+            j = jsonpickle.encode(dct, f,
+                                  fail_safe=_fail_safe,
+                                  make_refs=False,
+                                  keys=True,
+                                  warn=True)
+            f.write(j)
 
     @classmethod
-    def restore(cls, path=None):
+    def restore(cls, path, evaluator: Callable[[Any], EvaluationResult]):
         with open(path, "rt") as f:
+            data = f.read()
+
             _self = cls.__new__(cls)
-            _self.__dict__ = jsonpickle.decode(f.read())
+            _self.__dict__ = jsonpickle.decode(data,
+                                               keys=True)
+
+            interface: Evolver.Interface = _self.__dict__.pop("interface")
+            individual = _self._individual_class(interface)
+
+            # Second pass to get the individuals properly decoded.
+            # TODO: Find a better solution
+            _self.__dict__ = jsonpickle.decode(data,
+                                               classes=[individual],
+                                               keys=True)
+            _self.individual = individual
+            _self.evaluator = evaluator
+
+            _self.stat_fields = {
+                k: (header, fmt, prop.fget)
+                for k, (header, fmt, prop) in _self.stat_fields.items()
+            }
+
             return _self
 
     @property
@@ -660,11 +730,13 @@ class NEATEvolver:
                    key=key)
 
     @staticmethod
-    def _individual_class(_genome, _genome_data,
-                          _random: Optional[Callable],
-                          _mutate: Optional[Callable],
-                          _crossover: Optional[Callable],
-                          _distance: Optional[Callable]):
+    def _individual_class(interface: Interface):
+        _genome = interface.g_class
+        _data = interface.data
+        _random = interface.random
+        _mutate = interface.mutate
+        _crossover = interface.crossover
+        _distance = interface.distance
 
         def has_function(name, params):
             fn = getattr(_genome, name, None)
@@ -689,15 +761,26 @@ class NEATEvolver:
         class Individual:
             __key = object()
             genome_class = _genome
-            genome_data = _genome_data
+            genome_data = _data
             __next_id = 0
 
-            fn_random = _random or has_function("random", len(_genome_data))
-            fn_mutate = _mutate or has_function("mutate", 1 + len(_genome_data))
-            fn_crossover = _crossover or has_function("crossover", 2 + len(_genome_data))
+            fn_random = _random or has_function("random", len(_data))
+            fn_mutate = _mutate or has_function("mutate", 1 + len(_data))
+            fn_crossover = _crossover or has_function("crossover", 2 + len(_data))
             fn_distance = _distance or has_function("distance", 2)
 
-            def __init__(self, genome, parents=None, key=None):
+            @classmethod
+            def interface(cls):
+                return Evolver.Interface(
+                    g_class=Individual.genome_class,
+                    data=Individual.genome_data,
+                    random=Individual.fn_random,
+                    mutate=Individual.fn_mutate,
+                    crossover=Individual.fn_crossover,
+                    distance=Individual.fn_distance
+                )
+
+            def __init__(self, genome, _id=None, parents=None, key=None):
                 assert key == Individual.__key
                 self.genome = genome
                 self.fitness, self.stats = None, None
@@ -708,7 +791,7 @@ class NEATEvolver:
                     else:
                         self.id = lambda _: gid
                 else:
-                    self._id = Individual.__next_id
+                    self._id = _id or Individual.__next_id
                     self.id = lambda: self._id
                     Individual.__next_id += 1
 
@@ -721,14 +804,27 @@ class NEATEvolver:
                     self._parents = [p.id for p in parents]
                     self.parents = lambda: self._parents
 
+            def __getstate__(self):
+                return dict(
+                    genome=self.genome,
+                    fitness=self.fitness, stats=self.stats,
+                    id=getattr(self, "id", None),
+                    parents=getattr(self, "_parents", None)
+                )
+
+            def __setstate__(self, state):
+                fitness, stats = state.pop("fitness"), state.pop("stats")
+                self.__init__(**state, key=Individual.__key)
+                self.fitness, self.stats = fitness, stats
+
             def __repr__(self):
                 return f"Individual(fitness={self.fitness}, {self.genome})"
 
             @classmethod
             def random(cls):
                 return Individual(
-                    cls.fn_random(**Individual.genome_data), [],
-                    Individual.__key
+                    cls.fn_random(**Individual.genome_data), parents=[],
+                    key=Individual.__key
                 )
 
             @classmethod
@@ -736,12 +832,12 @@ class NEATEvolver:
                 child = cls.fn_crossover(lhs.genome, rhs.genome,
                                          **cls.genome_data)
                 cls.fn_mutate(child, **cls.genome_data)
-                return Individual(child, [lhs, rhs], Individual.__key)
+                return Individual(child, parents=[lhs, rhs], key=Individual.__key)
 
             def mutated(self):
                 child = copy.deepcopy(self.genome)
                 self.__class__.fn_mutate(child, **self.genome_data)
-                return Individual(child, [self], Individual.__key)
+                return Individual(child, parents=[self], key=Individual.__key)
 
             @classmethod
             def distance(cls, lhs: 'Individual', rhs: 'Individual'):
@@ -755,7 +851,7 @@ class NEATEvolver:
 
 class _Plotter:
     @classmethod
-    def generate_plots(cls, evolver: NEATEvolver, ext: str,
+    def generate_plots(cls, evolver: Evolver, ext: str,
                        options: Optional[dict]):
         options = options or {}
 
