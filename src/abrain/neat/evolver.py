@@ -1,5 +1,7 @@
 import copy
+import functools
 import inspect
+import json
 import pprint
 
 from . import _logging
@@ -131,6 +133,10 @@ class EvaluationResult:
 
     def __iter__(self): return iter((self.fitness, self.stats))
 
+
+def valid_fitness(fitness):
+    return not math.isnan(fitness) and not math.isinf(fitness)
+
 #
 # @jsonpickle.handlers.register(multiprocessing.Pool().__class__, base=True)
 # class ProcessingPoolHandler(jsonpickle.handlers.BaseHandler):
@@ -240,9 +246,12 @@ class Evolver:
         self.rng = Random(config.seed)
 
         self.evaluator = evaluator
+        self.__evaluate = functools.partial(self._evaluate_one,
+                                            evaluator=self.evaluator,
+                                            config=self.config)
         self.fitnesses = dict(max=nan, avg=nan, std=nan)
 
-        self.individual = self._individual_class(genotype_interface)
+        self.individual = _individual_class(genotype_interface)
 
         self._distance_threshold = self.config.initial_distance_threshold
         self._distances = dict(species=nan, inter=nan, intra=nan)
@@ -361,29 +370,42 @@ class Evolver:
             f.write(j)
 
     @classmethod
-    def restore(cls, path, evaluator: Callable[[Any], EvaluationResult]):
+    def _load(cls, path, keep_data=False):
         with open(path, "rt") as f:
             data = f.read()
+            decoded = jsonpickle.decode(data, keys=True)
+            if keep_data:
+                return decoded, data
+            else:
+                return decoded
 
-            _self = cls.__new__(cls)
-            _self.__dict__ = jsonpickle.decode(data,
-                                               keys=True)
+    @classmethod
+    def load_config(cls, path):
+        """Ugly but bypasses a lot of boilerplate code."""
+        return jsonpickle.decode(str(json.load(open(path, "rt"))["config"]))
 
-            interface: Evolver.Interface = _self.__dict__.pop("interface")
-            individual = _self._individual_class(interface)
+    @classmethod
+    def restore(cls, path, evaluator: Callable[[Any], EvaluationResult]):
+        _self = cls.__new__(cls)
+        _self.__dict__, data = cls._load(path, keep_data=True)
 
-            # Second pass to get the individuals properly decoded.
-            # TODO: Find a better solution
-            _self.__dict__ = jsonpickle.decode(data,
-                                               classes=[individual],
-                                               keys=True)
-            _self.individual = individual
-            _self.evaluator = evaluator
+        interface: Evolver.Interface = _self.__dict__.pop("interface")
+        individual = _individual_class(interface)
 
-            _self.stat_fields = {
-                k: (header, fmt, prop.fget)
-                for k, (header, fmt, prop) in _self.stat_fields.items()
-            }
+        # Second pass to get the individuals properly decoded.
+        # TODO: Find a better solution
+        _self.__dict__ = jsonpickle.decode(data,
+                                           classes=[individual],
+                                           keys=True)
+        _self.individual = individual
+        _self.evaluator = evaluator
+        _self.__evaluate = functools.partial(cls._evaluate_one,
+                                             evaluator=_self.evaluator,
+                                             config=_self.config)
+        _self.stat_fields = {
+            k: (header, fmt, prop.fget)
+            for k, (header, fmt, prop) in _self.stat_fields.items()
+        }
 
         pprint.pprint(_self.config)
 
@@ -433,19 +455,43 @@ class Evolver:
         for s in self.species:
             yield from s.population
 
+    @staticmethod
+    def _evaluate_one(genome, evaluator, config):
+        try:
+            return evaluator(genome)
+
+        except Exception as e:
+            f = config.data_root.joinpath("failures")
+            f.mkdir(parents=True, exist_ok=True)
+            f = f.joinpath(f"{genome.id()}.json")
+            genome.to_file(f, dict(exception=str(e),
+                                   fitness=EvaluationResult.fitness))
+            logger.error(
+                f"Evaluation failed: {e.__class__.__name__}({e})."
+                f" Guilty genotype written to {f}.")
+            logger.exception("Stack trace:")
+
+            return EvaluationResult()
+
     def _evaluate(self, population: List) -> List:
         if self._processes_pool is None:
-            for i in population:
-                i.fitness, i.stats = self.evaluator(i.genome)
+            results = [self.__evaluate(i.genome) for i in population]
         else:
-            results = self._processes_pool.map(self.evaluator, [i.genome for i in population])
-            for i, f in zip(population, results):
-                i.fitness, i.stats = f
+            results = self._processes_pool.map(self.__evaluate, [i.genome for i in population])
+        for i, f in zip(population, results):
+            i.fitness, i.stats = f
 
         # Filter out invalid fitnesses
-        population = [_i for _i in population
-                      if (_f := _i.fitness)
-                      and not math.isnan(_f) and not math.isinf(_f)]
+        population = [_i for _i in population if valid_fitness(_i.fitness)]
+        if (filtered := self.config.population_size - len(population)) > 0:
+            if len(population) == 0:
+                logger.error(f"Filtering out invalid individuals results"
+                             " in an empty population.\n"
+                             f"Fitness values were:\n"
+                             f"{pprint.pformat(results)}")
+                raise RuntimeError("Empty population.")
+            else:
+                logger.warning(f"Filtered out {filtered} invalid individuals.")
 
         self.fitnesses = _stats(population)
 
@@ -719,124 +765,125 @@ class Evolver:
                                        self.config.tournament_size)),
                    key=key)
 
-    @staticmethod
-    def _individual_class(interface: Interface):
-        _genome = interface.g_class
-        _data = interface.data
-        _random = interface.random
-        _mutate = interface.mutate
-        _crossover = interface.crossover
-        _distance = interface.distance
-
-        def has_function(name, params):
-            fn = getattr(_genome, name, None)
-            if fn is None:
-                raise ValueError(f"No function '{name}' for '{_genome}'")
-
-            if not callable(fn):
-                raise ValueError(f"'{name}' is not a callable function in"
-                                 f" '{_genome}'")
-
-            sig = inspect.signature(fn)
-            _params = sum(1 for p in sig.parameters.values()
-                          if p.default is p.empty)
-            if _params < params:
-                raise ValueError(
-                    f"'{name}' has unexpected signature: '{sig}'.\n"
-                    f"Will provide {params} parameters, function expects"
-                    f" {_params}")
-
-            return fn
-
-        class Individual:
-            __key = object()
-            genome_class = _genome
-            genome_data = _data
-            __next_id = 0
-
-            fn_random = _random or has_function("random", len(_data))
-            fn_mutate = _mutate or has_function("mutate", 1 + len(_data))
-            fn_crossover = _crossover or has_function("crossover", 2 + len(_data))
-            fn_distance = _distance or has_function("distance", 2)
-
-            @classmethod
-            def interface(cls):
-                return Evolver.Interface(
-                    g_class=Individual.genome_class,
-                    data=Individual.genome_data,
-                    random=Individual.fn_random,
-                    mutate=Individual.fn_mutate,
-                    crossover=Individual.fn_crossover,
-                    distance=Individual.fn_distance
-                )
-
-            def __init__(self, genome, _id=None, parents=None, key=None):
-                assert key == Individual.__key
-                self.genome = genome
-                self.fitness, self.stats = None, None
-
-                if (gid := getattr(genome, "id", None)) is not None:
-                    if callable(gid):
-                        self.id = gid
-                    else:
-                        self.id = lambda _: gid
-                else:
-                    self._id = _id or Individual.__next_id
-                    self.id = lambda: self._id
-                    Individual.__next_id += 1
-
-                if (pid := getattr(genome, "parents", None)) is not None:
-                    if callable(pid):
-                        self.parents = pid
-                    else:
-                        self.parents = lambda _: pid
-                else:
-                    self._parents = [p.id for p in parents]
-                    self.parents = lambda: self._parents
-
-            def __getstate__(self):
-                return dict(
-                    genome=self.genome,
-                    fitness=self.fitness, stats=self.stats,
-                    id=getattr(self, "id", None),
-                    parents=getattr(self, "_parents", None)
-                )
-
-            def __setstate__(self, state):
-                fitness, stats = state.pop("fitness"), state.pop("stats")
-                self.__init__(**state, key=Individual.__key)
-                self.fitness, self.stats = fitness, stats
-
-            def __repr__(self):
-                return f"Individual(fitness={self.fitness}, {self.genome})"
-
-            @classmethod
-            def random(cls):
-                return Individual(
-                    cls.fn_random(**Individual.genome_data), parents=[],
-                    key=Individual.__key
-                )
-
-            @classmethod
-            def mating(cls, lhs: 'Individual', rhs: 'Individual'):
-                child = cls.fn_crossover(lhs.genome, rhs.genome,
-                                         **cls.genome_data)
-                cls.fn_mutate(child, **cls.genome_data)
-                return Individual(child, parents=[lhs, rhs], key=Individual.__key)
-
-            def mutated(self):
-                child = copy.deepcopy(self.genome)
-                self.__class__.fn_mutate(child, **self.genome_data)
-                return Individual(child, parents=[self], key=Individual.__key)
-
-            @classmethod
-            def distance(cls, lhs: 'Individual', rhs: 'Individual'):
-                return cls.fn_distance(lhs.genome, rhs.genome)
-
-        return Individual
-
     def generate_plots(self, ext="png", options: Optional[dict] = None):
         _Plotter.generate_plots(self, ext, options)
+
+
+def _individual_class(interface: Evolver.Interface):
+    _genome = interface.g_class
+    _data = interface.data
+    _random = interface.random
+    _mutate = interface.mutate
+    _crossover = interface.crossover
+    _distance = interface.distance
+
+    def has_function(name, params):
+        fn = getattr(_genome, name, None)
+        if fn is None:
+            raise ValueError(f"No function '{name}' for '{_genome}'")
+
+        if not callable(fn):
+            raise ValueError(f"'{name}' is not a callable function in"
+                             f" '{_genome}'")
+
+        sig = inspect.signature(fn)
+        _params = sum(1 for p in sig.parameters.values()
+                      if p.default is p.empty)
+        if _params < params:
+            raise ValueError(
+                f"'{name}' has unexpected signature: '{sig}'.\n"
+                f"Will provide {params} parameters, function expects"
+                f" {_params}")
+
+        return fn
+
+    class Individual:
+        __key = object()
+        genome_class = _genome
+        genome_data = _data
+        __next_id = 0
+
+        fn_random = _random or has_function("random", len(_data))
+        fn_mutate = _mutate or has_function("mutate", 1 + len(_data))
+        fn_crossover = _crossover or has_function("crossover", 2 + len(_data))
+        fn_distance = _distance or has_function("distance", 2)
+
+        @classmethod
+        def interface(cls):
+            return Evolver.Interface(
+                g_class=Individual.genome_class,
+                data=Individual.genome_data,
+                random=Individual.fn_random,
+                mutate=Individual.fn_mutate,
+                crossover=Individual.fn_crossover,
+                distance=Individual.fn_distance
+            )
+
+        def __init__(self, genome, gid=None, parents=None, key=None):
+            assert key == Individual.__key
+            self.genome = genome
+            self.fitness, self.stats = None, None
+
+            if (gid := getattr(genome, "id", None)) is not None:
+                if callable(gid):
+                    self.id = gid
+                else:
+                    self.id = lambda _: gid
+            else:
+                self._id = gid or Individual.__next_id
+                self.id = lambda: self._id
+                Individual.__next_id += 1
+
+            if (pid := getattr(genome, "parents", None)) is not None:
+                if callable(pid):
+                    self.parents = pid
+                else:
+                    self.parents = lambda _: pid
+            else:
+                self._parents = [p if isinstance(p, int) else p.id()
+                                 for p in parents]
+                self.parents = lambda: self._parents
+
+        def __getstate__(self):
+            return dict(
+                genome=self.genome,
+                fitness=self.fitness, stats=self.stats,
+                gid=getattr(self, "id")(),
+                parents=getattr(self, "parents")()
+            )
+
+        def __setstate__(self, state):
+            fitness, stats = state.pop("fitness"), state.pop("stats")
+            self.__init__(**state, key=Individual.__key)
+            self.fitness, self.stats = fitness, stats
+
+        def __repr__(self):
+            return f"Individual(fitness={self.fitness}, {self.genome})"
+
+        @classmethod
+        def random(cls):
+            return Individual(
+                cls.fn_random(**Individual.genome_data), parents=[],
+                key=Individual.__key
+            )
+
+        @classmethod
+        def mating(cls, lhs: 'Individual', rhs: 'Individual'):
+            child = cls.fn_crossover(lhs.genome, rhs.genome,
+                                     **cls.genome_data)
+            cls.fn_mutate(child, **cls.genome_data)
+            return Individual(child, parents=[lhs, rhs], key=Individual.__key)
+
+        def mutated(self):
+            child = copy.deepcopy(self.genome)
+            self.__class__.fn_mutate(child, **self.genome_data)
+            return Individual(child, parents=[self], key=Individual.__key)
+
+        @classmethod
+        def distance(cls, lhs: 'Individual', rhs: 'Individual'):
+            return cls.fn_distance(lhs.genome, rhs.genome)
+
+    return Individual
 
 
 class _Plotter:
