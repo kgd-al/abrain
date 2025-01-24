@@ -181,9 +181,10 @@ if (MAKE_STUBS)
         COMMAND echo "             PATH: '$ENV{PATH}'"
         COMMAND echo "  BUILD_TIME_PATH: '${BUILD_TIME_PATH}'"
         COMMAND echo "      PYTHON_PATH: '$ENV{PYTHONPATH}'"
-        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
-        COMMAND ls $<TARGET_FILE_DIR:${LIB_CPP}>
-        COMMAND which ${STUBGEN}
+#        COMMAND ls -d $<TARGET_FILE_DIR:${LIB_CPP}>
+#        COMMAND ls $<TARGET_FILE_DIR:${LIB_CPP}>
+#        COMMAND echo ${STUBGEN}
+        COMMAND which pybind11-stubgen
         COMMAND ${CMAKE_COMMAND} -E
             env "PATH=${BUILD_TIME_PATH}"
             env "PYTHONPATH=.${PATH_SEP}$ENV{PYTHONPATH}"

@@ -95,6 +95,10 @@ cmd_install-tests(){  # Install with test in standard location
   do_pip-install '.[tests]'
 }
 
+cmd_install-editable(){  # Editable install (basics)
+  do_pip-install '-e .'
+}
+
 cmd_install-dev(){  # Editable install (with pip)
   do_pip-install '-e .[docs,tests]'
 #   do_manual-install 'dev-test-doc'

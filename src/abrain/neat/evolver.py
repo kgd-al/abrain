@@ -1,26 +1,24 @@
 import copy
 import inspect
-import json
-import logging
+import pprint
+
+from . import _logging
 import math
 import multiprocessing
-import pprint
 import shutil
 import signal
 from dataclasses import dataclass
-from fileinput import filename
 from io import TextIOWrapper
-from json import JSONEncoder
 from pathlib import Path
 from random import Random
-from typing import List, Callable, Optional, Any, Tuple, Type, Dict
-from xml.dom import InvalidStateErr
+from typing import List, Callable, Optional, Any, Type, Dict
 
-import graphviz
 import jsonpickle
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
+
+from abrain.neat.config import Config
 
 try:
     from matplotlib import pyplot as plt
@@ -29,16 +27,10 @@ try:
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
+    plt = None
+    pd = None
 
 from abrain.core.genome import Genome
-
-logger = logging.getLogger(__name__)
-logging.MAYBE_DEBUG = logging.DEBUG + 5
-logging.addLevelName(logging.MAYBE_DEBUG, 'MAYBE_DEBUG')
-
-
-def _log(msg, level=logging.MAYBE_DEBUG, *args, **kwargs):
-    logger.log(level, msg, *args, **kwargs)
 
 
 # Maybe there:
@@ -48,9 +40,16 @@ def _log(msg, level=logging.MAYBE_DEBUG, *args, **kwargs):
 # > Use age as a fitness normalizer? young gets a boost, stagnant a huge debuff
 # - Out of species crossover
 # - genealogy
+# - Built-in restart?
 
 # Missing:
-# - Built-in restart?
+# - Nothing??
+
+logger = _logging.logger
+
+
+def _log(msg, level=_logging.MAYBE_DEBUG, *args, **kwargs):
+    logger.log(level, msg, *args, **kwargs)
 
 
 def _stats(population):
@@ -123,33 +122,6 @@ class _Distances:
             self._data[(lhs_id, rhs_id)] = d
         hit = (d < self._threshold)
         return d, hit
-
-
-@dataclass
-class Config:
-    population_size: int = 10
-    tournament_size: int = 4
-    elitism: int = 1
-
-    seed: Optional[int] = None
-    threads: Optional[int] = None
-
-    # minimal_species_size = 2
-    species_count: int = 4
-    species_size_inertia = .5
-
-    external_mating = .01
-    solitary_external_mating = .5
-
-    initial_distance_threshold: float = 1
-    distance_threshold_variation: float = 1.1
-
-    age_threshold = 10
-    protect_young = True
-
-    log_dir: Optional[Path | str] = None
-    log_level: int = 1
-    overwrite: bool = False
 
 
 @dataclass
@@ -240,14 +212,26 @@ class Evolver:
         self.config = config
         self.global_config = global_config
 
-        if config.log_dir is not None:
-            if not isinstance(config.log_dir, Path):
-                config.log_dir = Path(config.log_dir)
-            if config.log_dir.exists() and config.overwrite:
-                shutil.rmtree(config.log_dir)
-            config.log_dir.mkdir(exist_ok=config.overwrite,
-                                 parents=True)
-            logger.info(f"Created output folder {config.log_dir}")
+        if config.data_root is None:
+            config.data_root = _logging.get_next_tmp_data_root()
+
+        if not isinstance(config.data_root, Path):
+            config.data_root = Path(config.data_root)
+        if config.data_root.exists() and config.overwrite:
+            shutil.rmtree(config.data_root)
+        config.data_root.mkdir(exist_ok=config.overwrite,
+                               parents=True)
+
+        self.config.logger = _logging.setup_logging(config.data_root)
+
+        logger.info(f"Created output folder {config.data_root}")
+
+        if config.symlink_last:
+            run_symlink = config.data_root.parent.joinpath("last")
+            if run_symlink.is_symlink() or run_symlink.exists():
+                run_symlink.unlink()
+
+            run_symlink.symlink_to(config.data_root.absolute(), target_is_directory=True)
 
         self.species: List[Species] = []
         self.next_sid = 0
@@ -299,11 +283,11 @@ class Evolver:
     def _begin(self):
         if self.config.log_level >= 0:
             logger.info(" ".join(k[0] for k in self.stat_fields.values()))
-        if self.config.log_dir is not None:
+        if self.config.data_root is not None:
             def make_file(name):
                 key = name.split(".")[0]
                 path = self.file_names[key] = (
-                    self.config.log_dir.joinpath(name))
+                    self.config.data_root.joinpath(name))
                 self.files[key] = f = open(path, "wt")
                 return f
 
@@ -365,7 +349,7 @@ class Evolver:
             print(*args)
             return None
 
-        with open(path or self.config.log_dir.joinpath("evolution.json"), "wt") as f:
+        with open(path or self.config.data_root.joinpath("evolution.json"), "wt") as f:
             dct = copy.copy(self.__dict__)
             del dct["individual"]
             dct["interface"] = self.individual.interface()
@@ -401,7 +385,13 @@ class Evolver:
                 for k, (header, fmt, prop) in _self.stat_fields.items()
             }
 
-            return _self
+        pprint.pprint(_self.config)
+
+        _self.config.logger = _logging.setup_logging(
+            _self.config.data_root,
+            f"Resuming run from generation {_self.generation} up to {_self.config.generations}.")
+
+        return _self
 
     @property
     def generation(self): return self._generation
@@ -549,7 +539,7 @@ class Evolver:
             if (sample := self.rng.sample(self.species, 2))
         ) if len(self.species) > 1 else float("nan")
 
-        tns = self.config.species_count
+        tns = self.config.species
         if (ns := len(self.species)) != tns:
             base_factor = self.config.distance_threshold_variation
             factor = 1 / base_factor if ns < tns else base_factor
@@ -860,7 +850,7 @@ class _Plotter:
                            " Cannot generate plots")
             return False
 
-        o_dir = evolver.config.log_dir
+        o_dir = evolver.config.data_root
         if o_dir is None or not o_dir.exists():
             logger.warning(f"Cannot generate plots:"
                            f" output dir {o_dir} does not exist")
@@ -872,7 +862,7 @@ class _Plotter:
 
         if ext.lower() == "pdf":
             with PdfPages(o_dir.joinpath(f"stats.pdf")) as pdf:
-                d_args = dict(target_species=evolver.config.species_count)
+                d_args = dict(target_species=evolver.config.species)
                 for fn, args in [(cls.fitness, {}),
                                  (cls.distances, d_args)]:
                     fn(df, **args, options=options)
