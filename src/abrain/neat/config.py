@@ -33,13 +33,18 @@ class ConfigBase(ABC):
                 str_type = f_type
 
             assert str_type, (
-                f"Invalid user type {str_type} " f"(from {a_type=} {f_type=}"
+                f"Invalid user type {str_type} " f"(from {a_type=} {f_type=})"
             )
 
+            help_kwargs = dict(default=default, type=str_type.__name__)
+            arg_kwargs = dict()
+            if str_type is bool:
+                help_kwargs.update(const="True")
+                arg_kwargs.update(const="True", nargs="?")
             help_msg = (
-                f"{'.'.join(field.type.__metadata__)}"
-                f" (default: {default},"
-                f" type: {str_type.__name__})"
+                f"{'.'.join(field.type.__metadata__)} ("
+                + ", ".join(f"{k}: {v}" for k, v in help_kwargs.items())
+                + ")"
             )
             parser.add_argument(
                 f"--{field.name}".replace("_", "-"),
@@ -49,6 +54,7 @@ class ConfigBase(ABC):
                 metavar="V",
                 type=f_type,
                 help=help_msg,
+                **arg_kwargs,
             )
 
     @classmethod
