@@ -8,9 +8,12 @@ from pathlib import Path
 
 
 logger = logging.getLogger(__name__)
-MAYBE_DEBUG = logging.DEBUG + 5
 
+MAYBE_DEBUG = logging.DEBUG + 5
 logging.addLevelName(MAYBE_DEBUG, 'MAYBE_DEBUG')
+
+EVO = logging.INFO + 1
+logging.addLevelName(EVO, 'EVO')
 
 
 def get_next_tmp_data_root():

@@ -2,18 +2,17 @@ import copy
 import functools
 import inspect
 import json
-import pprint
-
-from . import _logging
 import math
 import multiprocessing
+import platform
+import pprint
 import shutil
 import signal
 from dataclasses import dataclass
 from io import TextIOWrapper
 from pathlib import Path
 from random import Random
-from typing import List, Callable, Optional, Any, Type, Dict
+from typing import List, Callable, Optional, Any, Type, Dict, Tuple
 
 import jsonpickle
 from matplotlib.backends.backend_pdf import PdfPages
@@ -21,6 +20,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 
 from abrain.neat.config import Config
+from . import _logging
 
 try:
     from matplotlib import pyplot as plt
@@ -231,6 +231,7 @@ class Evolver:
         self.config.logger = _logging.setup_logging(config.data_root)
 
         logger.info(f"Created output folder {config.data_root}")
+        logger.info(f"Running on {platform.node()}")
 
         if config.symlink_last:
             run_symlink = config.data_root.parent.joinpath("last")
@@ -291,7 +292,8 @@ class Evolver:
 
     def _begin(self):
         if self.config.log_level >= 0:
-            logger.info(" ".join(k[0] for k in self.stat_fields.values()))
+            logger.log(_logging.EVO,
+                       " ".join(k[0] for k in self.stat_fields.values()))
         if self.config.data_root is not None:
             def make_file(name):
                 key = name.split(".")[0]
@@ -380,9 +382,16 @@ class Evolver:
                 return decoded
 
     @classmethod
-    def load_config(cls, path):
-        """Ugly but bypasses a lot of boilerplate code."""
-        return jsonpickle.decode(str(json.load(open(path, "rt"))["config"]))
+    def load_config(cls, path) -> Tuple[Config, Any]:
+        """Ugly but bypasses a lot of boilerplate code.
+
+        Returns the configuration stored in the evolution.json file, as well
+        as the static genetic data
+        """
+        data = json.load(open(path, "rt"))
+        return (jsonpickle.decode(str(data["config"])),
+                jsonpickle.decode(str(data["interface"]["data"]),
+                                  keys=True))
 
     @classmethod
     def restore(cls, path, evaluator: Callable[[Any], EvaluationResult]):
@@ -733,8 +742,9 @@ class Evolver:
 
     def _global_stats(self):
         if self.config.log_level >= 0:
-            logger.info(" ".join(fmt.format(getter(self))
-                                 for _, fmt, getter in self.stat_fields.values()))
+            logger.log(_logging.EVO,
+                       " ".join(fmt.format(getter(self))
+                                for _, fmt, getter in self.stat_fields.values()))
 
         if (log_file := self.files.get("stats")) is not None:
             print(",".join(str(getter(self))

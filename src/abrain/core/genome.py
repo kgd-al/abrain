@@ -190,7 +190,9 @@ class Genome(_CPPNData):
                 self.labels = tokens
             else:
                 self.labels = ([f"I{j}" for j in range(i)]
-                               + [f"I{j+i}" for j in range(o)])
+                               + [f"O{j}" for j in range(o)])
+                if cdata["input_bias"]:
+                    self.labels[i] = 'b'
 
         @staticmethod
         def create_for_generic_cppn(

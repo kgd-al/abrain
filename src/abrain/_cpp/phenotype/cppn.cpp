@@ -63,7 +63,7 @@ const std::map<CPPNData::Node::FuncID,
 
   F(  "id", x), // Identity
   F(  "sq", x * x),  // Square function
-  F("sqrt", std::sqrt(x)),  // Square root function
+  F("sqrt", x <= 0 ? 0 : std::sqrt(x)),  // Square root function
   F( "abs", std::fabs(x)),  // Absolute value
   F( "sin", fd_sin(2.f*x)), // Sinusoidal
   F("step", x <= 0.f ? 0.f : 1.f),  // Step function
@@ -239,6 +239,7 @@ void CPPN::common_pre_evaluation() {
   if (_has_input_bias)
     _inputs.back()->data = 1;
 
+  // Setting to NAN so that we know that no value has been computed yet.
   for (const auto &n: _hidden)  n->data = NAN;
   for (const auto &n: _outputs)  n->data = NAN;
 
