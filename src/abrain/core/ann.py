@@ -59,11 +59,28 @@ def _iter_axons(ann: _ANN):
 
 
 class ANNMonitor:
-    def __init__(self, ann: _ANN, labels: Optional[Dict[_Point, str]],
-                 folder: Path,
-                 neurons_file: Optional[Union[Path, str]],
-                 dynamics_file: Optional[Union[Path, str]],
-                 dt: Optional[float] = None):
+    def __init__(
+            self,
+            ann: _ANN,
+            labels: Optional[Dict[_Point, str]],
+            folder: Path,
+            dynamics_file: Union[Path, str] = "dynamics",
+            neurons_file: Optional[Union[Path, str]] = None,
+            axonal_file: Optional[Union[Path, str]] = None,
+            dt: Optional[float] = None
+    ):
+
+        """
+        Creates an ANN monitor
+        :param ann: The neural network to monitor
+        :param labels: The labels for each of the ANN's neurons
+        :param folder: The folder under to save the monitoring data
+        :param neurons_file: The filename for the neurons dynamics (or None to not save that info)
+        :param axonal_file: The filename for the axonal dynamics (or None to not save that info)
+        :param dynamics_file: The filename for the pretty 3D dynamics
+        :param dt: The time interval between two updates (for pretty outputs)
+        """
+
         self.ann = ann
 
         self.labels = labels
@@ -71,30 +88,28 @@ class ANNMonitor:
         self.dt = dt
 
         self.save_folder = folder
-        self.neural_data_file = None
-        if neurons_file:
-            self.neural_data_file = folder.joinpath(neurons_file)
+        if folder.exists() and not folder.is_dir():
+            raise ValueError("Unable to create folder for ANN monitoring data: path exists and is not a directory")
+        elif not folder.exists():
+            folder.mkdir(parents=True)
 
         if self.labels is None:
             def _id(_n): return str(_n.pos)
         else:
             def _id(n): return f"{n.pos}:{self.labels.get(n.pos)}"
 
-        self.neurons_data = None
-        if neurons_file or dynamics_file:
-            self.neurons_data = _TinyDataFrame(
-                columns=[_id(n) for n in _iter_neurons(self.ann)]
-            )
+        self.neurons_data = _TinyDataFrame(
+            columns=[_id(n) for n in _iter_neurons(self.ann)]
+        )
+        self.neural_data_file = folder.joinpath(neurons_file) if neurons_file else None
 
-        self.axonal_data = None
-        self.axonal_data_file = None
-        if dynamics_file:
-            self.axonal_data_file = folder.joinpath(dynamics_file)
-            self.axonal_data = _TinyDataFrame(
-                columns=[f"{src.pos}->{dst.pos}"
-                         for _, src, dst in _iter_axons(self.ann)]
-            )
-            # pprint.pprint(self.axonal_data.columns)
+        self.axonal_data = _TinyDataFrame(
+            columns=[f"{src.pos}->{dst.pos}"
+                     for _, src, dst in _iter_axons(self.ann)]
+        )
+        self.axonal_data_file = folder.joinpath(axonal_file) if axonal_file else None
+
+        self.dynamics_file = folder.joinpath(dynamics_file).with_suffix(".html")
 
     def step(self):
         if self.neurons_data is not None:
@@ -113,62 +128,66 @@ class ANNMonitor:
             logger.info(f"Generated {self.neural_data_file}")
 
         if self.axonal_data_file:
-            c_range = _symmetrical_range
+            self.axonal_data.to_csv(self.axonal_data_file)
+            logger.info(f"Generated {self.axonal_data_file}")
 
-            nv_min, nv_max = c_range(self.neurons_data.data)
-            ev_min, ev_max = c_range(self.axonal_data.data)
+        c_range = _symmetrical_range
 
-            colorscale = [
-                [0, "rgba(0, 0, 255, 1)"],
-                [.5, "rgba(0, 0, 0, 0)"],
-                [.5, "rgba(0, 0, 0, 0)"],
-                [1, "rgba(255, 0, 0, 1)"]
+        nv_min, nv_max = c_range(self.neurons_data.data)
+        ev_min, ev_max = c_range(self.axonal_data.data)
+
+        colorscale = [
+            [0, "rgba(0, 0, 255, 1)"],
+            [.5, "rgba(0, 0, 0, 0)"],
+            [.5, "rgba(0, 0, 0, 0)"],
+            [1, "rgba(255, 0, 0, 1)"]
+        ]
+
+        frames = [
+            go.Frame(
+                data=[_neurons(self.ann, self.labels, data=n_row,
+                               cmin=nv_min, cmax=nv_max),
+                      _edges(self.ann, data=a_row,
+                             cmin=ev_min, cmax=ev_max,
+                             colorscale=colorscale, colorbar=.5)],
+                name=f'frame{index}'
+            ) for index, (n_row, a_row)
+            in enumerate(zip(self.neurons_data.data,
+                             self.axonal_data.data))
+        ]
+        fig = _figure(data=frames[0].data, frames=frames)
+
+        def frame_args(duration):
+            return {
+                "frame": {"duration": duration},
+                "mode": "immediate",
+                "fromcurrent": True,
+                "transition": {"duration": duration, "easing": "linear"},
+            }
+
+        if self.dt is None:
+            def fmt(k): return str(k)
+        else:
+            def fmt(k): return f"{k*self.dt:g}s"
+
+        sliders = [{
+            "pad": {"b": 10, "t": 10},
+            "len": 0.9,
+            "x": 0.1,
+            "y": 0,
+
+            "steps": [
+                {
+                    "args": [[f.name], frame_args(0)],
+                    "label": fmt(k),
+                    "method": "animate",
+                } for k, f in enumerate(fig.frames)
             ]
+        }]
 
-            frames = [
-                go.Frame(
-                    data=[_neurons(self.ann, self.labels, data=n_row,
-                                   cmin=nv_min, cmax=nv_max),
-                          _edges(self.ann, data=a_row,
-                                 cmin=ev_min, cmax=ev_max,
-                                 colorscale=colorscale, colorbar=.5)],
-                    name=f'frame{index}'
-                ) for index, (n_row, a_row)
-                in enumerate(zip(self.neurons_data.data,
-                                 self.axonal_data.data))
-            ]
-            fig = _figure(data=frames[0].data, frames=frames)
-
-            def frame_args(duration):
-                return {
-                    "frame": {"duration": duration},
-                    "mode": "immediate",
-                    "fromcurrent": True,
-                    "transition": {"duration": duration, "easing": "linear"},
-                }
-
-            if self.dt is None:
-                def fmt(k): return str(k)
-            else:
-                def fmt(k): return f"{k*self.dt:g}s"
-
-            sliders = [
-                {"pad": {"b": 10, "t": 10},
-                 "len": 0.9,
-                 "x": 0.1,
-                 "y": 0,
-
-                 "steps": [
-                     {"args": [[f.name], frame_args(0)],
-                      "label": fmt(k),
-                      "method": "animate",
-                      } for k, f in enumerate(fig.frames)
-                 ]
-                 }
-            ]
-
-            fig.update_layout(
-                updatemenus=[{"buttons": [
+        fig.update_layout(
+            updatemenus=[{
+                "buttons": [
                     {
                         "args": [None, frame_args(50)],
                         "label": "Play",
@@ -178,23 +197,22 @@ class ANNMonitor:
                         "args": [[None], frame_args(0)],
                         "label": "Pause",
                         "method": "animate",
-                    }],
+                    }
+                ],
 
-                    "direction": "down",
-                    "pad": {"r": 10, "t": 20, "b": 10},
-                    "type": "buttons",
-                    "x": 0.1,
-                    "y": 0,
-                }],
-                sliders=sliders
-            )
+                "direction": "down",
+                "pad": {"r": 10, "t": 20, "b": 10},
+                "type": "buttons",
+                "x": 0.1,
+                "y": 0,
+            }],
+            sliders=sliders
+        )
 
-            self.axonal_data.to_csv(self.axonal_data_file)
-
-            interactive_plot_file = self.axonal_data_file.with_suffix(".html")
-            fig.write_html(interactive_plot_file,
-                           auto_play=False)
-            logger.info(f"Generated {interactive_plot_file}")
+        interactive_plot_file = self.dynamics_file
+        fig.write_html(interactive_plot_file,
+                       auto_play=False)
+        logger.info(f"Generated {interactive_plot_file}")
 
 
 def _neurons(ann: _ANN, labels: Dict[_Point, str],
