@@ -1,11 +1,12 @@
 import ast
+import functools
 import logging
 from abc import ABC
 from argparse import Action
 from dataclasses import dataclass, fields
 from functools import lru_cache
 from pathlib import Path
-from typing import get_args, get_origin, Union, Annotated, Optional
+from typing import get_args, get_origin, Union, Annotated, Optional, Tuple
 
 
 @dataclass
@@ -14,6 +15,18 @@ class ConfigBase(ABC):
     @classmethod
     def __fields(cls):
         return [field for field in fields(cls) if get_origin(field.type) is Annotated]
+
+    @staticmethod
+    def _parse_tuple(_str, types):
+        if _str.lower() == "none":
+            return None
+        else:
+            return tuple(
+                _t(_v) for _t, _v in zip(
+                    types,
+                    _str.replace("(", "").replace(")", "").split(",")
+                )
+            )
 
     @classmethod
     def populate_argparser(cls, parser):
@@ -25,10 +38,14 @@ class ConfigBase(ABC):
             action = "store"
 
             if get_origin(a_type) is Union and type(None) in t_args:
-                f_type = t_args[0]
-            elif a_type == bool:
+                f_type = a_type = t_args[0]
+
+            if a_type is bool:
                 f_type = ast.literal_eval
                 str_type = bool
+            elif get_origin(a_type) is tuple:
+                f_type = functools.partial(cls._parse_tuple, types=get_args(a_type))
+                str_type = tuple
 
             if not str_type:
                 str_type = f_type

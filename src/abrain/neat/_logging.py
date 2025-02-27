@@ -20,9 +20,15 @@ def get_next_tmp_data_root():
     root = Path("tmp")
     root.mkdir(exist_ok=True)
 
-    next_id = max([int(str(path)
-                       .split("/")[1]
-                       .split("-")[0][3:]) for path in root.glob("run*/")] + [-1]) + 1
+    def maybe_int(_str):
+        try:
+            return int(_str)
+        except ValueError:
+            return 0
+
+    next_id = max([maybe_int(str(path)
+                             .split("/")[1]
+                             .split("-")[0][3:]) for path in root.glob("run*/")] + [-1]) + 1
     return root.joinpath(f"run{next_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
 
 

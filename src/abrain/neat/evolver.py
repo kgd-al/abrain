@@ -201,6 +201,7 @@ class Evolver:
             evaluator: Callable[[Any], EvaluationResult],
             genotype_interface: Interface,
             global_config: Optional[Any] = None,
+            process_initializer: Optional[Callable] = None,
     ):
         """
         Creates a NEAT evolver.
@@ -250,6 +251,8 @@ class Evolver:
         self.__evaluate = functools.partial(self._evaluate_one,
                                             evaluator=self.evaluator,
                                             config=self.config)
+        self.__initializer = process_initializer
+
         self.fitnesses = dict(max=nan, avg=nan, std=nan)
 
         self.individual = _individual_class(genotype_interface)
@@ -313,7 +316,12 @@ class Evolver:
         if (t := self.config.threads) is None or t <= 1:
             self._processes_pool = None
         else:
-            self._processes_pool = multiprocessing.Pool(processes=t)
+            # self._processes_pool = multiprocessing.Pool(t)
+            context = multiprocessing.get_context("spawn")
+            self._processes_pool = multiprocessing.pool.Pool(
+                processes=t,
+                initializer=self.__initializer,
+                context=context)
 
         if not (self.generation > 0 and self.__started):
             population = [self.individual.random()
