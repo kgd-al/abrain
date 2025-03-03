@@ -231,8 +231,12 @@ class Evolver:
 
         self.config.logger = _logging.setup_logging(config.data_root)
 
+        if config.threads is None:
+            config.threads = multiprocessing.cpu_count()
+
         logger.info(f"Created output folder {config.data_root}")
         logger.info(f"Running on {platform.node()}")
+        logger.info(f"Using {config.threads} threads")
 
         if config.symlink_last:
             run_symlink = config.data_root.parent.joinpath("last")
