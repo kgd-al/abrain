@@ -321,7 +321,7 @@ class Evolver:
             self._processes_pool = None
         else:
             # self._processes_pool = multiprocessing.Pool(t)
-            context = multiprocessing.get_context("spawn")
+            context = multiprocessing.get_context("forkserver")
             self._processes_pool = multiprocessing.pool.Pool(
                 processes=t,
                 initializer=self.__initializer,
