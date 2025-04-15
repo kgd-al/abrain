@@ -793,7 +793,7 @@ class Evolver:
 
 def _individual_class(interface: Evolver.Interface):
     _genome = interface.g_class
-    _data = interface.data
+    _data = interface.data or {}
     _random = interface.random
     _mutate = interface.mutate
     _crossover = interface.crossover
@@ -802,7 +802,7 @@ def _individual_class(interface: Evolver.Interface):
     def has_function(name, params):
         fn = getattr(_genome, name, None)
         if fn is None:
-            raise ValueError(f"No function '{name}' for '{_genome}'")
+            raise ValueError(f"No function '{name}' for '{_genome.__qualname__}'")
 
         if not callable(fn):
             raise ValueError(f"'{name}' is not a callable function in"
