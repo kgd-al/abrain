@@ -499,8 +499,8 @@ class Evolver:
             results = [self.__evaluate(i.genome) for i in population]
         else:
             results = self._processes_pool.map(self.__evaluate, [i.genome for i in population])
-        for i, f in zip(population, results):
-            i.fitness, i.stats = f
+        for i, r in zip(population, results):
+            i.fitness, i.stats = r
 
         # Filter out invalid fitnesses
         population = [_i for _i in population if valid_fitness(_i.fitness)]
@@ -873,6 +873,15 @@ def _individual_class(interface: Evolver.Interface):
                 gid=getattr(self, "id")(),
                 parents=getattr(self, "parents")()
             )
+
+        def to_json(self):
+            dct = self.__getstate__()
+            dct["genome"] = dct["genome"].to_json()
+            return dct
+
+        def to_file(self, path: Path):
+            with open(path, "wt") as f:
+                f.write(json.dumps(self.to_json()))
 
         def __setstate__(self, state):
             fitness, stats = state.pop("fitness"), state.pop("stats")
