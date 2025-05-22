@@ -8,6 +8,7 @@ import platform
 import pprint
 import shutil
 import signal
+import time
 from dataclasses import dataclass
 from io import TextIOWrapper
 from pathlib import Path
@@ -54,21 +55,30 @@ def _log(msg, level=_logging.MAYBE_DEBUG, *args, **kwargs):
     logger.log(level, msg, *args, **kwargs)
 
 
-def _stats(population):
+def _stats(population, getter):
+    population = list(population)
+    _min, _max, _avg, _dev = math.inf, -math.inf, 0, 0
     if len(population) > 0:
-        f_max, f_avg = -math.inf, 0
         for i in population:
-            f = i.fitness
-            f_max = max(f, f_max)
-            f_avg += f
-        f_avg /= len(population)
-        f_dev = 0.
+            v = getter(i)
+            _min = min(v, _min)
+            _max = max(v, _max)
+            _avg += v
+        _avg /= len(population)
         for i in population:
-            f_dev += (f_avg - i.fitness) ** 2
-        f_dev = math.sqrt(f_dev / len(population))
-        return dict(max=f_max, avg=f_avg, dev=f_dev)
-    else:
-        return dict(max=-math.inf, avg=-math.inf, dev=0)
+            _dev += (_avg - getter(i)) ** 2
+        _dev = math.sqrt(_dev / len(population))
+    return dict(min=_min, max=_max, avg=_avg, dev=_dev)
+
+
+def _fitness_stats(population):
+    stats = _stats(population, lambda i: i.fitness)
+    stats.pop("min")
+    return stats
+
+
+def _time_stats(population):
+    return _stats(population, lambda i: i.stats["time"])
 
 
 class Species:
@@ -82,7 +92,7 @@ class Species:
         self.population = [representative]
         self.prev_size = 0
 
-        self.f_stats = _stats([])
+        self.f_stats = _fitness_stats([])
 
     def reset(self):
         self.prev_size = len(self)
@@ -91,7 +101,7 @@ class Species:
     def finalize(self):
         # Compute species fitness, update age and stagnation
         prev_fitness = self.f_stats["max"]
-        self.f_stats = _stats(self.population)
+        self.f_stats = _fitness_stats(self.population)
         self.age += 1
         if prev_fitness < self.f_stats["max"]:
             self.last_improved = self.age
@@ -264,10 +274,13 @@ class Evolver:
         self._distance_threshold = self.config.initial_distance_threshold
         self._distances = dict(species=nan, inter=nan, intra=nan)
 
+        self.times = dict(min=nan, avg=nan, std=nan, max=nan)
+
         self.stat_fields = {
             key: (f"{key:^{width}s}", f"{{:{width}{flags}}}", getattr(Evolver, prop).fget)
             for key, width, flags, prop in [
                 ("Gen", 3, "d", "generation"),
+                ("Time", 4, ".2g", "time"),
                 ("Sp", 3, "d", "species_count"),
                 ("dis_t", 6, ".3g", "distance_threshold"),
                 ("d_spc", 6, ".3g", "distance_between_species"),
@@ -313,7 +326,7 @@ class Evolver:
             print(",".join(k for k in self.stat_fields.keys()), file=file)
 
             make_file("species.csv")
-            self._speciation_stats(init=True)
+            make_file("time.csv")
 
             make_file("genealogy.dat")
 
@@ -335,7 +348,7 @@ class Evolver:
             for s in self.species:
                 s.prev_size = len(s)
 
-        self._global_stats()
+        self._global_stats(init=True)
 
         def interrupt_handler(signum, _):
             logger.warning(f"Interrupted by signal {signum}.")
@@ -472,6 +485,10 @@ class Evolver:
         return self.species[0].population[0]
 
     @property
+    def time(self):
+        return self.times["avg"]
+
+    @property
     def population(self):
         for s in self.species:
             yield from s.population
@@ -479,7 +496,9 @@ class Evolver:
     @staticmethod
     def _evaluate_one(genome, evaluator, config):
         try:
-            return evaluator(genome)
+            start = time.time()
+            r = evaluator(genome)
+            r.stats["time"] = time.time() - start
 
         except Exception as e:
             f = config.data_root.joinpath("failures")
@@ -492,7 +511,9 @@ class Evolver:
                 f" Guilty genotype written to {f}.")
             logger.exception("Stack trace:")
 
-            return EvaluationResult()
+            r = EvaluationResult(stats=dict(time=None))
+
+        return r
 
     def _evaluate(self, population: List) -> List:
         if self._processes_pool is None:
@@ -514,7 +535,7 @@ class Evolver:
             else:
                 logger.warning(f"Filtered out {filtered} invalid individuals.")
 
-        self.fitnesses = _stats(population)
+        self.fitnesses = _fitness_stats(population)
 
         return population
 
@@ -579,8 +600,6 @@ class Evolver:
 
         self.species.sort(key=lambda x: -x.f_stats["max"])
 
-        self._speciation_stats()
-
         self._distances["species"] = sum(
             distances(self.species[lhs].representative,
                       self.species[rhs].representative)[0]
@@ -628,19 +647,6 @@ class Evolver:
             #                                   1.5 * self._distance_threshold))
 
         # pprint.pprint(list(distances._data.values()))
-
-    def _speciation_stats(self, init=False):
-        if (f := self.files.get("species")) is None:
-            return
-
-        if init:
-            print("Generation,Species,Size,F_max,F_avg", file=f)
-
-        else:
-            for s in self.species:
-                print(self._generation, s.id, len(s),
-                      s.f_stats["max"], s.f_stats["avg"],
-                      sep=",", file=f)
 
     def _reproduce(self):
         fitnesses = [sum(ind.fitness for ind in s.population) / (len(s) ** 2)
@@ -752,7 +758,7 @@ class Evolver:
 
         return population
 
-    def _global_stats(self):
+    def _global_stats(self, init=False):
         if self.config.log_level >= 0:
             logger.log(_logging.EVO,
                        " ".join(fmt.format(getter(self))
@@ -766,6 +772,28 @@ class Evolver:
         if (log_file := self.files.get("genealogy")) is not None:
             for i in self.population:
                 print(i.id(), i.fitness, *i.parents(), file=log_file)
+
+        self._speciation_stats(init)
+        self._time_stats(init)
+
+    def _speciation_stats(self, init=False):
+        if (f := self.files.get("species")) is None:
+            return
+
+        if init:
+            print("Generation,Species,Size,F_max,F_avg", file=f)
+
+        for s in self.species:
+            print(self._generation, s.id, len(s),
+                  s.f_stats["max"], s.f_stats["avg"],
+                  sep=",", file=f)
+
+    def _time_stats(self, init=False):
+        file = self.files["time"]
+        self.times = _time_stats(self.population)
+        if init:
+            print(",".join(["Gen"] + list(self.times.keys())), file=file)
+        print(",".join(f"{t:f}" for t in [self.generation] + list(self.times.values())), file=file)
 
     @staticmethod
     def _age_gain(age):
@@ -955,6 +983,9 @@ class _Plotter:
                               options=options) \
             .savefig(o_dir.joinpath(f"species.{ext}"), bbox_inches="tight")
 
+        cls.time_plot(pd.read_csv(evolver.file_names["time"]), options) \
+            .savefig(o_dir.joinpath(f"time.{ext}"), bbox_inches="tight")
+
         return True
 
     # Simple fitness over generation
@@ -995,6 +1026,19 @@ class _Plotter:
         # "Sp": ("{:2d}", lambda: len(self.species)),
 
     @staticmethod
+    def time_plot(df: pd.DataFrame, options: dict):
+        fig, ax = plt.subplots()
+        ax.set_xlabel("Generation")
+        ax.set_ylabel("Time (s)")
+        ax.fill_between(df.Gen, df["avg"] - df["dev"], df["avg"] + df["dev"],
+                        alpha=.1, label="Dev")
+        ax.plot(df.Gen, df["min"], label="Min")
+        ax.plot(df.Gen, df["avg"], label="Avg")
+        ax.plot(df.Gen, df["max"], label="Max")
+        ax.legend()
+        return fig
+
+    @staticmethod
     def species_histogram(df: pd.DataFrame, options: dict):
         length = df.Generation.max() + 1
         gb = df.groupby("Species")
@@ -1005,7 +1049,7 @@ class _Plotter:
             fs.append([float("nan") for _ in range(length)])
             for a in g[["Generation", "Size", "F_max"]].itertuples():
                 gen = a.Generation
-                ys[-1][gen] += a.Size
+                ys[-1][gen] = a.Size
                 fs[-1][gen] = a.F_max
             ys[-1][length] = ys[-1][length - 1]
 
@@ -1044,3 +1088,8 @@ class _Plotter:
         cbar.ax.set_ylabel("Fitness (max)")
 
         return fig
+
+    @staticmethod
+    def time_histogram(df: pd.DataFrame, options: dict):
+        # From https://matplotlib.org/stable/gallery/statistics/time_series_histogram.html
+        pass
