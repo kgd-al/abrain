@@ -156,7 +156,7 @@ class Genome(_CPPNData):
         """ (Optional) Manager for genome identifiers and lineage """
 
         def __init__(self,
-                     seed: int,
+                     seed: Optional[int],
                      cdata: dict,
                      labels: Optional[Union[str, Collection[str]]],
                      genome_ids: bool = True,
@@ -194,8 +194,9 @@ class Genome(_CPPNData):
                 if cdata["input_bias"]:
                     self.labels[i-1] = 'b'
 
-        @staticmethod
+        @classmethod
         def create_for_generic_cppn(
+                cls,
                 inputs: int, outputs: Union[int, Collection[str]],
                 labels: Optional[Union[str, Collection[str]]] = None,
                 seed: Optional[int] = None,
@@ -223,7 +224,7 @@ class Genome(_CPPNData):
                 functions = outputs
                 outputs = len(outputs)
 
-            d = Genome.Data(
+            d = cls(
                 cdata=dict(
                     i=inputs + int(with_input_bias),
                     o=outputs,
@@ -237,13 +238,14 @@ class Genome(_CPPNData):
                 key=Genome.Data.__private_key)
             return d
 
-        @staticmethod
+        @classmethod
         def create_for_eshn_cppn(
+                cls,
                 dimension: int,
-                with_input_bias: Optional[bool] = True,
-                with_input_length: Optional[bool] = True,
-                with_leo: Optional[bool] = True,
-                with_output_bias: Optional[bool] = True,
+                with_input_bias: bool = True,
+                with_input_length: bool = True,
+                with_leo: bool = True,
+                with_output_bias: bool = True,
                 seed: Optional[int] = None,
                 with_innovations: bool = True,
                 with_lineage: bool = True
@@ -288,7 +290,7 @@ class Genome(_CPPNData):
                 outputs.append(Config.eshnOutputFunctions[ESHNOutputs.Bias])
                 labels.append("B")
 
-            return Genome.Data.create_for_generic_cppn(
+            return cls.create_for_generic_cppn(
                 inputs=inputs,
                 outputs=outputs,
                 labels=labels,
