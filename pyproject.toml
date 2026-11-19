@@ -48,7 +48,8 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "numpy"
+  "numpy",
+  "matplotlib",
 ]
 
 all-tests = [
