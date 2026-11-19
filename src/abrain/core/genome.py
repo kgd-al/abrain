@@ -587,7 +587,7 @@ class Genome(_CPPNData):
     ###########################################################################
 
     @classmethod
-    def from_dot(cls, data: Data, path: Union[str | Path]) -> 'Genome':
+    def from_dot(cls, data: Data, path: Union[str, Path]) -> 'Genome':
         """Produce a Genome by parsing a simplified graph description
 
             .. warning:: Unimplemented
