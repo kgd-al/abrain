@@ -43,6 +43,7 @@ def setup_logging(folder: Path, header: Optional[str] = None):
     rich_handler = RichHandler()
     rich_handler.setFormatter(logging.Formatter("%(message)s"))
 
+    logger.addHandler(file_handler)
     logging.basicConfig(
         level=logging.WARNING,
         handlers=[file_handler, rich_handler],

@@ -10,7 +10,7 @@ import pytest
 from matplotlib import pyplot as plt, lines
 from matplotlib.collections import LineCollection
 
-from abrain.neat.evolver import NEATEvolver, NEATConfig
+from abrain.neat.evolver import Evolver as NEATEvolver, Config as NEATConfig
 
 
 class RGBXYGenome:
@@ -96,17 +96,19 @@ def test_evolver(neat_seed, tmp_path):
     config = NEATConfig(
         seed=neat_seed,
         threads=4,
-        log_dir=tmp_path,
+        data_root=tmp_path,
         log_level=10,
         population_size=pop,
-        species_count=species,
+        species=species,
         initial_distance_threshold=.1,
         overwrite=True,
     )
     pprint.pprint(config)
     evolver = NEATEvolver(config,
                           evaluator=RGBXYGenome.evaluate,
-                          genome_class=RGBXYGenome, genome_data=dict(rng=rng))
+                          genotype_interface=NEATEvolver.Interface(
+                            g_class=RGBXYGenome, data=dict(rng=rng)    
+                          ))
 
     gen_digits = math.ceil(math.log10(gen+1))
 
@@ -157,11 +159,12 @@ def test_evolver(neat_seed, tmp_path):
                     bbox_inches="tight")
         plt.close()
 
-    plot(0)
     with evolver:
+        plot(0)
         for i in range(gen):
             evolver.step()
             plot(i+1)
-    plot(gen, population=False, suffix="_champions")
-    # evolver.generate_plots()
-    evolver.generate_plots(ext="pdf", options=dict())
+        plot(gen, population=False, suffix="_champions")
+        evolver.generate_plots(ext="pdf", options=dict())
+
+    evolver.clean()

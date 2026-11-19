@@ -4,12 +4,13 @@ import inspect
 import json
 import math
 import multiprocessing
+import multiprocessing.pool
 import platform
 import pprint
 import shutil
 import signal
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from io import TextIOWrapper
 from pathlib import Path
 from random import Random
@@ -139,7 +140,7 @@ class _Distances:
 @dataclass
 class EvaluationResult:
     fitness: float = float("-inf")
-    stats: dict = None
+    stats: dict = field(default_factory=dict)
 
     def __iter__(self): return iter((self.fitness, self.stats))
 
@@ -147,23 +148,8 @@ class EvaluationResult:
 def valid_fitness(fitness):
     return not math.isnan(fitness) and not math.isinf(fitness)
 
-#
-# @jsonpickle.handlers.register(multiprocessing.Pool().__class__, base=True)
-# class ProcessingPoolHandler(jsonpickle.handlers.BaseHandler):
-#     magics = ('py/object', "multiprocessing.pool.Pool")
-#
-#     def flatten(self, obj, data):
-#         assert data[self.magics[0]] == self.magics[1]
-#         data["threads"] = len(obj._pool)
-#         return data
-#
-#     def restore(self, data):
-#         assert data[self.magics[0]] == self.magics[1]
-#         return multiprocessing.Pool(data["threads"])
-#
 
-
-@jsonpickle.handlers.register(multiprocessing.Pool().__class__, base=True)
+@jsonpickle.handlers.register(multiprocessing.pool.Pool, base=True)
 class ProcessingPoolHandler(jsonpickle.handlers.BaseHandler):
     def flatten(self, obj, data):
         return data
@@ -303,6 +289,10 @@ class Evolver:
 
         self._end()
 
+    def clean(self):
+        for handler in self.config.logger.handlers:
+            handler.close()
+
     def __enter__(self):
         self._begin()
         return self
@@ -364,8 +354,10 @@ class Evolver:
     def _end(self):
         for f in self.files.values():
             f.close()
+        self.files = dict()
         if self._processes_pool is not None:
             self._processes_pool.close()
+        self._processes_pool = None
 
     def step(self):
         if not self.__started:
@@ -498,14 +490,23 @@ class Evolver:
         try:
             start = time.time()
             r = evaluator(genome)
+            if not isinstance(r, EvaluationResult):
+                r = EvaluationResult(fitness=r)
             r.stats["time"] = time.time() - start
 
         except Exception as e:
             f = config.data_root.joinpath("failures")
             f.mkdir(parents=True, exist_ok=True)
-            f = f.joinpath(f"{genome.id()}.json")
-            genome.to_file(f, dict(exception=str(e),
-                                   fitness=EvaluationResult.fitness))
+            if hasattr(genome, "to_file"):
+                if hasattr(genome, "id"):
+                    file_id = f"ID{genome.id()}"
+                else:
+                    file_id = f"#{len(list(f.glob('*.json')))}"
+                f = f.joinpath(f"{file_id}.json")
+                genome.to_file(f, dict(exception=str(e),
+                                    fitness=EvaluationResult.fitness))
+            else:
+                f = f"None (no to_file function in {genome.__class__})"
             logger.error(
                 f"Evaluation failed: {e.__class__.__name__}({e})."
                 f" Guilty genotype written to {f}.")
@@ -816,6 +817,8 @@ class Evolver:
                    key=key)
 
     def generate_plots(self, ext="png", options: Optional[dict] = None):
+        for file in self.files.values():
+            file.flush()
         _Plotter.generate_plots(self, ext, options)
 
 
@@ -985,6 +988,7 @@ class _Plotter:
 
         cls.time_plot(pd.read_csv(evolver.file_names["time"]), options) \
             .savefig(o_dir.joinpath(f"time.{ext}"), bbox_inches="tight")
+        plt.close("all")
 
         return True
 

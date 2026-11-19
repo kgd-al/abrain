@@ -21,7 +21,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Life",
 ]
 dependencies = [
-  "plotly",
+  "plotly==5.24.1",
   "importlib_resources",
   "graphviz",
   "pyrecord",
@@ -68,7 +68,7 @@ docs = [
 
 ]
 
-kaleido = [ "kaleido" ]
+kaleido = [ "kaleido==0.2.1" ]
 
 matplotlib = [ "matplotlib", "pandas" ]
 

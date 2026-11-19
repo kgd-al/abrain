@@ -6,6 +6,8 @@ import pytest
 
 from abrain import CPPN, CPPN2D, CPPN3D
 
+import logging
+logging.getLogger("matplotlib").setLevel(logging.ERROR)
 
 class TestSize(IntFlag):
     SMALL = 2

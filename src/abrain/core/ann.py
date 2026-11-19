@@ -109,7 +109,7 @@ class ANNMonitor:
         )
         self.axonal_data_file = folder.joinpath(axonal_file) if axonal_file else None
 
-        self.dynamics_file = folder.joinpath(dynamics_file).with_suffix(".html")
+        self.dynamics_file = folder.joinpath(dynamics_file).with_suffix(".html") if dynamics_file else None
 
     def step(self):
         if self.neurons_data is not None:
@@ -130,6 +130,9 @@ class ANNMonitor:
         if self.axonal_data_file:
             self.axonal_data.to_csv(self.axonal_data_file)
             logger.info(f"Generated {self.axonal_data_file}")
+
+        if self.dynamics_file is None:
+            return
 
         c_range = _symmetrical_range
 
