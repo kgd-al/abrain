@@ -77,7 +77,3 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
 filterwarnings = ["error"]
 testpaths = ["tests"]
-
-
-[tool.cibuildwheel]
-skip = ["cp3*t-*"]     # free-threaded builds (cp313t, cp314t, ...)
