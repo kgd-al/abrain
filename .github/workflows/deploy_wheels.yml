@@ -80,7 +80,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ matrix.build }}
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_TEST_EXTRAS: tests
+          CIBW_TEST_EXTRAS: all-tests
           CIBW_BEFORE_TEST: "pip install 'kaleido==0.2.1' || echo 'No install candidates for kaleido'"
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
