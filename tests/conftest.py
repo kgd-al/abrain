@@ -13,6 +13,9 @@ for name in ("matplotlib", "PIL"):
 import matplotlib
 matplotlib.use("Agg")
 
+import kaleido
+kaleido.get_chrome_sync()
+
 class TestSize(IntFlag):
     SMALL = 2
     NORMAL = 8

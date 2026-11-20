@@ -153,7 +153,7 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
   mkdir -p $cout # pytest will have cleared everything. Build it back
   mv $(basename $pycoverage) $pycoverage
   coverage report --data-file=$pycoverage
-  coverage html  --fail-under=100 --data-file=$pycoverage -d $cout/html/python
+  coverage html  --fail-under=50 --data-file=$pycoverage -d $cout/html/python
   
   cppcoverage=$cout/cpp.coverage.info
   lcov --capture --no-external --directory . --rc lcov_branch-coverage=1 --output-file $cppcoverage

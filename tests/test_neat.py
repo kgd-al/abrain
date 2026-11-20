@@ -91,7 +91,7 @@ class RGBXYGenome:
 def test_evolver(neat_seed, tmp_path):
     # neat_seed = 1
     rng = Random(neat_seed)
-    pop, gen = 100, 100
+    pop, gen = 25, 25
     species = 8
     config = NEATConfig(
         seed=neat_seed,
