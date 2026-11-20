@@ -80,8 +80,8 @@ jobs:
         coverage run --branch --data-file=$(basename $PYCOVERAGE) \
           --source=. --omit="tests/conftest.py,setup.py,examples/*.py" \
           -m \
-          pytest --durations=10 --basetemp=$TEST_OUT -ra \
-            --normal-scale --test-evolution # --test-examples
+          pytest -s --durations=10 --basetemp=$TEST_OUT -ra \
+            --ci --normal-scale --test-evolution # --test-examples
         echo "OUTPUT_TESTS=0" >> $GITHUB_ENV
     - name: Compute python coverage
       continue-on-error: true

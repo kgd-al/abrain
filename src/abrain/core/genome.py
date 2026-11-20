@@ -3,15 +3,13 @@ Test documentation for genome file (module?)
 """
 import logging
 import os
-import pprint
-import re
 
 from collections import namedtuple
 from collections.abc import Iterable
 from pathlib import Path
 from random import Random
 from shutil import which
-from tempfile import TemporaryDirectory, mkstemp
+from tempfile import mkstemp
 from typing import (Dict, List, Any, Optional, Union,
                     Collection, Callable, Tuple)
 
@@ -607,7 +605,8 @@ class Genome(_CPPNData):
             for i, line in enumerate(f):
                 if line.strip()[0:2] == '//':
                     continue
-                for statement in [_s for s in line.split(";") if (_s := s.strip())]:
+                for statement in [_s for s in line.split(";")
+                                  if (_s := s.strip())]:
                     # print(statement)
                     if statement[:6] == "CPPN {" or statement == "}":
                         continue
@@ -625,7 +624,8 @@ class Genome(_CPPNData):
                             inputs += 1
                             nodes.append(("I", label, None))
                             if len(tokens) > 1:
-                                logger.warning(f"Unused data on line {i}: {tokens[1:]}")
+                                logger.warning(
+                                    f"Unused data on line {i}: {tokens[1:]}")
                         elif h.isupper():  # Output node
                             outputs += 1
                             nodes.append(("O", label, maybe_token(tokens, 1)))
@@ -633,13 +633,15 @@ class Genome(_CPPNData):
                             nodes.append(("H", label, maybe_token(tokens, 1)))
                         else:
                             raise ValueError(
-                                f"Malformed line {i}: Expected node declaration\n{line}"
-                            )
+                                f"Malformed line {i}:"
+                                f" Expected node declaration\n{line}")
                     else:
                         if len(tokens) < 2:
                             raise ValueError(
-                                f"Malformed line {i}: Expected link declaration\n{line}")
-                        links.append((tokens[0], tokens[2], maybe_token(tokens, 3)))
+                                f"Malformed line {i}:"
+                                f" Expected link declaration\n{line}")
+                        links.append((tokens[0], tokens[2],
+                                      maybe_token(tokens, 3)))
         #
         # print("Nodes:")
         # pprint.pprint(nodes)
@@ -651,10 +653,12 @@ class Genome(_CPPNData):
             raise ValueError("Found duplicate node labels")
 
         if inputs != data.cdata["i"]:
-            raise ValueError(f"Inputs mismatch! Expecting {data.cdata['i']} but got {inputs}.")
+            raise ValueError(f"Inputs mismatch! Expecting"
+                             f" {data.cdata['i']} but got {inputs}.")
 
         if outputs != data.cdata["o"]:
-            raise ValueError(f"Outputs mismatch! Expecting {data.cdata['o']} but got {outputs}.")
+            raise ValueError(f"Outputs mismatch! Expecting"
+                             f" {data.cdata['o']} but got {outputs}.")
 
         for fn in set(_fn for _, _, _fn in nodes if _fn):
             if fn not in Config.functionSet:
@@ -663,7 +667,7 @@ class Genome(_CPPNData):
 
         bias = "b" in [label for _, label, _ in nodes]
         if bias != data.cdata["input_bias"]:
-            raise ValueError(f"Bias mismatch!")
+            raise ValueError("Bias mismatch!")
 
         g = cls(cls.__private_key)
         g.inputs, g.outputs, g.bias = inputs, outputs, bias
@@ -679,7 +683,9 @@ class Genome(_CPPNData):
             g._add_node(i, fn)
 
         for i, o, w in links:
-            w = float(w) if w is not None else cls.__random_link_weight(data.rng)
+            w = (float(w)
+                 if w is not None else
+                 cls.__random_link_weight(data.rng))
             g._add_link(data, nodes_dict[i], nodes_dict[o], w,
                         is_mutation=False)
 
@@ -769,7 +775,8 @@ class Genome(_CPPNData):
         def format_label(_label):
             if '_' in _label:
                 j = _label.find('_')
-                _label = "<" + _label[:j] + "<SUB>" + _label[j + 1:] + "</SUB>>"
+                _label = ("<" + _label[:j] + "<SUB>"
+                          + _label[j + 1:] + "</SUB>>")
             return _label
 
         # input nodes
@@ -833,7 +840,8 @@ class Genome(_CPPNData):
             dot.subgraph(g)
 
         dot_path = path.with_suffix(".dot")
-        tmp_dot_fd, tmp_dot_path = mkstemp(dir=str(path.parent), suffix="genome.dot")
+        tmp_dot_fd, tmp_dot_path = mkstemp(dir=str(path.parent),
+                                           suffix="genome.dot")
         tmp_dot_path = Path(tmp_dot_path)
         tmp_dot_path.write_text(dot.source, encoding="ascii")
         ret = dot_render('dot', ext, tmp_dot_path)
@@ -850,14 +858,16 @@ class Genome(_CPPNData):
 
         return ret
 
-    def to_math(self, data: Data, path: Path, extension: str = "tex", fmt: str = ".2g"):
+    def to_math(self, data: Data, path: Path,
+                extension: str = "tex", fmt: str = ".2g"):
         """
         Renders this genome's equivalent equation system
 
         :param data: Genome's shared data (for labels)
         :param path: The path to write to
         :param extension: The extension to use for rendering (defaults to tex)
-        :param fmt: Numeric format for the weights. Defaults to .2g for compact (but imprecise) output
+        :param fmt: Numeric format for the weights.
+        Defaults to .2g for compact (but imprecise) output
         """
 
         labels = data.labels.copy()
@@ -886,7 +896,8 @@ class Genome(_CPPNData):
 
         formats = {
             "id": lambda _fn, _content: (f"({_content})"
-                                         if any((not c.isdigit() and c != ".") for c in _content)
+                                         if any((not c.isdigit() and c != ".")
+                                                for c in _content)
                                          else _content),
             "sq": lambda _fn, _content: f"({_content})^2",
             "abs": lambda _fn, _content: f"|{_content}|",
@@ -937,7 +948,8 @@ class Genome(_CPPNData):
         for i, node in enumerate(self.nodes):
             if self._is_output(node.id):
                 equations.append(
-                    labels[i + self.inputs] + "&=" + parse_math(node.id, 1) + r"\\"
+                    labels[i + self.inputs] + "&="
+                    + parse_math(node.id, 1) + r"\\"
                 )
         equations.append(r"\cline{0-1} ")
 
@@ -949,7 +961,8 @@ class Genome(_CPPNData):
             label = get_label(nid)
             expr = formats.get(fn, default_format)(
                 fn,
-                join_expr([add_weight(get_label(entry[0]), entry[1]) for entry in graph[nid][1]]))
+                join_expr([add_weight(get_label(entry[0]), entry[1])
+                           for entry in graph[nid][1]]))
             equations.append(fr"{label} &= {expr}\\")
 
         equations.insert(0, r"\begin{eqnarray*}")

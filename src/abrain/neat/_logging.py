@@ -28,8 +28,10 @@ def get_next_tmp_data_root():
 
     next_id = max([maybe_int(str(path)
                              .split("/")[1]
-                             .split("-")[0][3:]) for path in root.glob("run*/")] + [-1]) + 1
-    return root.joinpath(f"run{next_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+                             .split("-")[0][3:])
+                   for path in root.glob("run*/")] + [-1]) + 1
+    return root.joinpath(
+        f"run{next_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
 
 
 def setup_logging(folder: Path, header: Optional[str] = None):
@@ -38,7 +40,8 @@ def setup_logging(folder: Path, header: Optional[str] = None):
 
     file_handler = logging.FileHandler(log)
     file_handler.setFormatter(
-        logging.Formatter("[%(asctime)s] [%(levelname)s] [%(module)s] %(message)s"))
+        logging.Formatter(
+            "[%(asctime)s] [%(levelname)s] [%(module)s] %(message)s"))
 
     rich_handler = RichHandler()
     rich_handler.setFormatter(logging.Formatter("%(message)s"))

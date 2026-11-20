@@ -1,5 +1,4 @@
 import logging
-import pprint
 
 import math
 from itertools import chain
@@ -75,8 +74,10 @@ class ANNMonitor:
         :param ann: The neural network to monitor
         :param labels: The labels for each of the ANN's neurons
         :param folder: The folder under to save the monitoring data
-        :param neurons_file: The filename for the neurons dynamics (or None to not save that info)
-        :param axonal_file: The filename for the axonal dynamics (or None to not save that info)
+        :param neurons_file: The filename for the neurons dynamics
+        (or None to not save that info)
+        :param axonal_file: The filename for the axonal dynamics
+        (or None to not save that info)
         :param dynamics_file: The filename for the pretty 3D dynamics
         :param dt: The time interval between two updates (for pretty outputs)
         """
@@ -89,7 +90,8 @@ class ANNMonitor:
 
         self.save_folder = folder
         if folder.exists() and not folder.is_dir():
-            raise ValueError("Unable to create folder for ANN monitoring data: path exists and is not a directory")
+            raise ValueError("Unable to create folder for ANN monitoring data:"
+                             " path exists and is not a directory")
         elif not folder.exists():
             folder.mkdir(parents=True)
 
@@ -101,15 +103,19 @@ class ANNMonitor:
         self.neurons_data = _TinyDataFrame(
             columns=[_id(n) for n in _iter_neurons(self.ann)]
         )
-        self.neural_data_file = folder.joinpath(neurons_file) if neurons_file else None
+        self.neural_data_file = (
+            folder.joinpath(neurons_file) if neurons_file else None)
 
         self.axonal_data = _TinyDataFrame(
             columns=[f"{src.pos}->{dst.pos}"
                      for _, src, dst in _iter_axons(self.ann)]
         )
-        self.axonal_data_file = folder.joinpath(axonal_file) if axonal_file else None
+        self.axonal_data_file = (
+            folder.joinpath(axonal_file) if axonal_file else None)
 
-        self.dynamics_file = folder.joinpath(dynamics_file).with_suffix(".html") if dynamics_file else None
+        self.dynamics_file = (
+            folder.joinpath(dynamics_file).with_suffix(".html")
+            if dynamics_file else None)
 
     def step(self):
         if self.neurons_data is not None:

@@ -2,11 +2,9 @@ import ast
 import functools
 import logging
 from abc import ABC
-from argparse import Action
 from dataclasses import dataclass, fields
-from functools import lru_cache
 from pathlib import Path
-from typing import get_args, get_origin, Union, Annotated, Optional, Tuple
+from typing import get_args, get_origin, Union, Annotated, Optional
 
 
 @dataclass
@@ -14,7 +12,8 @@ class ConfigBase(ABC):
 
     @classmethod
     def __fields(cls):
-        return [field for field in fields(cls) if get_origin(field.type) is Annotated]
+        return [field for field in fields(cls)
+                if get_origin(field.type) is Annotated]
 
     @staticmethod
     def _parse_tuple(_str, types):
@@ -44,7 +43,8 @@ class ConfigBase(ABC):
                 f_type = ast.literal_eval
                 str_type = bool
             elif get_origin(a_type) is tuple:
-                f_type = functools.partial(cls._parse_tuple, types=get_args(a_type))
+                f_type = functools.partial(
+                    cls._parse_tuple, types=get_args(a_type))
                 str_type = tuple
 
             if not str_type:
@@ -95,30 +95,53 @@ class ConfigBase(ABC):
 
 @dataclass
 class Config(ConfigBase):
-    resume: Annotated[Path, "Resume evolution from provided checkpoint archive"] = None
-    threads: Annotated[int, "Number of concurrent evaluations"] = None
-    overwrite: Annotated[bool, "Do we allow running in an existing folder?"] = False
-    symlink_last: Annotated[bool, "Should I add a symlink named *last* pointing to this run?"] = False
+    resume: Annotated[
+        Path, "Resume evolution from provided checkpoint archive"] = None
+    threads: Annotated[
+        int, "Number of concurrent evaluations"] = None
+    overwrite: Annotated[
+        bool, "Do we allow running in an existing folder?"] = False
+    symlink_last: Annotated[
+        bool,
+        "Should I add a symlink named *last* pointing to this run?"] = False
 
-    data_root: Annotated[Optional[Union[Path, str]], "Where to store the generated data"] = None
+    data_root: Annotated[
+        Optional[Union[Path, str]], "Where to store the generated data"] = None
     log_level: int = 1
 
     seed: Annotated[Optional[int], "RNG seed (set from time if none)"] = None
 
-    population_size: Annotated[int, "Population size (duh)"] = 10
-    generations: Annotated[int, "Number of generations (double duh)"] = 10
-    tournament_size: Annotated[int, "How many individuals to compare for fitness"] = 4
-    elitism: Annotated[int, "How many champions to keep unchanged each generation"] = 1
+    population_size: Annotated[
+        int, "Population size (duh)"] = 10
+    generations: Annotated[
+        int, "Number of generations (double duh)"] = 10
+    tournament_size: Annotated[
+        int, "How many individuals to compare for fitness"] = 4
+    elitism: Annotated[
+        int, "How many champions to keep unchanged each generation"] = 1
 
-    species: Annotated[int, "Target number of species (for NEAT diversity)"] = 8
-    species_size_inertia: Annotated[float, "How slow are species changing size based on relative fitness"] = .5
-    initial_distance_threshold: Annotated[float, "Initial genetic distance to differentiate between species"] = .1
-    distance_threshold_variation: Annotated[float, "How fast genetic distance cn vary, one way or another"] = 1.1
+    species: Annotated[
+        int, "Target number of species (for NEAT diversity)"] = 8
+    species_size_inertia: Annotated[
+        float,
+        "How slow are species changing size based on relative fitness"] = .5
+    initial_distance_threshold: Annotated[
+        float,
+        "Initial genetic distance to differentiate between species"] = .1
+    distance_threshold_variation: Annotated[
+        float, "How fast genetic distance cn vary, one way or another"] = 1.1
 
-    external_mating: Annotated[float, "Probability of mating outside one's species"] = .01
-    solitary_external_mating: Annotated[float, "Probability of mating outside a species of size 1, instead of muting"] = .5
+    external_mating: Annotated[
+        float, "Probability of mating outside one's species"] = .01
+    solitary_external_mating: Annotated[
+        float, "Probability of mating outside a species of size 1,"
+               " instead of muting"] = .5
 
-    age_threshold: Annotated[int, "Number of generations before applying an age penalty to a species"] = 10
-    protect_young: Annotated[bool, "Whether to protect new species by giving them a fitness boost"] = True
+    age_threshold: Annotated[
+        int, "Number of generations before applying an age"
+             " penalty to a species"] = 10
+    protect_young: Annotated[
+        bool, "Whether to protect new species by giving them"
+              " a fitness boost"] = True
 
     logger: logging.Logger = None
