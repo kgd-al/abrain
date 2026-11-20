@@ -33,7 +33,7 @@ jobs:
             if [ "$os" == "macos" ]
             then
               arch=$(cut -d '_' -f 2- <<< "$bt")
-              [ "$arch" != "arm64" ] && github_os="$github_os-large"
+              [ "$arch" != "arm64" ] && github_os="$github_os-intel"
             fi
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
             echo "$os $bt ($arch): $github_os" >&2
@@ -82,7 +82,7 @@ jobs:
           CIBW_BUILD: ${{ matrix.build }}
           CIBW_BUILD_VERBOSITY: 1
           CIBW_TEST_EXTRAS: all-tests
-          CIBW_BEFORE_TEST: "pip install 'kaleido==0.2.1' || echo 'No install candidates for kaleido'"
+          # CIBW_BEFORE_TEST: "pip install 'kaleido==0.2.1' || echo 'No install candidates for kaleido'"
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
