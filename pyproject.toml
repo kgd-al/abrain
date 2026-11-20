@@ -21,7 +21,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Life",
 ]
 dependencies = [
-  "plotly==5.24.1",
+  "plotly==5.24.1", "kaleido==0.2.1",
   "importlib_resources",
   "graphviz",
   "pyrecord",
@@ -48,12 +48,12 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "numpy", "pandas", "matplotlib", "rich",
 ]
 
 all-tests = [
   "abrain[tests,kaleido,matplotlib]",
-  "leap-ec", "Pillow", "qdpy", "tqdm", "matplotlib"
+  "leap-ec", "Pillow", "qdpy", "tqdm",
+  "numpy", "pandas", "matplotlib", "rich",
 ]
 
 
@@ -68,8 +68,6 @@ docs = [
   "furo"                # Style
 
 ]
-
-kaleido = [ "kaleido==0.2.1" ]
 
 matplotlib = [ "matplotlib", "pandas" ]
 

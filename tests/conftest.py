@@ -10,6 +10,9 @@ import logging
 for name in ("matplotlib", "PIL"):
     logging.getLogger(name).setLevel(logging.WARNING)
 
+import matplotlib
+matplotlib.use("Agg")
+
 class TestSize(IntFlag):
     SMALL = 2
     NORMAL = 8

@@ -146,6 +146,10 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
     --source=. --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
     -m \
     pytest --durations=10 --basetemp=$out -x -ra "$@" || exit 2
+  
+  echo
+  echo "Preparing coverage report"
+
   mkdir -p $cout # pytest will have cleared everything. Build it back
   mv $(basename $pycoverage) $pycoverage
   coverage report --data-file=$pycoverage
