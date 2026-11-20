@@ -13,9 +13,6 @@ for name in ("matplotlib", "PIL"):
 import matplotlib
 matplotlib.use("Agg")
 
-import kaleido
-kaleido.get_chrome_sync()
-
 class TestSize(IntFlag):
     SMALL = 2
     NORMAL = 8
@@ -77,7 +74,16 @@ def pytest_addoption(parser):
                      help="Run all examples. Requires a ton of packages"
                           " (installed via abrain[all-tests]).")
 
+    parser.addoption("--ci", dest='ci', default=False,
+                     action='store_true',
+                     help="Flag as CI/CD run to disable fragile tests")
 
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers", "image_export: needs a working Chrome (Kaleido); skipped with --ci")
+
+    
 best_ad_rate = .75
 
 
@@ -219,6 +225,10 @@ def pytest_collection_modifyitems(config, items):
         if not hasattr(item, 'callspec'):
             keep = True
 
+        if (config.getoption("ci") and "image_export" in item.keywords):
+            item.add_marker(pytest.mark.skip(reason="image export disabled with --ci"))
+            keep = True
+
         if (item.originalname == "test_evolution"
                 and config.getoption('evolution') is None):
             item.add_marker(
@@ -248,3 +258,20 @@ def pytest_collection_modifyitems(config, items):
     if removed:
         config.hook.pytest_deselected(items=removed)
         items[:] = kept
+
+
+@pytest.fixture(scope="session")
+def chrome():
+    """Download Chrome for Kaleido once per session (no-op if already present)."""
+    import kaleido
+    try:
+        return kaleido.get_chrome_sync()
+    except Exception as e:                      # offline, unsupported platform, ...
+        pytest.skip(f"Chrome unavailable: {e}")
+
+
+@pytest.fixture(autouse=True)
+def _chrome_for_image_tests(request):
+    # Only tests marked image_export trigger the download
+    if request.node.get_closest_marker("image_export"):
+        request.getfixturevalue("chrome")

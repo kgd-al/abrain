@@ -254,6 +254,7 @@ def test_reset(dimension, mutations, seed):
                   in zip(all_outputs[0], all_outputs[1]))
 
 
+@pytest.mark.image_export
 def test_view_neurons_png(mutations, seed, tmp_path):
     ann, _, _ = _make_ann(3, mutations, seed)
 

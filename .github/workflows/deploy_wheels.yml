@@ -87,7 +87,7 @@ jobs:
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+            pytest {project}/tests -ra --small-scale --test-evolution --ci
           LC_ALL: C
         shell: bash --noprofile --norc {0} # No automatic fail-fast
         run: |
