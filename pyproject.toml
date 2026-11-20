@@ -4,13 +4,13 @@ version = "1.0rc-post7"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 3 - Alpha",
   
   "Programming Language :: C++",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.10",
   
   "License :: OSI Approved :: MIT License",
 
@@ -48,7 +48,7 @@ tests = [
   "pytest-steps", "pytest-sugar",
   "coverage",
   "flake8",
-  "numpy", "matplotlib", "rich",
+  "numpy", "pandas", "matplotlib", "rich",
 ]
 
 all-tests = [

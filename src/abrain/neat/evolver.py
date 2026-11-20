@@ -819,7 +819,10 @@ class Evolver:
     def generate_plots(self, ext="png", options: Optional[dict] = None):
         for file in self.files.values():
             file.flush()
-        _Plotter.generate_plots(self, ext, options)
+        if HAS_MATPLOTLIB:
+            _Plotter.generate_plots(self, ext, options)
+        else:
+            self.config.logger.warning("Cannot generate plots without matplotlib and pandas")
 
 
 def _individual_class(interface: Evolver.Interface):

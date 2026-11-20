@@ -7,7 +7,8 @@ import pytest
 from abrain import CPPN, CPPN2D, CPPN3D
 
 import logging
-logging.getLogger("matplotlib").setLevel(logging.ERROR)
+for name in ("matplotlib", "PIL"):
+    logging.getLogger(name).setLevel(logging.WARNING)
 
 class TestSize(IntFlag):
     SMALL = 2
