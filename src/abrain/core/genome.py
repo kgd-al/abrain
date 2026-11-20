@@ -2,6 +2,7 @@
 Test documentation for genome file (module?)
 """
 import logging
+import os
 import pprint
 import re
 
@@ -832,7 +833,8 @@ class Genome(_CPPNData):
             dot.subgraph(g)
 
         dot_path = path.with_suffix(".dot")
-        tmp_dot_path = Path(mkstemp(dir=str(path.parent), suffix="genome.dot")[1])
+        tmp_dot_fd, tmp_dot_path = mkstemp(dir=str(path.parent), suffix="genome.dot")
+        tmp_dot_path = Path(tmp_dot_path)
         tmp_dot_path.write_text(dot.source, encoding="ascii")
         ret = dot_render('dot', ext, tmp_dot_path)
         ret = Path(ret).rename(path.with_suffix("." + ext))
@@ -844,6 +846,7 @@ class Genome(_CPPNData):
             tmp_dot_path.rename(path.with_suffix(dot_ext))
         else:
             tmp_dot_path.unlink()
+        os.close(tmp_dot_fd)
 
         return ret
 
