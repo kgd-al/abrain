@@ -96,12 +96,12 @@ jobs:
     - name: Compute c++ coverage
       continue-on-error: true
       run: |
-        lcov --capture --no-external --directory . --output-file=$CPPCOVERAGE
-        lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE
-        ccov=$(lcov --summary $CPPCOVERAGE | grep 'lines' | sed 's/.*: \(.*\)%.*/\1/')
+        lcov --capture --no-external --directory . --output-file=$CPPCOVERAGE --ignore-errors inconsistent
+        lcov --remove $CPPCOVERAGE '*_bindings*' -o $CPPCOVERAGE --ignore-errors inconsistent
+        ccov=$(lcov --summary $CPPCOVERAGE --ignore-errors inconsistent  | grep 'lines' | sed 's/.*: \(.*\)%.*/\1/')
         echo "OUTPUT_CCOV=$ccov" >> $GITHUB_ENV
-        lcov --list $CPPCOVERAGE
-        genhtml -q --demangle-cpp -o $COV_OUT/html/cpp $CPPCOVERAGE
+        lcov --list $CPPCOVERAGE --ignore-errors inconsistent 
+        genhtml -q --demangle-cpp --ignore-errors inconsistent -o $COV_OUT/html/cpp $CPPCOVERAGE
     - name: Archive test artifacts
       uses: actions/upload-artifact@v4
       with:
