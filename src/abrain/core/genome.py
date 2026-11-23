@@ -856,7 +856,7 @@ class Genome(_CPPNData):
                     dot_ext = ".gvz" + dot_ext
                 tmp_dot_path.replace(path.with_suffix(dot_ext))
                 tmp_dot_path = None
-                
+
         finally:
             if tmp_dot_path is not None:
                 tmp_dot_path.unlink(missing_ok=True)

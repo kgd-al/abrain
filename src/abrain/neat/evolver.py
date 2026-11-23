@@ -181,8 +181,10 @@ class Evolver:
             :param data: data passed along to every genome operator.
             :param random: genome operator for creating a new, random genome.
             :param mutate: genome operator for transforming a genome.
-            :param crossover: genome operator for creating an offspring from two parents.
-            :param distance: genome operator for computing the genetic distance between two individuals.
+            :param crossover: genome operator for creating an offspring from
+            two parents.
+            :param distance: genome operator for computing the genetic distance
+            between two individuals.
         """
         g_class: Type = Genome
         data: Optional[Dict[Any, Any]] = None
@@ -202,12 +204,13 @@ class Evolver:
         """
         Creates a NEAT evolver.
         :param config: The NEAT-specific configuration
-        :param evaluator: Callable taking a genome and returning its fitness and an
-                          optional dictionary of relevant statistics.
-        :param genotype_interface: Collection of types and callables to access
-                                   the appropriate genotype-level operators
-                                   (mutation, crossover, ...)
-        :param global_config: User-specific data that should be stored alongside the rest of the data.
+        :param evaluator: Callable taking a genome and returning its
+        fitness and an optional dictionary of relevant statistics.
+        :param genotype_interface: Collection of types and callables
+        to access the appropriate genotype-level operators
+        (mutation, crossover, ...)
+        :param global_config: User-specific data that should be stored
+        alongside the rest of the data.
         """
 
         nan = float("nan")
@@ -239,7 +242,8 @@ class Evolver:
             if run_symlink.is_symlink() or run_symlink.exists():
                 run_symlink.unlink()
 
-            run_symlink.symlink_to(config.data_root.absolute(), target_is_directory=True)
+            run_symlink.symlink_to(config.data_root.absolute(),
+                                   target_is_directory=True)
 
         self.species: List[Species] = []
         self.next_sid = 0
@@ -263,7 +267,8 @@ class Evolver:
         self.times = dict(min=nan, avg=nan, std=nan, max=nan)
 
         self.stat_fields = {
-            key: (f"{key:^{width}s}", f"{{:{width}{flags}}}", getattr(Evolver, prop).fget)
+            key: (f"{key:^{width}s}", f"{{:{width}{flags}}}",
+                  getattr(Evolver, prop).fget)
             for key, width, flags, prop in [
                 ("Gen", 3, "d", "generation"),
                 ("Time", 4, ".2g", "time"),
@@ -324,7 +329,11 @@ class Evolver:
             self._processes_pool = None
         else:
             # self._processes_pool = multiprocessing.Pool(t)
-            context = multiprocessing.get_context("forkserver")
+            method = (
+                "forkserver"
+                if "forkserver" in multiprocessing.get_all_start_methods()
+                else "spawn")
+            context = multiprocessing.get_context(method)
             self._processes_pool = multiprocessing.pool.Pool(
                 processes=t,
                 initializer=self.__initializer,
@@ -361,8 +370,9 @@ class Evolver:
 
     def step(self):
         if not self.__started:
-            raise RuntimeError("Stepping when evolver has not been started."
-                               " Only use step() with the guard form of the evolver")
+            raise RuntimeError(
+                "Stepping when evolver has not been started."
+                " Only use step() with the guard form of the evolver")
 
         new_population = self._reproduce()
         new_population = self._evaluate(new_population)
@@ -377,7 +387,9 @@ class Evolver:
             print(*args)
             return None
 
-        with open(path or self.config.data_root.joinpath("evolution.json"), "wt") as f:
+        with open(
+                path or
+                self.config.data_root.joinpath("evolution.json"), "wt") as f:
             dct = copy.copy(self.__dict__)
             del dct["individual"]
             dct["interface"] = self.individual.interface()
@@ -437,16 +449,17 @@ class Evolver:
 
         _self.config.logger = _logging.setup_logging(
             _self.config.data_root,
-            f"Resuming run from generation {_self.generation} up to {_self.config.generations}.")
+            f"Resuming run from generation {_self.generation}"
+            f" up to {_self.config.generations}.")
 
         return _self
 
     @property
     def generation(self): return self._generation
-    
+
     @property
     def species_count(self): return len(self.species)
-    
+
     @property
     def distance_threshold(self): return self._distance_threshold
 
@@ -504,7 +517,7 @@ class Evolver:
                     file_id = f"#{len(list(f.glob('*.json')))}"
                 f = f.joinpath(f"{file_id}.json")
                 genome.to_file(f, dict(exception=str(e),
-                                    fitness=EvaluationResult.fitness))
+                                       fitness=EvaluationResult.fitness))
             else:
                 f = f"None (no to_file function in {genome.__class__})"
             logger.error(
@@ -520,7 +533,8 @@ class Evolver:
         if self._processes_pool is None:
             results = [self.__evaluate(i.genome) for i in population]
         else:
-            results = self._processes_pool.map(self.__evaluate, [i.genome for i in population])
+            results = self._processes_pool.map(
+                self.__evaluate, [i.genome for i in population])
         for i, r in zip(population, results):
             i.fitness, i.stats = r
 
@@ -638,14 +652,16 @@ class Evolver:
                     self._distances["inter"]))
 
             # self._distance_threshold = factor * species_distance
-            # self._distance_threshold = .5 * (self._distance_threshold + species_distance)
+            # self._distance_threshold = .5 * (
+            # self._distance_threshold + species_distance)
             #
             # sign = -1 if ns < tns else 1
             # delta = sign * .5 * sample_distance
             # logger.debug("d:", delta)
-            # self._distance_threshold = max(.5 * self._distance_threshold,
-            #                               min(self._distance_threshold + delta,
-            #                                   1.5 * self._distance_threshold))
+            # self._distance_threshold = max(
+            #   .5 * self._distance_threshold,
+            #   min(self._distance_threshold + delta,
+            #       1.5 * self._distance_threshold))
 
         # pprint.pprint(list(distances._data.values()))
 
