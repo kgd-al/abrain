@@ -99,13 +99,10 @@ def __tester_generic_single_output(
 
     with pytest.raises((ValueError, RuntimeError)):
         cppn(0, *args_maker(cppn, inputs + inputs))
-    print(f"[TMP-DEBUG] __tester_generic_single_output: {cppn=} {cppn.n_inputs()=} {cppn.n_outputs()=}", flush=True)
 
     args = args_maker(cppn, inputs)
-    print(f"[TMP-DEBUG] __tester_generic_single_output: {args=}", flush=True)
     for o in range(cppn.n_outputs()):
         values = set()
-        print(f"[TMP-DEBUG] __tester_generic_single_output: {o=} / {cppn.n_outputs()}", flush=True)
         for _ in range(100):
             values.add(cppn(o, *args))
         assert len(values) == 1
