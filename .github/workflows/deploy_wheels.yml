@@ -9,6 +9,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   collect_targets:
     name: Collecting build targets
@@ -153,8 +156,6 @@ jobs:
           merge-multiple: true
           
       - name: Generate summary
-        env:
-          GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Generating summary"
           
@@ -296,12 +297,22 @@ jobs:
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
 
           
-      - name: Upload summary to Wiki
-        uses: SwiftDocOrg/github-wiki-publish-action@v1
+      - name: Checkout wiki
+        uses: actions/checkout@v4
         with:
-          path: "wiki"
-        env:
-          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload summary to Wiki
+        run: |
+          cp -r wiki/* wiki-repo/
+          cd wiki-repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Automatically publish wiki"
+          git push
 
                     
     # For testing purposes, upload always
