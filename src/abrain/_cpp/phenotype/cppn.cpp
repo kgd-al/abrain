@@ -231,7 +231,7 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 void CPPN::pre_evaluation(const IBuffer &inputs) {
   if (inputs.size() != n_inputs())
     throw std::runtime_error("Invalid number of inputs");
-  for (unsigned int i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
+  for (unsigned int i=0; i<inputs.size(); i++) _inputs[i]->data = inputs[i];
   common_pre_evaluation();
 }
 
