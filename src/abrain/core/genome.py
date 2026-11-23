@@ -842,19 +842,24 @@ class Genome(_CPPNData):
         dot_path = path.with_suffix(".dot")
         tmp_dot_fd, tmp_dot_path = mkstemp(dir=str(path.parent),
                                            suffix="genome.dot")
-        tmp_dot_path = Path(tmp_dot_path)
-        tmp_dot_path.write_text(dot.source, encoding="ascii")
-        ret = dot_render('dot', ext, tmp_dot_path)
-        ret = Path(ret).rename(path.with_suffix("." + ext))
-
-        if _should_debug("keepdot"):
-            dot_ext = ".dot"
-            if dot_path.exists():
-                dot_ext = ".gvz" + dot_ext
-            tmp_dot_path.rename(path.with_suffix(dot_ext))
-        else:
-            tmp_dot_path.unlink()
         os.close(tmp_dot_fd)
+
+        tmp_dot_path = Path(tmp_dot_path)
+        try:
+            tmp_dot_path.write_text(dot.source, encoding="ascii")
+            ret = dot_render('dot', ext, tmp_dot_path)
+            ret = Path(ret).rename(path.with_suffix("." + ext))
+
+            if _should_debug("keepdot"):
+                dot_ext = ".dot"
+                if dot_path.exists():
+                    dot_ext = ".gvz" + dot_ext
+                tmp_dot_path.replace(path.with_suffix(dot_ext))
+                tmp_dot_path = None
+                
+        finally:
+            if tmp_dot_path is not None:
+                tmp_dot_path.unlink(missing_ok=True)
 
         return ret
 
