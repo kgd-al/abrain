@@ -143,7 +143,7 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
 
   pycoverage=$cout/py.coverage.info
   coverage run --branch --data-file=$(basename $pycoverage) \
-    --source=. --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
+    --source=abrain,tests --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
     -m \
     pytest --durations=10 --basetemp=$out -x -ra "$@" || exit 2
   

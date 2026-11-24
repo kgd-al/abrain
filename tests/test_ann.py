@@ -1,7 +1,5 @@
-import copy
 import logging
 import math
-import pickle
 from random import Random
 from time import perf_counter
 from typing import Tuple, List, Dict, Union, Callable
@@ -160,6 +158,9 @@ def test_inspect_neurons(dimension, mutations, seed):
     for i in range(len(data)):
         print(fmts.format(*data[i]))
 
+    print(f"{len(ann.input_neurons())} inputs"
+          f" & {len(ann.output_neurons())} outputs")
+
 
 # .. todo:: implement (code exists in ann.cpp)
 # def test_deepcopy():
@@ -306,15 +307,17 @@ def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
 @pytest.mark.parametrize('seed', [1])
 @pytest.mark.parametrize('with_labels', [True, False])
 @pytest.mark.parametrize('with_neurons', [True, False])
+@pytest.mark.parametrize('with_axons', [True, False])
 @pytest.mark.parametrize('with_dynamics', [True, False])
 @pytest.mark.parametrize('dt', [None, 0.1])
 def test_view_neurons_dynamics(mutations, seed, with_labels,
-                               with_neurons, with_dynamics, dt,
+                               with_neurons, with_axons, with_dynamics, dt,
                                tmp_path):
     labels_str = "_with_labels" if with_labels else ""
     prefix = f"interactive{labels_str}"
 
     neurons_file = f"{prefix}.neurons.dat" if with_neurons else None
+    axons_file = f"{prefix}.axons.dat" if with_axons else None
     dynamics_file = f"{prefix}.dynamics.dat" if with_dynamics else None
 
     _, start = _time()
@@ -331,14 +334,16 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 
     n = 100
     print(f"Stepping {n} times")
-    ann_monitor = ANNMonitor(
+    monitor_args = dict(
         ann=ann,
         labels=labels,
         folder=tmp_path,
         neurons_file=neurons_file,
+        axonal_file=axons_file,
         dynamics_file=dynamics_file,
         dt=dt
     )
+    ann_monitor = ANNMonitor(**monitor_args)
 
     rng = Random(seed)
     for _ in range(n):
@@ -356,6 +361,16 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
     duration, start = _time(start)
     print(f"Writing: {duration}s")
     print("Wrote to", ann_path)
+
+    # > Tests non-existing folder
+    monitor_args["folder"] = tmp_path.joinpath("folder_test")
+    ann_monitor = ANNMonitor(**monitor_args)
+
+    # > Tests existing regular file
+    monitor_args["folder"] = tmp_path.joinpath("file_test")
+    monitor_args["folder"].touch()
+    with pytest.raises(ValueError):
+        ann_monitor = ANNMonitor(**monitor_args)
 
 
 ###############################################################################

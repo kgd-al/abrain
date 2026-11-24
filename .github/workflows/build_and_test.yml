@@ -77,8 +77,9 @@ jobs:
       run: |
         lcov --zerocounters --directory .
         
+        coverage erase
         coverage run --branch --data-file=$(basename $PYCOVERAGE) \
-          --source=. --omit="tests/conftest.py,setup.py,examples/*.py" \
+          --source=abrain,tests --omit="tests/conftest.py,setup.py,examples/*.py" \
           -m \
           pytest -s --durations=10 --basetemp=$TEST_OUT -ra \
             --ci --normal-scale --test-evolution # --test-examples

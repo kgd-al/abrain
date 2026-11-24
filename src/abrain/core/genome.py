@@ -21,7 +21,7 @@ try:
     from matplotlib import rc_context
     import matplotlib.pyplot as plt
     HAS_MATPLOTLIB = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_MATPLOTLIB = False
 
 from .._cpp.config import Config
@@ -586,7 +586,9 @@ class Genome(_CPPNData):
     ###########################################################################
 
     @classmethod
-    def from_dot(cls, data: Data, path: Union[str, Path]) -> 'Genome':
+    def from_dot(
+                cls, data: Data, path: Union[str, Path]
+            ) -> 'Genome':  # pragma: no cover
         """Produce a Genome by parsing a simplified graph description
 
             .. warning:: Unimplemented
@@ -739,7 +741,7 @@ class Genome(_CPPNData):
         if _should_debug("all"):  # pragma: no cover
             debug = "depth;links;keepdot"
 
-        if not isinstance(path, Path):
+        if not isinstance(path, Path):  # pragma: no cover
             path = Path(path)
         if path.suffix != "":
             ext = path.suffix.replace('.', '')
@@ -852,8 +854,8 @@ class Genome(_CPPNData):
 
             if _should_debug("keepdot"):
                 dot_ext = ".dot"
-                if dot_path.exists():
-                    dot_ext = ".gvz" + dot_ext
+                if dot_path.exists():  # pragma: no branch
+                    dot_ext = ".gvz" + dot_ext  # pragma: no cover
                 tmp_dot_path.replace(path.with_suffix(dot_ext))
                 tmp_dot_path = None
 
@@ -864,7 +866,7 @@ class Genome(_CPPNData):
         return ret
 
     def to_math(self, data: Data, path: Path,
-                extension: str = "tex", fmt: str = ".2g"):
+                extension: str = "tex", fmt: str = ".2g"):  # pragma: no cover
         """
         Renders this genome's equivalent equation system
 
@@ -1275,7 +1277,7 @@ class Genome(_CPPNData):
         Genome._iter(lhs, rhs, 'links', process_links)
 
         child._sort_by_id()
-        if data.gid_manager is not None:
+        if data.gid_manager is not None:  # pragma: no branch
             child.update_lineage(data, [lhs, rhs])
         return child
 

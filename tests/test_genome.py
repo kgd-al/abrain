@@ -1,8 +1,6 @@
-import copy
 import itertools
 import logging
 import math
-import pickle
 import pydoc
 import re
 from pathlib import Path
@@ -495,7 +493,7 @@ def _test_crossover(data, parent_mutations, child_mutations,
 
             assert Genome.distance(p, p) == 0
 
-        for gen in range(gens):
+        for _ in range(gens):
             new_pop = []
 
             while len(new_pop) < len(population):
@@ -576,3 +574,21 @@ def test_serialization(seed, mutations, data, func):
         genome.mutate(data)
     roundabout = func(genome)
     assert_genomes_equal(genome, roundabout)
+
+
+# def test_from_dot(seed, tmp_path):
+#     rng = Random(seed)
+#     file = tmp_path("test.dot")
+#     inputs, outputs, hidden = [rng.randint(1, 10) for _ in range(3)]
+#     with open(file, "wt") as f:
+#         f.write("CPPN{\n")
+#         f.write("// Test of manual CPPN parsing\n")
+#         for i in range(inputs):
+#             f.write(f"  {string.ascii_lowercase[i]}\n")
+#         for o in range(outputs):
+#             f.write(f"  {string.ascii_uppercase[o]}"
+#                     f" [{rng.choice(Config.functionSet)}]\n")
+#         for h in range(hidden):
+#             f.write(f"  {h} [{rng.choice(Config.functionSet)}]\n")
+#         c_in = []
+#         f.write("}\n")

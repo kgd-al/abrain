@@ -16,7 +16,7 @@ EVO = logging.INFO + 1
 logging.addLevelName(EVO, 'EVO')
 
 
-def get_next_tmp_data_root():
+def get_next_tmp_data_root():  # pragma: no cover
     root = Path("tmp")
     root.mkdir(exist_ok=True)
 
@@ -59,7 +59,7 @@ def setup_logging(folder: Path, header: Optional[str] = None):
     w = 40
     logger.info("="*w)
     logger.info(f"{'New log starts here.':^{w}}")
-    if header is not None:
+    if header is not None:  # pragma: no cover
         logger.info(f"{header:^{w}}")
     logger.info("="*w)
 

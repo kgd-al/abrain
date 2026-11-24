@@ -7,11 +7,12 @@ import pytest
 from abrain import CPPN, CPPN2D, CPPN3D
 
 import logging
+import matplotlib
+
+matplotlib.use("Agg")
 for name in ("matplotlib", "PIL"):
     logging.getLogger(name).setLevel(logging.WARNING)
 
-import matplotlib
-matplotlib.use("Agg")
 
 class TestSize(IntFlag):
     SMALL = 2
@@ -81,9 +82,10 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "image_export: needs a working Chrome (Kaleido); skipped with --ci")
+        "markers",
+        "image_export: needs a working Chrome (Kaleido); skipped with --ci")
 
-    
+
 best_ad_rate = .75
 
 
@@ -226,7 +228,8 @@ def pytest_collection_modifyitems(config, items):
             keep = True
 
         if (config.getoption("ci") and "image_export" in item.keywords):
-            item.add_marker(pytest.mark.skip(reason="image export disabled with --ci"))
+            item.add_marker(pytest.mark.skip(
+                reason="image export disabled with --ci"))
             keep = True
 
         if (item.originalname == "test_evolution"
@@ -262,11 +265,12 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session")
 def chrome():
-    """Download Chrome for Kaleido once per session (no-op if already present)."""
+    """Download Chrome for Kaleido once per session
+      (no-op if already present)."""
     import kaleido
     try:
         return kaleido.get_chrome_sync()
-    except Exception as e:                      # offline, unsupported platform, ...
+    except Exception as e:  # offline, unsupported platform, ...
         pytest.skip(f"Chrome unavailable: {e}")
 
 

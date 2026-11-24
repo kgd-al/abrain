@@ -89,10 +89,12 @@ class ANNMonitor:
         self.dt = dt
 
         self.save_folder = folder
-        if folder.exists() and not folder.is_dir():
-            raise ValueError("Unable to create folder for ANN monitoring data:"
-                             " path exists and is not a directory")
-        elif not folder.exists():
+        if folder.exists():
+            if not folder.is_dir():
+                raise ValueError(
+                    "Unable to create folder for ANN monitoring data:"
+                    " path exists and is not a directory")
+        else:
             folder.mkdir(parents=True)
 
         if self.labels is None:
@@ -118,11 +120,11 @@ class ANNMonitor:
             if dynamics_file else None)
 
     def step(self):
-        if self.neurons_data is not None:
+        if self.neural_data_file is not None:
             self.neurons_data.append([
                 n.value for n in _iter_neurons(self.ann)
             ])
-        if self.axonal_data is not None:
+        if self.axonal_data_file is not None:
             self.axonal_data.append([
                 src.value * link.weight
                 for link, src, dst in _iter_axons(self.ann)
@@ -137,7 +139,9 @@ class ANNMonitor:
             self.axonal_data.to_csv(self.axonal_data_file)
             logger.info(f"Generated {self.axonal_data_file}")
 
-        if self.dynamics_file is None:
+        if (self.dynamics_file is None
+                or self.neural_data_file is None
+                or self.axonal_data_file is None):
             return
 
         c_range = _symmetrical_range

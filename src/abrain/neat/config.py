@@ -1,10 +1,11 @@
+import argparse
 import ast
 import functools
 import logging
 from abc import ABC
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import get_args, get_origin, Union, Annotated, Optional
+from typing import Tuple, get_args, get_origin, Union, Annotated, Optional
 
 
 @dataclass
@@ -92,6 +93,12 @@ class ConfigBase(ABC):
             post_init(allow_unset=True)
         return data
 
+    @classmethod
+    def parse_command_line_arguments(cls, description):
+        parser = argparse.ArgumentParser(description=description)
+        cls.populate_argparser(parser)
+        return parser.parse_args(namespace=cls())
+
 
 @dataclass
 class Config(ConfigBase):
@@ -107,7 +114,8 @@ class Config(ConfigBase):
 
     data_root: Annotated[
         Optional[Union[Path, str]], "Where to store the generated data"] = None
-    log_level: int = 1
+    log_level: Annotated[
+        int, "How verbose to be"] = 1
 
     seed: Annotated[Optional[int], "RNG seed (set from time if none)"] = None
 
@@ -144,4 +152,11 @@ class Config(ConfigBase):
         bool, "Whether to protect new species by giving them"
               " a fitness boost"] = True
 
+    image_size: Annotated[
+        Tuple[int, int], "Just to showcase using tuples in config"
+    ] = (100, 100)
+
     logger: logging.Logger = None
+
+    def _post_init(self, **kwargs):
+        pass  # If you need to set things after init, e.g. derived variables

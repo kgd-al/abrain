@@ -1,8 +1,5 @@
 import math
-import os
 import pprint
-import random
-import time
 from random import Random
 
 import numpy as np
@@ -59,7 +56,8 @@ class RGBXYGenome:
 
     def __repr__(self):
         return (f"[{id(self)}|{self.x}, {self.y}|#"
-                + "".join(f"{round(255*x):x}" for x in [self.r, self.g, self.b])
+                + "".join(f"{round(255*x):x}" for x in
+                          [self.r, self.g, self.b])
                 + "]")
 
     def __iter__(self):
@@ -73,13 +71,10 @@ class RGBXYGenome:
     def evaluate(genome):
         r, g, b = genome.r, genome.g, genome.b
         a = math.atan2(math.sqrt(3) * (g - b) / 2, .5 * (2*r - g - b))
-        l = max(r, g, b)
+        _l = max(r, g, b)
 
         x, y = math.cos(a), math.sin(a)
-        res = -math.sqrt((genome.x - x) ** 2 + (genome.y - y) ** 2) + l - 1
-
-        # time.sleep(random.random()*2)
-        # print(f"[{os.getpid()}]", genome)
+        res = -math.sqrt((genome.x - x) ** 2 + (genome.y - y) ** 2) + _l - 1
 
         return res
 
@@ -88,7 +83,7 @@ class RGBXYGenome:
 
 
 @pytest.mark.parametrize("neat_seed", list(range(10)))
-def test_evolver(neat_seed, tmp_path):
+def test_evolver(neat_seed, tmp_path, monkeypatch):
     # neat_seed = 1
     rng = Random(neat_seed)
     pop, gen = 25, 25
@@ -102,13 +97,34 @@ def test_evolver(neat_seed, tmp_path):
         species=species,
         initial_distance_threshold=.1,
         overwrite=True,
+        image_size=(50, 50),
     )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [str(x) for x in [
+            "evo.py", "--seed", neat_seed, "--threads", config.threads,
+            "--data-root", tmp_path, "--log-level", config.log_level,
+            "--population-size", pop, "--species", species,
+            "--initial-distance-threshold", config.initial_distance_threshold,
+            "--image-size", None,
+            "--image-size", config.image_size,
+            "--overwrite"
+        ]])
+    argparse_config = NEATConfig.parse_command_line_arguments("Test")
+    assert config == argparse_config
+
+    assert argparse_config == NEATConfig.from_argparse(argparse_config)
+
     pprint.pprint(config)
     evolver = NEATEvolver(config,
                           evaluator=RGBXYGenome.evaluate,
                           genotype_interface=NEATEvolver.Interface(
-                            g_class=RGBXYGenome, data=dict(rng=rng)    
+                            g_class=RGBXYGenome, data=dict(rng=rng)
                           ))
+
+    print("sample (local) eval:",
+          evolver.evaluator(evolver.individual.random().genome))
 
     gen_digits = math.ceil(math.log10(gen+1))
 

@@ -29,7 +29,7 @@ try:
     import pandas as pd
 
     HAS_MATPLOTLIB = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_MATPLOTLIB = False
     plt = None
     pd = None
@@ -757,8 +757,9 @@ class Evolver:
 
                 else:
                     parents = [s.population[0]]
+                    em_chance = self.config.solitary_external_mating
                     if (len(self.species) > 1 and
-                            self.rng.random() < self.config.solitary_external_mating):
+                            self.rng.random() < em_chance):
                         out_species = self._tournament(
                             self.species,
                             exclude=s,
@@ -777,9 +778,11 @@ class Evolver:
 
     def _global_stats(self, init=False):
         if self.config.log_level >= 0:
-            logger.log(_logging.EVO,
-                       " ".join(fmt.format(getter(self))
-                                for _, fmt, getter in self.stat_fields.values()))
+            logger.log(
+                _logging.EVO,
+                " ".join(
+                    fmt.format(getter(self))
+                    for _, fmt, getter in self.stat_fields.values()))
 
         if (log_file := self.files.get("stats")) is not None:
             print(",".join(str(getter(self))
@@ -810,7 +813,9 @@ class Evolver:
         self.times = _time_stats(self.population)
         if init:
             print(",".join(["Gen"] + list(self.times.keys())), file=file)
-        print(",".join(f"{t:f}" for t in [self.generation] + list(self.times.values())), file=file)
+        print(",".join(f"{t:f}" for t in
+                       [self.generation] + list(self.times.values())),
+              file=file)
 
     @staticmethod
     def _age_gain(age):
@@ -819,7 +824,9 @@ class Evolver:
         b = 4  # Maximal gain
         c = .5  # Minimal loss
         # return 1 if age <= a else (1-c) * a / age + c
-        return b * (a - age) / (age + a) + 1 if age <= a else (1 - c) * a / age + c
+        return (b * (a - age) / (age + a) + 1
+                if age <= a else
+                (1 - c) * a / age + c)
 
     def _tournament(self, population: List,
                     exclude=None,
@@ -838,7 +845,8 @@ class Evolver:
         if HAS_MATPLOTLIB:
             _Plotter.generate_plots(self, ext, options)
         else:
-            self.config.logger.warning("Cannot generate plots without matplotlib and pandas")
+            self.config.logger.warning(
+                "Cannot generate plots without matplotlib and pandas")
 
 
 def _individual_class(interface: Evolver.Interface):
@@ -852,7 +860,8 @@ def _individual_class(interface: Evolver.Interface):
     def has_function(name, params):
         fn = getattr(_genome, name, None)
         if fn is None:
-            raise ValueError(f"No function '{name}' for '{_genome.__qualname__}'")
+            raise ValueError(
+                f"No function '{name}' for '{_genome.__qualname__}'")
 
         if not callable(fn):
             raise ValueError(f"'{name}' is not a callable function in"
@@ -989,7 +998,7 @@ class _Plotter:
         df = pd.read_csv(evolver.file_names["stats"])
 
         if ext.lower() == "pdf":
-            with PdfPages(o_dir.joinpath(f"stats.pdf")) as pdf:
+            with PdfPages(o_dir.joinpath("stats.pdf")) as pdf:
                 d_args = dict(target_species=evolver.config.species)
                 for fn, args in [(cls.fitness, {}),
                                  (cls.distances, d_args)]:
@@ -1068,7 +1077,9 @@ class _Plotter:
         ys, fs = [], []
         for x in gb.groups:
             g = gb.get_group(x)
-            ys.append(ys[-1][:] if len(ys) > 0 else [0 for _ in range(length + 1)])
+            ys.append(ys[-1][:]
+                      if len(ys) > 0 else
+                      [0 for _ in range(length + 1)])
             fs.append([float("nan") for _ in range(length)])
             for a in g[["Generation", "Size", "F_max"]].itertuples():
                 gen = a.Generation
@@ -1113,6 +1124,6 @@ class _Plotter:
         return fig
 
     @staticmethod
-    def time_histogram(df: pd.DataFrame, options: dict):
-        # From https://matplotlib.org/stable/gallery/statistics/time_series_histogram.html
+    def time_histogram(df: pd.DataFrame, options: dict):  # pragma: no cover
+        # https://matplotlib.org/stable/gallery/statistics/time_series_histogram.html
         pass
