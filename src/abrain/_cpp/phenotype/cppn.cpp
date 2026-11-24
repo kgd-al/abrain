@@ -5,6 +5,7 @@
 
 #include "cppn.h"
 #include "../config.h"
+#include "../misc/utils.hpp"
 
 #ifndef NDEBUG
 //#define DEBUG_CPPN
@@ -14,47 +15,14 @@
 #ifdef DEBUG_CPPN
 #include <iomanip>
 
-namespace utils { // Contains debugging tools
+namespace kgd::eshn::utils { // Contains debugging tools
 std::ostream& operator<< (std::ostream &os,
                          const kgd::eshn::phenotype::CPPN::Buffer &buffer) {
   os << "[ " << buffer[0];
   for (unsigned int i=1; i<buffer.size(); i++) os << " " << buffer[i];
   return os << "]";
 }
-
-/// Manages indentation for provided ostream
-/// \author James Kanze @ https://stackoverflow.com/a/9600752
-class IndentingOStreambuf : public std::streambuf {
-  static constexpr unsigned int DEFAULT_INDENT = 2;   ///< Default indenting value
-
-  std::ostream*       _owner;   ///< Associated ostream
-  std::streambuf*     _buffer;  ///< Associated buffer
-  bool                _isAtStartOfLine; ///< Whether to insert indentation
-
-  const std::string   _indent;  ///< Indentation value
-
-protected:
-  /// Overrides std::basic_streambuf::overflow to insert indentation at line start
-  int overflow (int ch) override {
-    if (_isAtStartOfLine && ch != '\n')
-      _buffer->sputn(_indent.data(), _indent.size());
-    _isAtStartOfLine = (ch == '\n');
-    return _buffer->sputc(ch);
-  }
-
-public:
-  /// Creates a proxy buffer managing indentation level
-  explicit IndentingOStreambuf(std::ostream& dest,
-                               unsigned int spaces = DEFAULT_INDENT)
-    : _owner(&dest), _buffer(dest.rdbuf()),
-      _isAtStartOfLine(true),
-      _indent(spaces, ' ' ) { _owner->rdbuf( this );  }
-
-  /// Returns control of the buffer to its owner
-  virtual ~IndentingOStreambuf(void) { _owner->rdbuf(_buffer); }
-};
-
-} // end of namespace utils
+} // end of namespace kgd::eshn::utils
 #endif
 
 namespace kgd::eshn::phenotype {
@@ -94,6 +62,8 @@ const std::map<CPPNData::Node::FuncID,
                CPPN::Function> CPPN::functions {
 
   F(  "id", x), // Identity
+  F(  "sq", x * x),  // Square function
+  F("sqrt", x <= 0 ? 0 : std::sqrt(x)),  // Square root function
   F( "abs", std::fabs(x)),  // Absolute value
   F( "sin", fd_sin(2.f*x)), // Sinusoidal
   F("step", x <= 0.f ? 0.f : 1.f),  // Step function
@@ -122,6 +92,8 @@ const std::map<CPPNData::Node::FuncID,
 
   F( "abs",  0, 1),
   F("gaus",  0, 1),
+  F(  "sq", -1, 1),
+  F("sqrt",  0, 1),
   F(  "id", -1, 1),
   F("ssgm",  0, 1),
   F("bsgm", -1, 1),
@@ -215,7 +187,7 @@ CPPN::CPPN (const CPPNData &genotype) {
 float CPPN::INode::value () {
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "I: " << data << std::endl;
+  std::cout << "  I: " << data << std::endl;
 #endif
   return data;
 }
@@ -223,7 +195,7 @@ float CPPN::INode::value () {
 float CPPN::FNode::value () {
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "F:\n";
+  std::cout << "> F:\n";
 #endif
   if (std::isnan(data)) {
     data = 0.f;
@@ -232,7 +204,7 @@ float CPPN::FNode::value () {
 
 #ifdef DEBUG_CPPN
     auto val = func(data);
-    std::cout << val << " = " << functionToName.at(func)
+    std::cout << "< " << val << " = " << functionToName.at(func)
               << "(" << data << ")\n";
     data = val;
 #else
@@ -259,7 +231,7 @@ std::ostream& operator<< (std::ostream &os, const std::vector<float> &v) {
 void CPPN::pre_evaluation(const IBuffer &inputs) {
   if (inputs.size() != n_inputs())
     throw std::runtime_error("Invalid number of inputs");
-  for (unsigned int i=0; i<_inputs.size(); i++) _inputs[i]->data = inputs[i];
+  for (unsigned int i=0; i<inputs.size(); i++) _inputs[i]->data = inputs[i];
   common_pre_evaluation();
 }
 
@@ -267,12 +239,13 @@ void CPPN::common_pre_evaluation() {
   if (_has_input_bias)
     _inputs.back()->data = 1;
 
+  // Setting to NAN so that we know that no value has been computed yet.
   for (const auto &n: _hidden)  n->data = NAN;
   for (const auto &n: _outputs)  n->data = NAN;
 
 #ifdef DEBUG_CPPN
   utils::IndentingOStreambuf indent (std::cout);
-  std::cout << "compute step\n\tInputs:"
+  std::cout << "==============\n= compute step\n\tInputs:"
             << std::setprecision(std::numeric_limits<float>::max_digits10);
   for (auto &i: _inputs) std::cout << " " << i->data;
   std::cout << "\n";

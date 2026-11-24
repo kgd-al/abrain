@@ -17,7 +17,7 @@ template <typename ANN> void init_ann_phenotype (py::module_ &m, const char *nam
 
 void init_config (py::module_ &m);
 
-PYBIND11_MODULE(_cpp, main) {
+PYBIND11_MODULE(_cpp, main, py::mod_gil_not_used()) {
   main.doc() = "Docstring main module";
 
   auto config = main.def_submodule(

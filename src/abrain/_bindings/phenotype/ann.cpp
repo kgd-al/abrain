@@ -15,11 +15,128 @@ PYBIND11_MAKE_OPAQUE(ANN3D::NeuronsMap)
 //PYBIND11_MAKE_OPAQUE(ANN::Neuron::ptr)
 // OPAQUE_TYPES?
 
+namespace kgd::eshn::phenotype {
+
+template <unsigned int DIMENSIONS>
+struct ANNSerializer {
+  using ANN = ANN_t<DIMENSIONS>;
+  using Neuron = typename ANN::Neuron;
+  using Point = typename ANN::Point;
+  using Stats = typename ANN::Stats;
+
+  static py::dict stats_to_json(const Stats &s) {
+    return py::dict (
+#define PAIR(X) #X##_a=s.X
+      PAIR(depth), PAIR(iterations),
+      PAIR(hidden),
+      PAIR(edges), PAIR(axons),
+      PAIR(density), PAIR(utility)
+#undef PAIR
+#ifndef NDEBUG
+      ,
+      "time"_a=py::dict(
+        "build"_a=s.time.build,
+        "eval"_a=s.time.eval
+      )
+#endif
+    );
+  }
+
+  static Stats stats_from_json(const py::dict &d) {
+    Stats s;
+#define GET(X) s.X = d[#X].cast<decltype(s.X)>()
+    GET(depth); GET(iterations);
+    GET(hidden);
+    GET(edges); GET(axons);
+    GET(density); GET(utility);
+#undef GET
+#ifndef NDEBUG
+    s.time.build = d["time"]["build"].cast<typename Stats::rep>();
+    s.time.eval = d["time"]["eval"].cast<typename Stats::rep>();
+#endif
+    return s;
+  }
+
+  static py::dict to_json(const ANN &ann) {
+    py::dict dict;
+
+    py::list neurons, links;
+
+    for (const typename ANN::NeuronPtr &np: ann._neurons) {
+      const auto &n = *np;
+      neurons.append(py::make_tuple(
+        n.pos, n.type, n.bias, n.value, n.depth, n.flags));
+    }
+
+    for (const typename ANN::NeuronPtr &np: ann._neurons) {
+      const Neuron &to = *np;
+      const auto to_id = to.pos;
+      for (const typename ANN::Neuron::Link &l: to.links()) {
+        links.append(py::make_tuple(
+          l.in.lock()->pos, to_id, l.weight
+        ));
+      }
+    }
+
+    dict["neurons"] = neurons;
+    dict["links"] = links;
+    dict["stats"] = stats_to_json(ann.stats());
+
+    return dict;
+  }
+
+  static ANN from_json(const py::dict &d) {
+    ANN ann;
+    for (const py::handle &h: d["neurons"]) {
+      const auto &t = h.cast<py::tuple>();
+      auto n = ann.addNeuron(
+          t[0].cast<Point>(),
+          t[1].cast<typename Neuron::Type>(),
+          t[2].cast<float>());
+      n->value = t[3].cast<float>();
+      n->depth = t[4].cast<unsigned int>();
+      n->flags = t[5].cast<typename Neuron::Flags_t>();
+      ann._neurons.insert(n);
+
+      switch (n->type) {
+      case Neuron::Type::I:
+        ann._inputs.push_back(n);
+        break;
+      case Neuron::Type::O:
+        ann._outputs.push_back(n);
+        break;
+      default:
+        break;
+      }
+    }
+
+    ann._ibuffer.resize(ann._inputs.size());
+    ann._obuffer.resize(ann._outputs.size());
+
+    for (const py::handle &h: d["links"]) {
+      const auto &t = h.cast<py::tuple>();
+      auto from_id = t[0].cast<Point>();
+      auto to_id = t[1].cast<Point>();
+      auto weight = t[2].cast<float>();
+
+      ann.neuronAt(to_id)->addLink(weight, ann.neuronAt(from_id));
+    }
+
+    ann._stats = stats_from_json(d["stats"]);
+
+    return ann;
+  }
+};
+
+}
+
 namespace kgd::eshn::pybind {
 
 template <typename ANN>
 void init_ann_phenotype (py::module_ &m, const char *name) {
   // std::cerr << "\n== Registering " << m.attr("__name__").template cast<std::string>() << " ==\n"<< std::endl;
+
+  using Serializer = ANNSerializer<ANN::DIMENSIONS>;
 
   using Point = typename ANN::Point;
   static constexpr auto D = Point::DIMENSIONS;
@@ -92,8 +209,12 @@ Whether the ANN contains neurons/connections
       .def ID(reset, "Resets internal state to null (0)")
       .def("neurons", static_cast<const NeuronsMap& (ANN::*)() const>(&ANN::neurons),
            "Provide read-only access to the underlying neurons")
-//      .def("neurons", py::overload_cast<>(&ANN::neurons, py::const_),
-//           "Provide read-only access to the underlying neurons")
+      .def("input_neurons", &ANN::input_neurons,
+           "Provide read-only access to the underlying input neurons, in the same order as they"
+           " are filled in with data")
+      .def("output_neurons", &ANN::output_neurons,
+           "Provide read-only access to the underlying output neurons, in the same order as they"
+           " are read out for data")
       .def ID(neuronAt, "Query an individual neuron", "pos"_a)
 
       .def_static("build", &ANN::build, R"(
@@ -111,7 +232,15 @@ hidden neurons locations
 
 .. seealso:: :ref:`usage-basics-ann`
                   )", "inputs"_a, "outputs"_a, "genome"_a)
-  ;
+
+      .def("to_json", Serializer::to_json, "Convert to a json-compliant Python dictionary")
+      .def_static("from_json", Serializer::from_json, "j"_a,
+                "Convert from the json-compliant Python dictionary `j`")
+      .def(py::pickle(
+        [](const CLASS &ann) { return Serializer::to_json(ann); },
+        [](const py::dict &d) { return Serializer::from_json(d);  }
+      ))
+      ;
 
   cann.doc() = utils::mergeToString(
           D,
@@ -172,22 +301,7 @@ hidden neurons locations
       .def_readonly ID(density, "Ratio of expressed connections")
       .def_readonly ID(utility, "Ratio of used input/output neurons")
       .def_readonly ID(iterations, "H -> H iterations before convergence")
-      .def("dict", [] (const CLASS &stats) {
-        return py::dict (
-#define PAIR(X) #X##_a=stats.X
-          PAIR(depth), PAIR(iterations),
-          PAIR(hidden),
-          PAIR(edges), PAIR(axons),
-          PAIR(density), PAIR(utility)
-#undef PAIR
-#ifndef NDEBUG
-          , "time"_a=py::dict(
-            "build"_a=stats.time.build,
-            "eval"_a=stats.time.eval
-          )
-#endif
-        );
-      }, "Return the stats as Python dictionary")
+      .def("dict", Serializer::stats_to_json, "Return the stats as Python dictionary")
       ;
 }
 

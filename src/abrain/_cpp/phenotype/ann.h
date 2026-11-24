@@ -15,6 +15,9 @@ namespace es = evolvable_substrate;
 
 template <unsigned int DI>
 class ANN_t {
+  template <unsigned int DI_>
+  friend struct ANNSerializer;
+
 public:
   using CPPN = CPPN_ND<DI>;
   using Point = typename CPPN::Point;
@@ -34,7 +37,7 @@ public:
     using Flags_t = unsigned int;
     Flags_t flags;
 
-    Neuron (const Point &p, Type t, float b)
+    Neuron (const Point &p, const Type t, const float b)
       : pos(p), type(t), bias(b), value(0), flags(0) {}
 
     [[nodiscard]] bool isInput () const {   return type == I;  }
@@ -93,10 +96,14 @@ public:
     return *it;
   }
 
-  struct IBuffer : std::vector<float> {};
+  struct IBuffer : std::vector<float> {
+    IBuffer() = default;
+  };
   auto& ibuffer () { return _ibuffer; }
 
-  struct OBuffer : std::vector<float> {};
+  struct OBuffer : std::vector<float> {
+    OBuffer() = default;
+  };
   auto& obuffer () { return _obuffer; }
 
   void reset ();
@@ -130,8 +137,8 @@ public:
 
   using Coordinates = es::Coordinates_t<DI>;
   static ANN_t build (const Coordinates &inputs,
-                    const Coordinates &outputs,
-                    const genotype::CPPNData &genome);
+                      const Coordinates &outputs,
+                      const genotype::CPPNData &genome);
 
 private:
   struct NeuronCMP {
@@ -160,6 +167,9 @@ public:
 
   const NeuronsMap& neurons () const {  return _neurons;  }
   NeuronsMap& neurons () {  return _neurons;  }
+
+  const auto& input_neurons () const {  return _inputs; }
+  const auto& output_neurons () const { return _outputs; }
 
 private:
   NeuronsMap _neurons;

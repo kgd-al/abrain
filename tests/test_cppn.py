@@ -21,7 +21,7 @@ def _make_cppn(cppn_type, seed, mutations=0):
         data = Genome.Data.create_for_generic_cppn(
             seed=seed,
             inputs=rng.randint(2, 5),
-            outputs=rng.randint(1, 3)
+            outputs=rng.randint(2, 4)
         )
     elif name == CPPN2D.__name__:
         data = Genome.Data.create_for_eshn_cppn(dimension=2, seed=seed)
@@ -103,7 +103,7 @@ def __tester_generic_single_output(
     args = args_maker(cppn, inputs)
     for o in range(cppn.n_outputs()):
         values = set()
-        for i in range(100):
+        for _ in range(100):
             values.add(cppn(o, *args))
         assert len(values) == 1
 # ===================================================

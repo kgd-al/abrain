@@ -158,6 +158,9 @@ def test_inspect_neurons(dimension, mutations, seed):
     for i in range(len(data)):
         print(fmts.format(*data[i]))
 
+    print(f"{len(ann.input_neurons())} inputs"
+          f" & {len(ann.output_neurons())} outputs")
+
 
 # .. todo:: implement (code exists in ann.cpp)
 # def test_deepcopy():
@@ -252,6 +255,7 @@ def test_reset(dimension, mutations, seed):
                   in zip(all_outputs[0], all_outputs[1]))
 
 
+@pytest.mark.image_export
 def test_view_neurons_png(mutations, seed, tmp_path):
     ann, _, _ = _make_ann(3, mutations, seed)
 
@@ -260,10 +264,11 @@ def test_view_neurons_png(mutations, seed, tmp_path):
 
     try:
         fig.write_image(file)
-        print("Generated", file)    # pragma: no cover
-    except Exception as e:  # pragma: no cover
-        pytest.skip(f"Ignoring exceptions from unstable kaleido: "
-                    f"{e=}, {type(e)=}")
+        print("Generated", file)        # pragma: no cover
+    except DeprecationWarning as e:     # pragma: no cover
+        print(f"Ignoring exceptions from unstable kaleido: {e=}, {type(e)=}")
+    except AttributeError as e:         # pragma: no cover
+        print(f"Ignoring exceptions from unstable kaleido: {e=}, {type(e)=}")
 
 
 def _time(_start=None):
@@ -302,15 +307,17 @@ def test_view_neurons_interactive(mutations, seed, with_labels, tmp_path):
 @pytest.mark.parametrize('seed', [1])
 @pytest.mark.parametrize('with_labels', [True, False])
 @pytest.mark.parametrize('with_neurons', [True, False])
+@pytest.mark.parametrize('with_axons', [True, False])
 @pytest.mark.parametrize('with_dynamics', [True, False])
 @pytest.mark.parametrize('dt', [None, 0.1])
 def test_view_neurons_dynamics(mutations, seed, with_labels,
-                               with_neurons, with_dynamics, dt,
+                               with_neurons, with_axons, with_dynamics, dt,
                                tmp_path):
     labels_str = "_with_labels" if with_labels else ""
     prefix = f"interactive{labels_str}"
 
     neurons_file = f"{prefix}.neurons.dat" if with_neurons else None
+    axons_file = f"{prefix}.axons.dat" if with_axons else None
     dynamics_file = f"{prefix}.dynamics.dat" if with_dynamics else None
 
     _, start = _time()
@@ -327,14 +334,16 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
 
     n = 100
     print(f"Stepping {n} times")
-    ann_monitor = ANNMonitor(
+    monitor_args = dict(
         ann=ann,
         labels=labels,
         folder=tmp_path,
         neurons_file=neurons_file,
+        axonal_file=axons_file,
         dynamics_file=dynamics_file,
         dt=dt
     )
+    ann_monitor = ANNMonitor(**monitor_args)
 
     rng = Random(seed)
     for _ in range(n):
@@ -352,3 +361,86 @@ def test_view_neurons_dynamics(mutations, seed, with_labels,
     duration, start = _time(start)
     print(f"Writing: {duration}s")
     print("Wrote to", ann_path)
+
+    # > Tests non-existing folder
+    monitor_args["folder"] = tmp_path.joinpath("folder_test")
+    ann_monitor = ANNMonitor(**monitor_args)
+
+    # > Tests existing regular file
+    monitor_args["folder"] = tmp_path.joinpath("file_test")
+    monitor_args["folder"].touch()
+    with pytest.raises(ValueError):
+        ann_monitor = ANNMonitor(**monitor_args)
+
+
+###############################################################################
+# Serialization tests
+###############################################################################
+
+
+# def assert_equal(lhs: ANN, rhs: ANN):
+#     assert lhs is not rhs
+#     assert lhs.nodes is not rhs.nodes
+#     assert lhs.links is not rhs.nodes
+#
+#     assert lhs.inputs == rhs.inputs
+#     assert lhs.outputs == rhs.outputs
+#     assert len(lhs.nodes) == len(rhs.nodes)
+#     assert len(lhs.links) == len(rhs.links)
+#
+#     for lhs_n, rhs_n in zip(lhs.nodes, rhs.nodes):
+#         assert lhs_n is not rhs_n
+#         assert lhs_n.id == rhs_n.id
+#         assert lhs_n.func == rhs_n.func
+#
+#     for lhs_l, rhs_l in zip(lhs.links, rhs.links):
+#         assert lhs_l is not rhs_l
+#         assert lhs_l.id == rhs_l.id
+#         assert lhs_l.src == rhs_l.src
+#         assert lhs_l.dst == rhs_l.dst
+#         assert lhs_l.weight == rhs_l.weight
+#
+#
+# def _simple_genome(seed, with_id):
+#     data = Genome.Data.create_for_generic_cppn(5, 3,
+#                                                seed=seed,
+#                                                with_lineage=with_id)
+#     genome = Genome.random(data)
+#     for _ in range(10):
+#         genome.mutate(data)
+#     return genome
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_pickle_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     roundabout = pickle.loads(pickle.dumps(genome))
+#     assert_equal(genome, roundabout)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_json_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     roundabout = Genome.from_json(genome.to_json())
+#     assert_equal(genome, roundabout)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test_copy_genome(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = genome.copy()
+#     assert_equal(genome, copied)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test___copy_genome_factory(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = copy.copy(genome)
+#     assert_equal(genome, copied)
+#
+#
+# @pytest.mark.parametrize('with_id', [True, False])
+# def test___deepcopy_genome_factory(seed, with_id):
+#     genome = _simple_genome(seed, with_id)
+#     copied = copy.deepcopy(genome)
+#     assert_equal(genome, copied)

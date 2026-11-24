@@ -2,17 +2,27 @@
 Test documentation for genome file (module?)
 """
 import logging
-import pathlib
+import os
+
 from collections import namedtuple
 from collections.abc import Iterable
+from pathlib import Path
 from random import Random
 from shutil import which
+from tempfile import mkstemp
 from typing import (Dict, List, Any, Optional, Union,
                     Collection, Callable, Tuple)
 
-from graphviz import Digraph
+from graphviz import Digraph, render as dot_render
 from importlib_resources import files
 from pyrecord import Record
+
+try:
+    from matplotlib import rc_context
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:  # pragma: no cover
+    HAS_MATPLOTLIB = False
 
 from .._cpp.config import Config
 from .._cpp.genotype import CPPNData as _CPPNData, Innovations
@@ -145,7 +155,7 @@ class Genome(_CPPNData):
         """ (Optional) Manager for genome identifiers and lineage """
 
         def __init__(self,
-                     seed: int,
+                     seed: Optional[int],
                      cdata: dict,
                      labels: Optional[Union[str, Collection[str]]],
                      genome_ids: bool = True,
@@ -178,11 +188,14 @@ class Genome(_CPPNData):
                                      f" {i+o} got {len(tokens)}")
                 self.labels = tokens
             else:
-                self.labels = ([f"I{j}" for j in range(i)]
-                               + [f"I{j+i}" for j in range(o)])
+                self.labels = ([f"I_{j}" for j in range(i)]
+                               + [f"O_{j}" for j in range(o)])
+                if cdata["input_bias"]:
+                    self.labels[i-1] = 'b'
 
-        @staticmethod
+        @classmethod
         def create_for_generic_cppn(
+                cls,
                 inputs: int, outputs: Union[int, Collection[str]],
                 labels: Optional[Union[str, Collection[str]]] = None,
                 seed: Optional[int] = None,
@@ -210,7 +223,7 @@ class Genome(_CPPNData):
                 functions = outputs
                 outputs = len(outputs)
 
-            d = Genome.Data(
+            d = cls(
                 cdata=dict(
                     i=inputs + int(with_input_bias),
                     o=outputs,
@@ -224,13 +237,14 @@ class Genome(_CPPNData):
                 key=Genome.Data.__private_key)
             return d
 
-        @staticmethod
+        @classmethod
         def create_for_eshn_cppn(
+                cls,
                 dimension: int,
-                with_input_bias: Optional[bool] = True,
-                with_input_length: Optional[bool] = True,
-                with_leo: Optional[bool] = True,
-                with_output_bias: Optional[bool] = True,
+                with_input_bias: bool = True,
+                with_input_length: bool = True,
+                with_leo: bool = True,
+                with_output_bias: bool = True,
                 seed: Optional[int] = None,
                 with_innovations: bool = True,
                 with_lineage: bool = True
@@ -261,7 +275,7 @@ class Genome(_CPPNData):
 
             coordinates = "xy" if dimension == 2 else "xyz"
             inputs = 2*dimension
-            labels = [f"{c}_{i}" for c in coordinates for i in range(2)]
+            labels = [f"{c}_{i}" for i in range(2) for c in coordinates]
             if with_input_length:
                 inputs += 1
                 labels.append("l")
@@ -275,7 +289,7 @@ class Genome(_CPPNData):
                 outputs.append(Config.eshnOutputFunctions[ESHNOutputs.Bias])
                 labels.append("B")
 
-            return Genome.Data.create_for_generic_cppn(
+            return cls.create_for_generic_cppn(
                 inputs=inputs,
                 outputs=outputs,
                 labels=labels,
@@ -313,7 +327,7 @@ class Genome(_CPPNData):
         """Return the genome id if one was generated"""
         return getattr(self, self.__id_field, None)
 
-    def parents(self) -> Optional[int]:
+    def parents(self) -> Optional[List[int]]:
         """Return the genome's parent(s) if possible"""
         return getattr(self, self.__parents_field, None)
 
@@ -571,21 +585,124 @@ class Genome(_CPPNData):
     # Public graphviz/dot interface
     ###########################################################################
 
-    @staticmethod
-    def from_dot(path: str, rng: Random) -> 'Genome':
+    @classmethod
+    def from_dot(
+                cls, data: Data, path: Union[str, Path]
+            ) -> 'Genome':  # pragma: no cover
         """Produce a Genome by parsing a simplified graph description
 
             .. warning:: Unimplemented
 
         :param path: the file to load
-        :param rng: random pick unspecified functions
+        :param data: Genome's shared data (to check labels)
         :return: The user-specified CPPN
         """
-        raise NotImplementedError  # pragma: no cover
 
-    def to_dot(self, data: Data, path: str, ext: str = "pdf",
+        def maybe_token(lst, _i):
+            return lst[_i].strip('[]') if len(lst) > _i else None
+
+        inputs, outputs = 0, 0
+        nodes, links = [], []
+        with open(path, 'r') as f:
+            for i, line in enumerate(f):
+                if line.strip()[0:2] == '//':
+                    continue
+                for statement in [_s for s in line.split(";")
+                                  if (_s := s.strip())]:
+                    # print(statement)
+                    if statement[:6] == "CPPN {" or statement == "}":
+                        continue
+
+                    if statement[0:2] == "//":
+                        continue
+
+                    tokens = statement.split()
+                    if "->" not in statement:  # Link
+                        # print("> node")
+
+                        label = tokens[0]
+                        h = label[0]
+                        if h.islower():  # Input node
+                            inputs += 1
+                            nodes.append(("I", label, None))
+                            if len(tokens) > 1:
+                                logger.warning(
+                                    f"Unused data on line {i}: {tokens[1:]}")
+                        elif h.isupper():  # Output node
+                            outputs += 1
+                            nodes.append(("O", label, maybe_token(tokens, 1)))
+                        elif h.isdigit():  # Hidden node
+                            nodes.append(("H", label, maybe_token(tokens, 1)))
+                        else:
+                            raise ValueError(
+                                f"Malformed line {i}:"
+                                f" Expected node declaration\n{line}")
+                    else:
+                        if len(tokens) < 2:
+                            raise ValueError(
+                                f"Malformed line {i}:"
+                                f" Expected link declaration\n{line}")
+                        links.append((tokens[0], tokens[2],
+                                      maybe_token(tokens, 3)))
+        #
+        # print("Nodes:")
+        # pprint.pprint(nodes)
+        #
+        # print("Links:")
+        # pprint.pprint(links)
+
+        if len(set(label for _, label, _ in nodes)) < len(nodes):
+            raise ValueError("Found duplicate node labels")
+
+        if inputs != data.cdata["i"]:
+            raise ValueError(f"Inputs mismatch! Expecting"
+                             f" {data.cdata['i']} but got {inputs}.")
+
+        if outputs != data.cdata["o"]:
+            raise ValueError(f"Outputs mismatch! Expecting"
+                             f" {data.cdata['o']} but got {outputs}.")
+
+        for fn in set(_fn for _, _, _fn in nodes if _fn):
+            if fn not in Config.functionSet:
+                raise ValueError(f"Unknown function specified: '{fn}'.\n"
+                                 f"Current set is: {Config.functionSet}")
+
+        bias = "b" in [label for _, label, _ in nodes]
+        if bias != data.cdata["input_bias"]:
+            raise ValueError("Bias mismatch!")
+
+        g = cls(cls.__private_key)
+        g.inputs, g.outputs, g.bias = inputs, outputs, bias
+
+        nodes_order = "IOH"
+        nodes = sorted(nodes, key=lambda _t: nodes_order.index(_t[0]))
+        nodes_dict = {}
+        for i, (t, label, fn) in enumerate(nodes):
+            nodes_dict[label] = i
+            if t == "I":
+                continue
+            fn = fn or data.rng.choice(Config.functionSet)
+            g._add_node(i, fn)
+
+        for i, o, w in links:
+            w = (float(w)
+                 if w is not None else
+                 cls.__random_link_weight(data.rng))
+            g._add_link(data, nodes_dict[i], nodes_dict[o], w,
+                        is_mutation=False)
+
+        if data.gid_manager is not None:
+            setattr(g, g.__id_field, data.gid_manager())
+            setattr(g, g.__parents_field, [])
+
+        g._sort_by_id()
+
+        return g
+
+    def to_dot(self, data: Data,
+               path: Union[str, Path], ext: str = "pdf",
                title: Optional[str] = None,
-               debug: Optional[Union[str, Iterable]] = None) -> str:
+               debug: Optional[Union[str, Iterable]] = None) -> Path:
         """Produce a graphical representation of this genome
 
         .. note:: Missing functions images in nodes and/or lots of
@@ -595,6 +712,7 @@ class Genome(_CPPNData):
         Args:
             data: Genome's shared data (for labels)
             path: The path to write to
+            math: Extension of the file to render the equivalent equation into
             ext: The rendering format to use
             title: Optional title for the graph (e.g. for generational info)
             debug: Print more information on the graph.
@@ -623,7 +741,8 @@ class Genome(_CPPNData):
         if _should_debug("all"):  # pragma: no cover
             debug = "depth;links;keepdot"
 
-        path = pathlib.Path(path)
+        if not isinstance(path, Path):  # pragma: no cover
+            path = Path(path)
         if path.suffix != "":
             ext = path.suffix.replace('.', '')
             path = path.with_suffix('')
@@ -655,15 +774,20 @@ class Genome(_CPPNData):
         def node_x_label(_nid):
             return x_label(depths[_nid] if depths is not None else None)
 
+        def format_label(_label):
+            if '_' in _label:
+                j = _label.find('_')
+                _label = ("<" + _label[:j] + "<SUB>"
+                          + _label[j + 1:] + "</SUB>>")
+            return _label
+
         # input nodes
         for i in range(self.inputs):
             label = data.labels[i]
             name = "I" + label.upper().replace("_", "")
             ix_to_name[i] = name
-            if '_' in label:
-                j = label.find('_')
-                label = label[:j] + "<SUB>" + label[j + 1:] + "</SUB>"
-            g_i.node(name, f"<{label}>", shape='plaintext',
+            label = format_label(label)
+            g_i.node(name, label, shape='plaintext',
                      xlabel=node_x_label(i))
 
         img_format = "svg" if vectorial else "png"
@@ -687,9 +811,9 @@ class Genome(_CPPNData):
                 dot.edge(name, name + "_l")
 
             else:
-                name = f"H{nid}"
+                name = f"H_{nid}"
                 ix_to_name[nid] = name
-                label = name if debug is not None else ""
+                label = format_label(name) if debug is not None else ""
                 g_h.node(name, label,
                          width="0.5in", height="0.5in", margin="0",
                          fixedsize="shape",
@@ -717,9 +841,152 @@ class Genome(_CPPNData):
         for g in [g_i, g_h, g_o, g_ol]:
             dot.subgraph(g)
 
-        cleanup = False if _should_debug("keepdot") else True
+        dot_path = path.with_suffix(".dot")
+        tmp_dot_fd, tmp_dot_path = mkstemp(dir=str(path.parent),
+                                           suffix="genome.dot")
+        os.close(tmp_dot_fd)
 
-        return dot.render(path, format=ext, cleanup=cleanup)
+        tmp_dot_path = Path(tmp_dot_path)
+        try:
+            tmp_dot_path.write_text(dot.source, encoding="ascii")
+            ret = dot_render('dot', ext, tmp_dot_path)
+            ret = Path(ret).rename(path.with_suffix("." + ext))
+
+            if _should_debug("keepdot"):
+                dot_ext = ".dot"
+                if dot_path.exists():  # pragma: no branch
+                    dot_ext = ".gvz" + dot_ext  # pragma: no cover
+                tmp_dot_path.replace(path.with_suffix(dot_ext))
+                tmp_dot_path = None
+
+        finally:
+            if tmp_dot_path is not None:
+                tmp_dot_path.unlink(missing_ok=True)
+
+        return ret
+
+    def to_math(self, data: Data, path: Path,
+                extension: str = "tex", fmt: str = ".2g"):  # pragma: no cover
+        """
+        Renders this genome's equivalent equation system
+
+        :param data: Genome's shared data (for labels)
+        :param path: The path to write to
+        :param extension: The extension to use for rendering (defaults to tex)
+        :param fmt: Numeric format for the weights.
+        Defaults to .2g for compact (but imprecise) output
+        """
+
+        labels = data.labels.copy()
+        if labels[self.inputs-1] == "b":
+            labels[self.inputs-1] = "1"
+
+        tex = (extension[-3:] == "tex")
+        if not HAS_MATPLOTLIB and not tex:
+            logger.error("You need to install matplotlib to generate"
+                         " latex equations directly")
+
+        if extension[0] != ".":
+            extension = "." + extension
+        path = path.with_suffix(extension)
+
+        graph = {}
+        for node in self.nodes:
+            nid, fn = node.id, node.func
+            graph[nid] = (fn, [])
+
+        for link in self.links:
+            graph[link.dst][1].append((link.src, link.weight))
+
+        def default_format(_fn, _content):
+            return f"{_fn}({_content})"
+
+        formats = {
+            "id": lambda _fn, _content: (f"({_content})"
+                                         if any((not c.isdigit() and c != ".")
+                                                for c in _content)
+                                         else _content),
+            "sq": lambda _fn, _content: f"({_content})^2",
+            "abs": lambda _fn, _content: f"|{_content}|",
+            "sqrt": lambda _fn, _content: fr"\sqrt{{{_content}}}",
+        }
+
+        def join_expr(_exprs):
+            if len(_exprs) == 0:
+                return "0"
+
+            _expr = ""
+            for _i, s in enumerate(_exprs):
+                if _i > 0 and s[0] != "-":
+                    _expr += "+"
+                _expr += s
+            return _expr
+
+        def add_weight(_expr, weight):
+            if weight == 0:
+                return "0"
+
+            weight_str = f"{weight:{fmt}}"
+
+            if weight_str == "-1":
+                _expr = "-" + _expr
+            elif weight_str != "1":
+                if _expr != "1":
+                    _expr = f"{weight_str} {_expr}"
+                else:
+                    _expr = weight_str
+
+            return _expr
+
+        def parse_math(_nid, weight):
+            if self._is_input(_nid):
+                _expr = labels[_nid]
+            else:
+                _node = graph[_nid]
+
+                _fn = _node[0]
+                _expr = formats.get(_fn, default_format)(
+                    _fn,
+                    join_expr([parse_math(*other) for other in _node[1]]))
+
+            return add_weight(_expr, weight)
+
+        equations = []
+        for i, node in enumerate(self.nodes):
+            if self._is_output(node.id):
+                equations.append(
+                    labels[i + self.inputs] + "&="
+                    + parse_math(node.id, 1) + r"\\"
+                )
+        equations.append(r"\cline{0-1} ")
+
+        def get_label(_nid):
+            return f"H_{{{_nid}}}" if self._is_hidden(_nid) else labels[_nid]
+
+        for i, node in enumerate(self.nodes):
+            nid, fn = node.id, node.func
+            label = get_label(nid)
+            expr = formats.get(fn, default_format)(
+                fn,
+                join_expr([add_weight(get_label(entry[0]), entry[1])
+                           for entry in graph[nid][1]]))
+            equations.append(fr"{label} &= {expr}\\")
+
+        equations.insert(0, r"\begin{eqnarray*}")
+        equations.append(r"\end{eqnarray*}")
+        # text = r"\begin{eqnarray*}a &=&b\\\frac{c}{d}&=&toto\end{eqnarray*}"
+        # print(text)
+
+        if not tex:
+            with rc_context({"text.usetex": True}):
+                fig = plt.figure()
+                fig.text(0, 0, "".join(equations))
+                fig.savefig(path, bbox_inches="tight")
+        else:
+            with open(path, "w") as f:
+                f.writelines("\n".join(equations) + "\n")
+
+        return path
 
     ###########################################################################
     # Private mutation interface
@@ -1010,7 +1277,8 @@ class Genome(_CPPNData):
         Genome._iter(lhs, rhs, 'links', process_links)
 
         child._sort_by_id()
-        child.update_lineage(data, [lhs, rhs])
+        if data.gid_manager is not None:  # pragma: no branch
+            child.update_lineage(data, [lhs, rhs])
         return child
 
     @staticmethod

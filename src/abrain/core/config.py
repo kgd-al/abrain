@@ -46,8 +46,6 @@ class Config(CPPConfig):
                     attr = attr.toJson()
                 dct[section][k] = attr
 
-        pprint.pprint(dct)
-
         return dct
 
     @classmethod

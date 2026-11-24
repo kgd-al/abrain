@@ -137,7 +137,7 @@ void ANN_t<DI>::reset() {
 }
 
 template <unsigned int DI>
-unsigned int ANN_t<DI>::max_hidden_neurons(void) {
+unsigned int ANN_t<DI>::max_hidden_neurons() {
   return std::pow(2, DI*Config::maxDepth);
 }
 

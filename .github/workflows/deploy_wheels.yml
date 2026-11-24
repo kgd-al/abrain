@@ -9,6 +9,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   collect_targets:
     name: Collecting build targets
@@ -20,8 +23,9 @@ jobs:
     - name: Generating json string
       id: gen-mjson
       env:
-        CIBW_SKIP: cp38-macosx_arm64
+        CIBW_SKIP: cp3*t-*
         CIBW_ARCHS_MACOS: "x86_64 arm64"
+        CIBW_ARCHS_WINDOWS: AMD64
       run: |
         echo "{\"include\":[" > mjson_file
         for os in linux macos windows
@@ -33,9 +37,10 @@ jobs:
             if [ "$os" == "macos" ]
             then
               arch=$(cut -d '_' -f 2- <<< "$bt")
-              [ "$arch" != "arm64" ] && github_os="macos-13"
+              [ "$arch" != "arm64" ] && github_os="macos-15-intel"
             fi
             echo "{\"os\": \"$github_os\", \"build\": \"$bt\"},"
+            echo "$os $bt ($arch): $github_os" >&2
           done
         done >> mjson_file
         echo "$mjson]}" >> mjson_file
@@ -80,14 +85,14 @@ jobs:
         env:
           CIBW_BUILD: ${{ matrix.build }}
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_TEST_EXTRAS: tests
-          CIBW_BEFORE_TEST: "pip install kaleido || echo 'No install candidates for kaleido'"
+          CIBW_TEST_EXTRAS: all-tests
+          # CIBW_BEFORE_TEST: "pip install 'kaleido==0.2.1' || echo 'No install candidates for kaleido'"
           CIBW_BEFORE_TEST_LINUX: "yum install -y graphviz || apk add graphviz"
           CIBW_BEFORE_TEST_MACOS: "brew install graphviz"
           CIBW_BEFORE_TEST_WINDOWS: "choco install graphviz --no-progress"
           CIBW_ENVIRONMENT_WINDOWS: "PYTHONUTF8=1"
           CIBW_TEST_COMMAND: |
-            pytest {project}/tests -ra --small-scale --test-evolution
+            pytest {project}/tests -ra --small-scale --test-evolution --ci
           LC_ALL: C
         shell: bash --noprofile --norc {0} # No automatic fail-fast
         run: |
@@ -151,8 +156,6 @@ jobs:
           merge-multiple: true
           
       - name: Generate summary
-        env:
-          GH_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
         run: |
           echo "Generating summary"
           
@@ -294,12 +297,22 @@ jobs:
           echo "BADGES_COLORS=($colors )" >> $GITHUB_ENV
 
           
-      - name: Upload summary to Wiki
-        uses: SwiftDocOrg/github-wiki-publish-action@v1
+      - name: Checkout wiki
+        uses: actions/checkout@v4
         with:
-          path: "wiki"
-        env:
-          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload summary to Wiki
+        run: |
+          cp -r wiki/* wiki-repo/
+          cd wiki-repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "Automatically publish wiki"
+          git push
 
                     
     # For testing purposes, upload always

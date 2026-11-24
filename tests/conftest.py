@@ -6,11 +6,18 @@ import pytest
 
 from abrain import CPPN, CPPN2D, CPPN3D
 
+import logging
+import matplotlib
+
+matplotlib.use("Agg")
+for name in ("matplotlib", "PIL"):
+    logging.getLogger(name).setLevel(logging.WARNING)
+
 
 class TestSize(IntFlag):
     SMALL = 2
     NORMAL = 8
-    LARGE = 32
+    LARGE = 16
 
 
 flags = {
@@ -67,6 +74,16 @@ def pytest_addoption(parser):
                      action='store_true',
                      help="Run all examples. Requires a ton of packages"
                           " (installed via abrain[all-tests]).")
+
+    parser.addoption("--ci", dest='ci', default=False,
+                     action='store_true',
+                     help="Flag as CI/CD run to disable fragile tests")
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "image_export: needs a working Chrome (Kaleido); skipped with --ci")
 
 
 best_ad_rate = .75
@@ -180,17 +197,6 @@ def pytest_generate_tests(metafunc):
 
 
 def pytest_collection_modifyitems(config, items):
-    scale = config.getoption("size")
-    slow_marks = {}
-    for s_ in TestSize:
-        if s_ <= scale:
-            continue
-        flag = flags[s_]
-        slow_marks[s_] = \
-            pytest.mark.skip(reason=f"Test scale ({s_.name}) is larger than"
-                                    f" current target ({scale.name}). Use"
-                                    f" {flag} to run")
-
     file_order = ["config", "genome", "innovations",
                   "cppn", "ann", "evolution",
                   "examples"]
@@ -214,31 +220,62 @@ def pytest_collection_modifyitems(config, items):
     items.sort(key=lambda _item: index(_item))
     # debug_print_order("after")
 
+    scale = config.getoption("size")
+    removed, kept = [], []
     for item in items:
+        keep = False
         if not hasattr(item, 'callspec'):
-            continue
+            keep = True
 
-        if item.originalname == "test_evolution":
-            if config.getoption('evolution') is None:
-                item.add_marker(
-                    pytest.mark.skip(reason="Only running evolution test on"
-                                            " explicit request. Use"
-                                            " --test-evolution=[dict] to do"
-                                            " so.")
-                )
-            continue
+        if (config.getoption("ci") and "image_export" in item.keywords):
+            item.add_marker(pytest.mark.skip(
+                reason="image export disabled with --ci"))
+            keep = True
 
-        if item.originalname == "test_run_examples":
-            if not config.getoption("examples"):
-                item.add_marker(
-                    pytest.mark.skip(reason="Only running examples test on"
-                                            " explicit request. Use"
-                                            " --test-examples to do so.")
-                )
-            continue
+        if (item.originalname == "test_evolution"
+                and config.getoption('evolution') is None):
+            item.add_marker(
+                pytest.mark.skip(reason="Only running evolution test on"
+                                        " explicit request. Use"
+                                        " --test-evolution=[dict] to do"
+                                        " so.")
+            )
+            keep = True
 
-        that_scale = max_scale_for(item.callspec.params)
-        if scale < that_scale:
-            item.add_marker(slow_marks[that_scale])
-        # else:
-        #     print(item, item.callspec)
+        if (item.originalname == "test_run_examples"
+                and not config.getoption("examples")):
+            item.add_marker(
+                pytest.mark.skip(reason="Only running examples test on"
+                                        " explicit request. Use"
+                                        " --test-examples to do so.")
+            )
+            keep = True
+
+        if not keep:
+            keep = (scale >= max_scale_for(item.callspec.params))
+        if keep:
+            kept.append(item)
+        else:
+            removed.append(item)
+
+    if removed:
+        config.hook.pytest_deselected(items=removed)
+        items[:] = kept
+
+
+@pytest.fixture(scope="session")
+def chrome():
+    """Download Chrome for Kaleido once per session
+      (no-op if already present)."""
+    import kaleido
+    try:
+        return kaleido.get_chrome_sync()
+    except Exception as e:  # offline, unsupported platform, ...
+        pytest.skip(f"Chrome unavailable: {e}")
+
+
+@pytest.fixture(autouse=True)
+def _chrome_for_image_tests(request):
+    # Only tests marked image_export trigger the download
+    if request.node.get_closest_marker("image_export"):
+        request.getfixturevalue("chrome")

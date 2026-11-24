@@ -1,16 +1,16 @@
 [project]
 name = "abrain"
-version = "1.0rc-post7"
+version = "1.0rc-post8"
 authors = [{ name="Kevin Godin-Dubois", email="k.j.m.godin-dubois@vu.nl"}]
 description = "NeuroEvolution in Python backed by C++ computations"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
   "Development Status :: 3 - Alpha",
   
   "Programming Language :: C++",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.11",
   
   "License :: OSI Approved :: MIT License",
 
@@ -21,10 +21,11 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Life",
 ]
 dependencies = [
-  "plotly",
+  "plotly>=6.1.1", "kaleido>=1",  # These changed API recently
   "importlib_resources",
   "graphviz",
   "pyrecord",
+  "jsonpickle"
 ]
 
 [project.urls]
@@ -50,8 +51,9 @@ tests = [
 ]
 
 all-tests = [
-  "abrain[tests,kaleido]",
-  "leap-ec", "Pillow", "qdpy", "tqdm", "matplotlib"
+  "abrain[tests,kaleido,matplotlib]",
+  "leap_ec>=0.8.2", "Pillow", "qdpy", "tqdm",
+  "numpy", "pandas", "matplotlib", "rich",
 ]
 
 
@@ -67,7 +69,7 @@ docs = [
 
 ]
 
-kaleido = [ "kaleido" ]
+matplotlib = [ "matplotlib", "pandas" ]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

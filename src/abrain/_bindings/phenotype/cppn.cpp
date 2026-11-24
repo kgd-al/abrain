@@ -66,7 +66,14 @@ void init_point_type (py::module &m, const char *name) {
             "x"_a, "y"_a)
         .def("tuple", [] (const Point &p) {
           return std::tuple(p.x(), p.y());
-        }, "Return a tuple for easy unpacking in python");
+        }, "Return a tuple for easy unpacking in python")
+        .def(py::pickle(
+          [](const Point &p) { return py::make_tuple(p.x(), p.y()); },
+          [](const py::tuple &t) {
+            return Point{t[0].cast<float>(), t[1].cast<float>()};
+          }
+        ))
+    ;
   } else {
     pont.def(
         py::init([] (float x, float y, float z) { return Point({x,y,z}); }),
@@ -76,8 +83,15 @@ void init_point_type (py::module &m, const char *name) {
             "x"_a, "y"_a, "z"_a)
         .def("tuple", [] (const Point &p) {
           return std::tuple(p.x(), p.y(), p.z());
-        }, "Return a tuple for easy unpacking in python");
-  }
+        }, "Return a tuple for easy unpacking in python")
+        .def(py::pickle(
+          [](const Point &p) { return py::make_tuple(p.x(), p.y(), p.z()); },
+          [](const py::tuple &t) {
+            return Point{t[0].cast<float>(), t[1].cast<float>(), t[2].cast<float>()};
+          }
+        ))
+    ;
+}
 }
 template void init_point_type<2>(py::module_ &m, const char *name);
 template void init_point_type<3>(py::module_ &m, const char *name);

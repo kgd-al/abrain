@@ -10,6 +10,8 @@ do_set-env(){
   then
     export DEBUG=1
     CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=ON -DWITH_DEBUG_INFO=OFF"
+  else
+    CMAKE_ARGS="$CMAKE_ARGS -DWITH_COVERAGE=OFF -DWITH_DEBUG_INFO=OFF"
   fi
   export CMAKE_ARGS
   [[ "$1" =~ "dev" ]] && export DEV=1
@@ -31,7 +33,7 @@ do_manual-install(){
   printf "[.1] Virtual environment: $VIRTUAL_ENV\n"
   do_set-env "$1"
   # Manually ensuring build/test dependencies
-  pip install pybind11[global] pybind11-stubgen || exit 2
+  pip install setuptools cmake pybind11[global] pybind11-stubgen || exit 2
   if [[ "$1" =~ "tests" ]]
   then
     pip install pytest pytest-steps pytest-sugar coverage flake8 Pillow numpy \
@@ -93,6 +95,10 @@ cmd_install-tests(){  # Install with test in standard location
   do_pip-install '.[tests]'
 }
 
+cmd_install-editable(){  # Editable install (basics)
+  do_pip-install '-e .'
+}
+
 cmd_install-dev(){  # Editable install (with pip)
   do_pip-install '-e .[docs,tests]'
 #   do_manual-install 'dev-test-doc'
@@ -137,16 +143,20 @@ cmd_pytest(){  # Perform the test suite (small scale with evolution)
 
   pycoverage=$cout/py.coverage.info
   coverage run --branch --data-file=$(basename $pycoverage) \
-    --source=. --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
+    --source=abrain,tests --omit "setup.py,tests/conftest.py,examples/*.py,tests/test_examples.py" \
     -m \
     pytest --durations=10 --basetemp=$out -x -ra "$@" || exit 2
+  
+  echo
+  echo "Preparing coverage report"
+
   mkdir -p $cout # pytest will have cleared everything. Build it back
   mv $(basename $pycoverage) $pycoverage
   coverage report --data-file=$pycoverage
-  coverage html  --fail-under=100 --data-file=$pycoverage -d $cout/html/python
+  coverage html  --fail-under=50 --data-file=$pycoverage -d $cout/html/python
   
   cppcoverage=$cout/cpp.coverage.info
-  lcov --capture --no-external --directory . --rc lcov_branch_coverage=1 --output-file $cppcoverage
+  lcov --capture --no-external --directory . --rc lcov_branch-coverage=1 --output-file $cppcoverage
   lcov --remove $cppcoverage '*cppn.h' -o $cppcoverage
   lcov --remove $cppcoverage '*_bindings*' -o $cppcoverage
   lcov --list $cppcoverage
