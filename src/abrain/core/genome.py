@@ -874,7 +874,7 @@ class Genome(_CPPNData):
         :param path: The path to write to
         :param extension: The extension to use for rendering (defaults to tex)
         :param fmt: Numeric format for the weights.
-        Defaults to .2g for compact (but imprecise) output
+            Defaults to .2g for compact (but imprecise) output
         """
 
         labels = data.labels.copy()

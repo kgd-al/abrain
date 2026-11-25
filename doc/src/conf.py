@@ -227,13 +227,16 @@ def process_docstring(app, what, name, obj, options, lines):
 
 
 def process_signature(app, what, name, obj, options, signature, return_ant):
+    if signature is None:
+        return signature, return_ant
+    
     ignored = ['class', StaticClassMembersDocumenter.objtype]
     if what in ignored:
         return signature, return_ant
 
     if kgd_verbose:
         print(f"kgd_autodoc-process-signature({what}, {name}, {obj},"
-              f" {signature}, {return_ant})")
+            f" {signature}, {return_ant})")
     lines = [i for i in [signature, return_ant] if i is not None]
     process(what, name, obj, lines, False)
     r = lines + [None for _ in range(2 - len(lines))]
